@@ -4,6 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, status
@@ -24,45 +25,55 @@ class Settings(BaseSettings):
 
 
 class RelationshipType(str, Enum):
-    """Strict semantic edge ontology from the Internalize pitch deck."""
+    """Strict semantic edge ontology from .cursorrules."""
 
-    SUMMARY_EXPANSION = "SUMMARY_EXPANSION"
+    SUMMARIZES = "SUMMARIZES"
+    CONTAINS = "CONTAINS"
     SUPPORTS = "SUPPORTS"
     CONTRADICTS = "CONTRADICTS"
-    AGREES_WITH = "AGREES_WITH"
-    CAUSE_REQUIRE = "CAUSE_REQUIRE"
-    TYPE_EXAMPLE = "TYPE_EXAMPLE"
+    CAUSES = "CAUSES"
+    REQUIRES = "REQUIRES"
+    EXAMPLE_OF = "EXAMPLE_OF"
+    FOLLOWS = "FOLLOWS"
 
+
+RELATIONSHIP_AXES: dict[str, list[RelationshipType]] = {
+    "Hierarchy": [RelationshipType.SUMMARIZES, RelationshipType.CONTAINS],
+    "Evaluation": [RelationshipType.SUPPORTS, RelationshipType.CONTRADICTS],
+    "Logical": [RelationshipType.CAUSES, RelationshipType.REQUIRES, RelationshipType.EXAMPLE_OF],
+    "Narrative": [RelationshipType.FOLLOWS],
+}
 
 ALLOWED_RELATIONSHIP_TYPES: frozenset[str] = frozenset(t.value for t in RelationshipType)
+
+DensityLevel = Literal[1, 2, 3]
 
 
 class NodeCreate(BaseModel):
     title: str = Field(..., min_length=1)
-    excerpt: str = ""
-    summary: str = Field(..., min_length=1)
-    source_metadata: str = ""
+    content: str = Field(..., min_length=1)
+    density_level: DensityLevel
+    significance: float = Field(default=1.0, gt=0)
 
 
 class NodeResponse(BaseModel):
     id: str
     title: str
-    excerpt: str
-    summary: str
-    source_metadata: str
-    created_at: int
+    density_level: int
 
 
 class NodeCreateResponse(BaseModel):
     status: str = "success"
     node_id: str
     title: str
+    density_level: int
 
 
 class EdgeCreate(BaseModel):
     source_id: str = Field(..., min_length=1)
     target_id: str = Field(..., min_length=1)
     relationship_type: RelationshipType
+    strength: float = Field(default=1.0, gt=0)
 
 
 class EdgeCreateResponse(BaseModel):
@@ -70,6 +81,7 @@ class EdgeCreateResponse(BaseModel):
     connection: str
     source_id: str
     target_id: str
+    strength: float
 
 
 class HealthResponse(BaseModel):
@@ -178,21 +190,21 @@ def create_knowledge_node(node: NodeCreate):
     CREATE (n:Concept {
         id: $id,
         title: $title,
-        excerpt: $excerpt,
-        summary: $summary,
-        source_metadata: $source_metadata,
+        content: $content,
+        density_level: $density_level,
+        significance: $significance,
         created_at: timestamp()
     })
-    RETURN n.id AS id, n.title AS title
+    RETURN n.id AS id, n.title AS title, n.density_level AS density_level
     """
     try:
         record = _run_write(
             query,
             id=node_id,
             title=node.title,
-            excerpt=node.excerpt,
-            summary=node.summary,
-            source_metadata=node.source_metadata,
+            content=node.content,
+            density_level=node.density_level,
+            significance=node.significance,
         )
     except GqlError as exc:
         raise HTTPException(
@@ -206,7 +218,11 @@ def create_knowledge_node(node: NodeCreate):
             detail="Failed to create node",
         )
 
-    return NodeCreateResponse(node_id=record["id"], title=record["title"])
+    return NodeCreateResponse(
+        node_id=record["id"],
+        title=record["title"],
+        density_level=record["density_level"],
+    )
 
 
 @app.get("/api/nodes", response_model=list[NodeResponse])
@@ -214,12 +230,7 @@ def list_knowledge_nodes():
     """List all Concept nodes (for the Human Linker dropdown)."""
     query = """
     MATCH (n:Concept)
-    RETURN n.id AS id,
-           n.title AS title,
-           n.excerpt AS excerpt,
-           n.summary AS summary,
-           coalesce(n.source_metadata, "") AS source_metadata,
-           n.created_at AS created_at
+    RETURN n.id AS id, n.title AS title, n.density_level AS density_level
     ORDER BY n.created_at DESC
     """
     driver = _require_neo4j()
@@ -236,10 +247,7 @@ def list_knowledge_nodes():
         NodeResponse(
             id=r["id"],
             title=r["title"],
-            excerpt=r.get("excerpt") or "",
-            summary=r["summary"],
-            source_metadata=r.get("source_metadata") or "",
-            created_at=r["created_at"],
+            density_level=r["density_level"],
         )
         for r in records
     ]
@@ -250,15 +258,26 @@ def create_semantic_edge(edge: EdgeCreate):
     """Create a typed semantic edge between two existing Concept nodes."""
     rel_type = edge.relationship_type.value
 
+    if rel_type not in ALLOWED_RELATIONSHIP_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid relationship type. Must be one of {sorted(ALLOWED_RELATIONSHIP_TYPES)}",
+        )
+
     # rel_type is validated by Enum; safe to interpolate into Cypher.
     query = f"""
     MATCH (a:Concept {{id: $source_id}})
     MATCH (b:Concept {{id: $target_id}})
-    CREATE (a)-[r:{rel_type}]->(b)
-    RETURN type(r) AS link_type
+    CREATE (a)-[r:{rel_type} {{strength: $strength}}]->(b)
+    RETURN type(r) AS link_type, r.strength AS strength
     """
     try:
-        record = _run_write(query, source_id=edge.source_id, target_id=edge.target_id)
+        record = _run_write(
+            query,
+            source_id=edge.source_id,
+            target_id=edge.target_id,
+            strength=edge.strength,
+        )
     except GqlError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -275,20 +294,17 @@ def create_semantic_edge(edge: EdgeCreate):
         connection=record["link_type"],
         source_id=edge.source_id,
         target_id=edge.target_id,
+        strength=record["strength"],
     )
 
 
 @app.get("/api/ontology/relationship-types")
 def get_relationship_types():
-    """Return allowed edge types for frontend dropdowns."""
+    """Return allowed edge types grouped by axis for frontend dropdowns."""
     return {
         "allowed_types": sorted(ALLOWED_RELATIONSHIP_TYPES),
-        "descriptions": {
-            RelationshipType.SUMMARY_EXPANSION: "Vertical axis: drill down from concept to raw evidence",
-            RelationshipType.SUPPORTS: "Evaluation axis: agreement or reinforcing evidence (+)",
-            RelationshipType.CONTRADICTS: "Evaluation axis: conflicting theories (-)",
-            RelationshipType.AGREES_WITH: "Evaluation axis: identical concepts (=)",
-            RelationshipType.CAUSE_REQUIRE: "Logical axis: functional dependencies",
-            RelationshipType.TYPE_EXAMPLE: "Logical axis: instantiation of a category (+Ex)",
+        "axes": {
+            axis: [t.value for t in types]
+            for axis, types in RELATIONSHIP_AXES.items()
         },
     }

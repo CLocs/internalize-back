@@ -6,18 +6,15 @@
   <title>Internalize — Human Linker</title>
   <style>
     :root {
-      --bg-deep: #06080d;
-      --bg-panel: #0c1018;
-      --bg-input: #111820;
-      --border: #1a2535;
-      --text: #d8e4f0;
-      --text-muted: #6b7f94;
-      --neon-green: #3dff9a;
-      --neon-green-dim: #1a9d5c;
-      --neon-blue: #38c8ff;
-      --neon-blue-dim: #1a6a8f;
-      --danger: #ff5c7a;
-      --success: #3dff9a;
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --input: #0f172a;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #deff9a;
+      --accent-dim: #a8c97a;
+      --danger: #f87171;
       --font: "Segoe UI", system-ui, -apple-system, sans-serif;
       --mono: "Cascadia Code", "Fira Code", Consolas, monospace;
     }
@@ -26,45 +23,29 @@
 
     body {
       font-family: var(--font);
-      background: var(--bg-deep);
+      background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       line-height: 1.5;
     }
 
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(56, 200, 255, 0.08), transparent),
-        radial-gradient(ellipse 60% 40% at 90% 100%, rgba(61, 255, 154, 0.06), transparent);
-      pointer-events: none;
-      z-index: 0;
-    }
-
     .wrap {
-      position: relative;
-      z-index: 1;
       max-width: 1100px;
       margin: 0 auto;
       padding: 2rem 1.5rem 3rem;
     }
 
     header {
-      margin-bottom: 2.5rem;
-      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
       padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
     }
 
     header h1 {
       font-size: 1.75rem;
       font-weight: 600;
+      color: var(--accent);
       letter-spacing: 0.02em;
-      background: linear-gradient(90deg, var(--neon-green), var(--neon-blue));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
     }
 
     header p {
@@ -82,24 +63,25 @@
       border: 1px solid transparent;
     }
 
-    .status-bar.visible { display: block; }
     .status-bar.ok {
       display: block;
-      background: rgba(61, 255, 154, 0.08);
-      border-color: var(--neon-green-dim);
-      color: var(--neon-green);
+      background: rgba(222, 255, 154, 0.08);
+      border-color: var(--accent-dim);
+      color: var(--accent);
     }
+
     .status-bar.err {
       display: block;
-      background: rgba(255, 92, 122, 0.08);
-      border-color: #8f3045;
+      background: rgba(248, 113, 113, 0.08);
+      border-color: #991b1b;
       color: var(--danger);
     }
+
     .status-bar.info {
       display: block;
-      background: rgba(56, 200, 255, 0.08);
-      border-color: var(--neon-blue-dim);
-      color: var(--neon-blue);
+      background: rgba(148, 163, 184, 0.1);
+      border-color: var(--border);
+      color: var(--text-muted);
     }
 
     .grid {
@@ -113,22 +95,14 @@
     }
 
     .panel {
-      background: var(--bg-panel);
+      background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 1.5rem;
-      box-shadow: 0 0 24px rgba(0, 0, 0, 0.35);
     }
 
-    .panel.node-panel {
-      border-top: 2px solid var(--neon-green);
-      box-shadow: 0 -1px 20px rgba(61, 255, 154, 0.06);
-    }
-
-    .panel.edge-panel {
-      border-top: 2px solid var(--neon-blue);
-      box-shadow: 0 -1px 20px rgba(56, 200, 255, 0.06);
-    }
+    .panel.node-panel { border-top: 2px solid var(--accent); }
+    .panel.edge-panel { border-top: 2px solid var(--accent-dim); }
 
     .panel h2 {
       font-size: 1.1rem;
@@ -142,9 +116,7 @@
       margin-bottom: 1.25rem;
     }
 
-    .field {
-      margin-bottom: 1rem;
-    }
+    .field { margin-bottom: 1rem; }
 
     .field label {
       display: block;
@@ -159,7 +131,7 @@
     .field textarea,
     .field select {
       width: 100%;
-      background: var(--bg-input);
+      background: var(--input);
       border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text);
@@ -170,7 +142,7 @@
     }
 
     .field textarea {
-      min-height: 88px;
+      min-height: 120px;
       resize: vertical;
     }
 
@@ -178,21 +150,14 @@
     .field textarea:focus,
     .field select:focus {
       outline: none;
-      border-color: var(--neon-blue-dim);
-      box-shadow: 0 0 0 2px rgba(56, 200, 255, 0.15);
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 2px rgba(222, 255, 154, 0.15);
     }
 
-    .node-panel .field input:focus,
-    .node-panel .field textarea:focus {
-      border-color: var(--neon-green-dim);
-      box-shadow: 0 0 0 2px rgba(61, 255, 154, 0.12);
-    }
-
-    .rel-hint {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-top: 0.35rem;
-      min-height: 1.2em;
+    optgroup {
+      color: var(--accent);
+      font-weight: 600;
+      font-style: normal;
     }
 
     button[type="submit"] {
@@ -205,6 +170,8 @@
       font-weight: 600;
       cursor: pointer;
       letter-spacing: 0.03em;
+      background: var(--accent);
+      color: #0f172a;
       transition: opacity 0.15s, transform 0.1s;
     }
 
@@ -217,16 +184,6 @@
       transform: scale(0.98);
     }
 
-    .btn-node {
-      background: linear-gradient(135deg, var(--neon-green-dim), var(--neon-green));
-      color: #041008;
-    }
-
-    .btn-edge {
-      background: linear-gradient(135deg, var(--neon-blue-dim), var(--neon-blue));
-      color: #040a10;
-    }
-
     footer {
       margin-top: 2rem;
       text-align: center;
@@ -235,7 +192,7 @@
       font-family: var(--mono);
     }
 
-    footer span { color: var(--neon-blue); }
+    footer span { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -248,31 +205,31 @@
 
     <div class="grid">
       <section class="panel node-panel">
-        <h2>New Concept</h2>
-        <p class="subtitle">Paste excerpt, write summary, capture source.</p>
+        <h2>Capture Node</h2>
+        <p class="subtitle">The Triplet — density, title, content.</p>
         <form id="node-form">
+          <div class="field">
+            <label for="density-level">Density Level</label>
+            <select id="density-level" name="density_level" required>
+              <option value="3">Level 3: Source</option>
+              <option value="2">Level 2: Excerpt</option>
+              <option value="1">Level 1: Summary</option>
+            </select>
+          </div>
           <div class="field">
             <label for="title">Title</label>
             <input id="title" name="title" type="text" required placeholder="e.g. System 1 vs System 2" />
           </div>
           <div class="field">
-            <label for="excerpt">Excerpt</label>
-            <textarea id="excerpt" name="excerpt" placeholder="Raw fragment from your reading…"></textarea>
+            <label for="content">Content</label>
+            <textarea id="content" name="content" required placeholder="Raw text for this density level…"></textarea>
           </div>
-          <div class="field">
-            <label for="summary">Summary</label>
-            <textarea id="summary" name="summary" required placeholder="Your processed understanding…"></textarea>
-          </div>
-          <div class="field">
-            <label for="source">Source</label>
-            <input id="source" name="source" type="text" placeholder="e.g. Kahneman — Thinking, Fast and Slow" />
-          </div>
-          <button type="submit" class="btn-node" id="node-submit">Create Node</button>
+          <button type="submit" id="node-submit">Save Node</button>
         </form>
       </section>
 
       <section class="panel edge-panel">
-        <h2>Semantic Edge</h2>
+        <h2>Create Semantic Edge</h2>
         <p class="subtitle">Link two concepts with a strict relationship type.</p>
         <form id="edge-form">
           <div class="field">
@@ -282,19 +239,18 @@
             </select>
           </div>
           <div class="field">
+            <label for="relationship-type">Relationship Type</label>
+            <select id="relationship-type" name="relationship_type" required>
+              <option value="">— select type —</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="target-id">Target Node</label>
             <select id="target-id" name="target_id" required>
               <option value="">— select target —</option>
             </select>
           </div>
-          <div class="field">
-            <label for="relationship-type">Relationship Type</label>
-            <select id="relationship-type" name="relationship_type" required>
-              <option value="">— select type —</option>
-            </select>
-            <p class="rel-hint" id="rel-hint"></p>
-          </div>
-          <button type="submit" class="btn-edge" id="edge-submit" disabled>Create Edge</button>
+          <button type="submit" id="edge-submit" disabled>Create Edge</button>
         </form>
       </section>
     </div>
@@ -305,7 +261,9 @@
   <script>
     const API_BASE = window.location.origin.includes("http")
       ? window.location.origin
-      : "http://localhost:8000";
+      : "http://127.0.0.1:8000";
+
+    const DENSITY_LABELS = { 1: "Summary", 2: "Excerpt", 3: "Source" };
 
     document.getElementById("api-base").textContent = API_BASE;
 
@@ -315,14 +273,11 @@
     const sourceSelect = document.getElementById("source-id");
     const targetSelect = document.getElementById("target-id");
     const relSelect = document.getElementById("relationship-type");
-    const relHint = document.getElementById("rel-hint");
     const edgeSubmit = document.getElementById("edge-submit");
-
-    let relDescriptions = {};
 
     function showStatus(message, kind = "info") {
       statusEl.textContent = message;
-      statusEl.className = `status-bar visible ${kind === "ok" ? "ok" : kind === "err" ? "err" : "info"}`;
+      statusEl.className = `status-bar ${kind === "ok" ? "ok" : kind === "err" ? "err" : "info"}`;
     }
 
     function clearStatus() {
@@ -354,20 +309,24 @@
       return body;
     }
 
-    function fillNodeSelects(nodes) {
-      const opts = nodes.length
-        ? nodes.map((n) => `<option value="${n.id}">${escapeHtml(n.title)}</option>`).join("")
-        : "";
-      const placeholder = '<option value="">— no nodes yet —</option>';
-      sourceSelect.innerHTML = `<option value="">— select source —</option>${opts}`;
-      targetSelect.innerHTML = `<option value="">— select target —</option>${opts}`;
-      edgeSubmit.disabled = nodes.length < 2;
-    }
-
     function escapeHtml(str) {
       const d = document.createElement("div");
       d.textContent = str;
       return d.innerHTML;
+    }
+
+    function nodeLabel(node) {
+      const level = DENSITY_LABELS[node.density_level] || `L${node.density_level}`;
+      return `${node.title} (L${node.density_level}: ${level})`;
+    }
+
+    function fillNodeSelects(nodes) {
+      const opts = nodes.length
+        ? nodes.map((n) => `<option value="${n.id}">${escapeHtml(nodeLabel(n))}</option>`).join("")
+        : "";
+      sourceSelect.innerHTML = `<option value="">— select source —</option>${opts}`;
+      targetSelect.innerHTML = `<option value="">— select target —</option>${opts}`;
+      edgeSubmit.disabled = nodes.length < 2;
     }
 
     async function loadNodes() {
@@ -376,20 +335,25 @@
       return nodes;
     }
 
-    async function loadOntology() {
-      const data = await api("/api/ontology/relationship-types");
-      relDescriptions = data.descriptions || {};
-      relSelect.innerHTML =
-        '<option value="">— select type —</option>' +
-        (data.allowed_types || [])
-          .map((t) => `<option value="${t}">${t}</option>`)
-          .join("");
+    function fillRelationshipSelect(axes) {
+      relSelect.innerHTML = '<option value="">— select type —</option>';
+      for (const [axis, types] of Object.entries(axes)) {
+        const group = document.createElement("optgroup");
+        group.label = axis;
+        for (const type of types) {
+          const opt = document.createElement("option");
+          opt.value = type;
+          opt.textContent = type;
+          group.appendChild(opt);
+        }
+        relSelect.appendChild(group);
+      }
     }
 
-    relSelect.addEventListener("change", () => {
-      const key = relSelect.value;
-      relHint.textContent = relDescriptions[key] || "";
-    });
+    async function loadOntology() {
+      const data = await api("/api/ontology/relationship-types");
+      fillRelationshipSelect(data.axes || {});
+    }
 
     nodeForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -399,15 +363,15 @@
       try {
         const payload = {
           title: document.getElementById("title").value.trim(),
-          excerpt: document.getElementById("excerpt").value.trim(),
-          summary: document.getElementById("summary").value.trim(),
-          source_metadata: document.getElementById("source").value.trim(),
+          content: document.getElementById("content").value.trim(),
+          density_level: parseInt(document.getElementById("density-level").value, 10),
+          significance: 1.0,
         };
         const result = await api("/api/nodes", {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        showStatus(`Node created: “${result.title}” (${result.node_id})`, "ok");
+        showStatus(`Node saved: “${result.title}” (L${result.density_level})`, "ok");
         nodeForm.reset();
         await loadNodes();
       } catch (err) {
@@ -426,24 +390,20 @@
         showStatus("Source and target must be different nodes.", "err");
         return;
       }
-      const btn = edgeSubmit;
-      btn.disabled = true;
+      edgeSubmit.disabled = true;
       try {
         const payload = {
           source_id: sourceId,
           target_id: targetId,
           relationship_type: relSelect.value,
+          strength: 1.0,
         };
         const result = await api("/api/edges", {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        showStatus(
-          `Edge created: ${result.connection} → ${result.source_id.slice(0, 8)}… → ${result.target_id.slice(0, 8)}…`,
-          "ok"
-        );
+        showStatus(`Edge created: ${result.connection}`, "ok");
         edgeForm.reset();
-        relHint.textContent = "";
       } catch (err) {
         showStatus(err.message, "err");
       } finally {
@@ -455,19 +415,19 @@
     async function init() {
       try {
         const health = await api("/health");
+        await loadOntology();
         if (health.neo4j === "connected") {
           showStatus("Connected to Neo4j.", "info");
-          await Promise.all([loadOntology(), loadNodes()]);
+          await loadNodes();
         } else {
           showStatus(
-            "API is running but Neo4j is unreachable. Start your database in Neo4j Desktop, then refresh this page.",
+            "API is running but Neo4j is unreachable. Start Neo4j Desktop, then refresh.",
             "err"
           );
-          await loadOntology();
         }
       } catch (err) {
         showStatus(
-          `Cannot reach API at ${API_BASE}. Start the server: uv run uvicorn main:app --reload`,
+          `Cannot reach API at ${API_BASE}. Start: uv run uvicorn main:app --reload`,
           "err"
         );
       }
