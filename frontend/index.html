@@ -230,7 +230,7 @@
 
       <section class="panel edge-panel">
         <h2>Create Semantic Edge</h2>
-        <p class="subtitle">Link two concepts with a strict relationship type.</p>
+        <p class="subtitle">Link two concepts with a strict relationship type. ◌ = ingested raw material.</p>
         <form id="edge-form">
           <div class="field">
             <label for="source-id">Source Node</label>
@@ -317,7 +317,8 @@
 
     function nodeLabel(node) {
       const level = DENSITY_LABELS[node.density_level] || `L${node.density_level}`;
-      return `${node.title} (L${node.density_level}: ${level})`;
+      const prefix = node.origin === "ingest" ? "◌ " : "";
+      return `${prefix}${node.title} (L${node.density_level}: ${level})`;
     }
 
     function fillNodeSelects(nodes) {
@@ -366,6 +367,7 @@
           content: document.getElementById("content").value.trim(),
           density_level: parseInt(document.getElementById("density-level").value, 10),
           significance: 1.0,
+          origin: "human",
         };
         const result = await api("/api/nodes", {
           method: "POST",
@@ -397,6 +399,7 @@
           target_id: targetId,
           relationship_type: relSelect.value,
           strength: 1.0,
+          origin: "human",
         };
         const result = await api("/api/edges", {
           method: "POST",

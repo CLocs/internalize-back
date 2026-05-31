@@ -1,0 +1,911 @@
+"""Internalize MVP 1 — The Human Linker. FastAPI backend for the semantic knowledge graph."""
+
+import logging
+from contextlib import asynccontextmanager
+from enum import Enum
+from pathlib import Path
+from typing import Literal, Optional
+from uuid import uuid4
+
+from fastapi import FastAPI, HTTPException, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from neo4j import Driver, GraphDatabase
+from neo4j.exceptions import GqlError
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=str(Path(__file__).resolve().parent.parent / ".env"),
+        env_file_encoding="utf-8",
+    )
+
+    neo4j_uri: str = "bolt://127.0.0.1:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "password"
+
+
+class RelationshipType(str, Enum):
+    """Strict semantic edge ontology from .cursorrules."""
+
+    SUMMARIZES = "SUMMARIZES"
+    CONTAINS = "CONTAINS"
+    SUPPORTS = "SUPPORTS"
+    CONTRADICTS = "CONTRADICTS"
+    CAUSES = "CAUSES"
+    REQUIRES = "REQUIRES"
+    EXAMPLE_OF = "EXAMPLE_OF"
+    FOLLOWS = "FOLLOWS"
+
+
+RELATIONSHIP_AXES: dict[str, list[RelationshipType]] = {
+    "Hierarchy": [RelationshipType.SUMMARIZES, RelationshipType.CONTAINS],
+    "Evaluation": [RelationshipType.SUPPORTS, RelationshipType.CONTRADICTS],
+    "Logical": [RelationshipType.CAUSES, RelationshipType.REQUIRES, RelationshipType.EXAMPLE_OF],
+    "Narrative": [RelationshipType.FOLLOWS],
+}
+
+ALLOWED_RELATIONSHIP_TYPES: frozenset[str] = frozenset(t.value for t in RelationshipType)
+
+DensityLevel = Literal[1, 2, 3]
+
+
+class NodeCreate(BaseModel):
+    title: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1)
+    density_level: DensityLevel
+    significance: float = Field(default=1.0, gt=0)
+    origin: str = "human"
+
+
+class NodeResponse(BaseModel):
+    id: str
+    title: str
+    density_level: int
+    origin: str = "human"
+
+
+class NodeCreateResponse(BaseModel):
+    status: str = "success"
+    node_id: str
+    title: str
+    density_level: int
+
+
+class NodeUpdate(BaseModel):
+    density_level: DensityLevel
+
+
+class EdgeCreate(BaseModel):
+    source_id: str = Field(..., min_length=1)
+    target_id: str = Field(..., min_length=1)
+    relationship_type: RelationshipType
+    strength: float = Field(default=1.0, gt=0)
+    origin: str = "human"
+
+
+class EdgeCreateResponse(BaseModel):
+    status: str = "success"
+    connection: str
+    source_id: str
+    target_id: str
+    strength: float
+
+
+class HealthResponse(BaseModel):
+    status: str
+    neo4j: str
+
+
+class HierarchyNodeResponse(BaseModel):
+    id: str
+    title: str
+    content: str
+    density_level: int
+    origin: str = "human"
+
+
+class DocumentNodeResponse(BaseModel):
+    id: str
+    title: str
+    content: str
+    density_level: int
+    origin: str = "human"
+
+
+class DocumentSummaryResponse(DocumentNodeResponse):
+    excerpt_id: str
+
+
+class DocumentCanvasResponse(BaseModel):
+    source: DocumentNodeResponse
+    document_text: str
+    excerpts: list[DocumentNodeResponse]
+    summaries: list[DocumentSummaryResponse]
+
+
+logger = logging.getLogger(__name__)
+
+settings = Settings()
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+
+
+def get_driver() -> Driver:
+    return GraphDatabase.driver(
+        settings.neo4j_uri,
+        auth=(settings.neo4j_user, settings.neo4j_password),
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    driver = get_driver()
+    app.state.db_driver = driver
+    app.state.neo4j_connected = False
+    try:
+        driver.verify_connectivity()
+        app.state.neo4j_connected = True
+        logger.info("Connected to Neo4j at %s", settings.neo4j_uri)
+    except GqlError as exc:
+        logger.warning(
+            "Neo4j unavailable at %s — API will start but data endpoints return 503 until "
+            "Neo4j Desktop is running. (%s)",
+            settings.neo4j_uri,
+            exc,
+        )
+    yield
+    driver.close()
+
+
+app = FastAPI(
+    title="Internalize Backend",
+    description="MVP 1: The Human Linker — semantic knowledge graph API",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def _require_neo4j() -> Driver:
+    driver: Driver = app.state.db_driver
+    try:
+        driver.verify_connectivity()
+        app.state.neo4j_connected = True
+    except GqlError as exc:
+        app.state.neo4j_connected = False
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Neo4j is unreachable. Start your database in Neo4j Desktop, "
+                f"then confirm NEO4J_URI ({settings.neo4j_uri}) and credentials in .env."
+            ),
+        ) from exc
+    return driver
+
+
+def _run_write(query: str, **params):
+    driver = _require_neo4j()
+    with driver.session() as session:
+        return session.execute_write(lambda tx: tx.run(query, **params).single())
+
+
+def _upsert_concept_node(
+    *,
+    node_id: str,
+    title: str,
+    content: str,
+    density_level: int,
+    significance: float,
+    origin: str,
+) -> dict:
+    driver = _require_neo4j()
+
+    find_query = """
+    MATCH (n:Concept)
+    WHERE n.title = $title
+      AND n.content = $content
+      AND n.density_level = $density_level
+    RETURN n.id AS id, n.title AS title, n.density_level AS density_level
+    LIMIT 1
+    """
+    create_query = """
+    CREATE (n:Concept {
+        id: $id,
+        title: $title,
+        content: $content,
+        density_level: $density_level,
+        significance: $significance,
+        origin: $origin,
+        created_at: timestamp()
+    })
+    RETURN n.id AS id, n.title AS title, n.density_level AS density_level
+    """
+
+    def _tx(tx):
+        existing = tx.run(
+            find_query,
+            title=title,
+            content=content,
+            density_level=density_level,
+        ).single()
+        if existing:
+            return {
+                "id": existing["id"],
+                "title": existing["title"],
+                "density_level": existing["density_level"],
+                "status": "already_exists",
+            }
+        created = tx.run(
+            create_query,
+            id=node_id,
+            title=title,
+            content=content,
+            density_level=density_level,
+            significance=significance,
+            origin=origin,
+        ).single()
+        return {
+            "id": created["id"],
+            "title": created["title"],
+            "density_level": created["density_level"],
+            "status": "success",
+        }
+
+    with driver.session() as session:
+        return session.execute_write(_tx)
+
+
+@app.get("/")
+def serve_input_pane():
+    """Serve the Human Linker input pane."""
+    index_path = FRONTEND_DIR / "index.html"
+    if not index_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="index.html not found")
+    return FileResponse(index_path)
+
+
+@app.get("/viewer")
+def serve_spatial_viewer():
+    """Serve the MVP 2 spatial graph viewer."""
+    viewer_path = FRONTEND_DIR / "viewer.html"
+    if not viewer_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="viewer.html not found")
+    return FileResponse(viewer_path)
+
+
+@app.get("/health", response_model=HealthResponse)
+def health_check():
+    try:
+        driver: Driver = app.state.db_driver
+        driver.verify_connectivity()
+        app.state.neo4j_connected = True
+        return HealthResponse(status="ok", neo4j="connected")
+    except GqlError:
+        app.state.neo4j_connected = False
+        return HealthResponse(status="degraded", neo4j="unreachable")
+
+
+@app.post("/api/nodes", response_model=NodeCreateResponse)
+def create_knowledge_node(node: NodeCreate, response: Response):
+    """Create a Concept node, or return an existing match (title + content + density_level)."""
+    node_id = str(uuid4())
+    try:
+        record = _upsert_concept_node(
+            node_id=node_id,
+            title=node.title,
+            content=node.content,
+            density_level=node.density_level,
+            significance=node.significance,
+            origin=node.origin,
+        )
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create node",
+        )
+
+    response.status_code = (
+        status.HTTP_200_OK if record["status"] == "already_exists" else status.HTTP_201_CREATED
+    )
+    return NodeCreateResponse(
+        status=record["status"],
+        node_id=record["id"],
+        title=record["title"],
+        density_level=record["density_level"],
+    )
+
+
+@app.put("/api/nodes/{node_id}", response_model=NodeResponse)
+def update_knowledge_node(node_id: str, update: NodeUpdate):
+    """Update an existing Concept node (e.g. promote excerpt to summary)."""
+    query = """
+    MATCH (n:Concept {id: $node_id})
+    SET n.density_level = $density_level
+    RETURN n.id AS id,
+           n.title AS title,
+           n.density_level AS density_level,
+           coalesce(n.origin, 'human') AS origin
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            record = session.run(
+                query, node_id=node_id, density_level=update.density_level
+            ).single()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Node not found: {node_id}",
+        )
+
+    return NodeResponse(
+        id=record["id"],
+        title=record["title"],
+        density_level=record["density_level"],
+        origin=record["origin"],
+    )
+
+
+@app.get("/api/nodes", response_model=list[NodeResponse])
+def list_knowledge_nodes():
+    """List all Concept nodes (for the Human Linker dropdown)."""
+    query = """
+    MATCH (n:Concept)
+    RETURN n.id AS id,
+           n.title AS title,
+           n.density_level AS density_level,
+           coalesce(n.origin, 'human') AS origin
+    ORDER BY n.created_at DESC
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            records = session.run(query).data()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    return [
+        NodeResponse(
+            id=r["id"],
+            title=r["title"],
+            density_level=r["density_level"],
+            origin=r["origin"],
+        )
+        for r in records
+    ]
+
+
+@app.post("/api/edges", response_model=EdgeCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_semantic_edge(edge: EdgeCreate):
+    """Create a typed semantic edge between two existing Concept nodes."""
+    rel_type = edge.relationship_type.value
+
+    if rel_type not in ALLOWED_RELATIONSHIP_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid relationship type. Must be one of {sorted(ALLOWED_RELATIONSHIP_TYPES)}",
+        )
+
+    # rel_type is validated by Enum; safe to interpolate into Cypher.
+    query = f"""
+    MATCH (a:Concept {{id: $source_id}}), (b:Concept {{id: $target_id}})
+    MERGE (a)-[r:{rel_type}]->(b)
+    ON CREATE SET r.strength = $strength, r.origin = $origin
+    RETURN type(r) AS link_type, r.strength AS strength
+    """
+    try:
+        record = _run_write(
+            query,
+            source_id=edge.source_id,
+            target_id=edge.target_id,
+            strength=edge.strength,
+            origin=edge.origin,
+        )
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source or target node not found",
+        )
+
+    return EdgeCreateResponse(
+        connection=record["link_type"],
+        source_id=edge.source_id,
+        target_id=edge.target_id,
+        strength=record["strength"],
+    )
+
+
+@app.get("/api/ontology/relationship-types")
+def get_relationship_types():
+    """Return allowed edge types grouped by axis for frontend dropdowns."""
+    return {
+        "allowed_types": sorted(ALLOWED_RELATIONSHIP_TYPES),
+        "axes": {
+            axis: [t.value for t in types]
+            for axis, types in RELATIONSHIP_AXES.items()
+        },
+    }
+
+
+@app.get("/api/graph")
+def get_graph():
+    """Return all Concept nodes and edges for the spatial viewer."""
+    query = """
+    MATCH (n:Concept)
+    OPTIONAL MATCH (n)-[r]->(m:Concept)
+    RETURN n.id AS source_id,
+           n.title AS source_title,
+           coalesce(n.content, n.title) AS source_content,
+           coalesce(n.density_level, 2) AS source_density,
+           coalesce(n.origin, 'human') AS source_origin,
+           type(r) AS rel_type,
+           m.id AS target_id,
+           m.title AS target_title,
+           coalesce(m.content, m.title) AS target_content,
+           coalesce(m.density_level, 2) AS target_density,
+           coalesce(m.origin, 'human') AS target_origin
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            records = session.run(query).data()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    nodes_by_id: dict[str, dict] = {}
+    edges: list[dict] = []
+    seen_edges: set[tuple[str, str, str]] = set()
+
+    def add_node(node_id: str, title: str, content: str, density: int, origin: str) -> None:
+        if node_id not in nodes_by_id:
+            nodes_by_id[node_id] = {
+                "data": {
+                    "id": node_id,
+                    "title": title,
+                    "content": content,
+                    "label": content or title,
+                    "density": density,
+                    "origin": origin,
+                }
+            }
+
+    for row in records:
+        add_node(
+            row["source_id"],
+            row["source_title"],
+            row["source_content"],
+            row["source_density"],
+            row["source_origin"],
+        )
+
+        if row["rel_type"] is None or row["target_id"] is None:
+            continue
+
+        add_node(
+            row["target_id"],
+            row["target_title"],
+            row["target_content"],
+            row["target_density"],
+            row["target_origin"],
+        )
+
+        edge_key = (row["source_id"], row["target_id"], row["rel_type"])
+        if edge_key in seen_edges:
+            continue
+        seen_edges.add(edge_key)
+        edges.append(
+            {
+                "data": {
+                    "source": row["source_id"],
+                    "target": row["target_id"],
+                    "label": row["rel_type"],
+                }
+            }
+        )
+
+    return {"nodes": list(nodes_by_id.values()), "edges": edges}
+
+
+BRIDGE_REL_TYPES = (
+    "SUMMARIZES|CONTAINS|SUPPORTS|CONTRADICTS|CAUSES|REQUIRES|EXAMPLE_OF|FOLLOWS"
+)
+
+
+def _concept_to_cytoscape_node(props: dict) -> dict:
+    title = props.get("title", "")
+    content = props.get("content") or title
+    return {
+        "data": {
+            "id": props["id"],
+            "title": title,
+            "content": content,
+            "label": content or title,
+            "density": props.get("density_level", 2),
+            "origin": props.get("origin", "human"),
+        }
+    }
+
+
+def _paths_to_graph(node_rows: list, edge_rows: list) -> dict:
+    """Build Cytoscape nodes/edges JSON from bridge query results."""
+    nodes_by_id: dict[str, dict] = {}
+    for row in node_rows:
+        nodes_by_id[row["id"]] = _concept_to_cytoscape_node(
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "content": row["content"],
+                "density_level": row["density"],
+                "origin": row.get("origin", "human"),
+            }
+        )
+
+    edges: list[dict] = []
+    seen_edges: set[tuple[str, str, str]] = set()
+    for row in edge_rows:
+        edge_key = (row["source_id"], row["target_id"], row["rel_type"])
+        if edge_key in seen_edges:
+            continue
+        seen_edges.add(edge_key)
+        edges.append(
+            {
+                "data": {
+                    "source": row["source_id"],
+                    "target": row["target_id"],
+                    "label": row["rel_type"],
+                }
+            }
+        )
+
+    return {"nodes": list(nodes_by_id.values()), "edges": edges}
+
+
+@app.get("/api/bridge")
+def get_bridge(source_id: str, target_id: str):
+    """Return shortest-path bridge between two concepts for the Dual-Pinned view."""
+    path_match = f"""
+    MATCH (start:Concept {{id: $source_id}}), (end:Concept {{id: $target_id}})
+    MATCH p = allShortestPaths(
+        (start)-[:{BRIDGE_REL_TYPES}*1..6]-(end)
+    )
+    """
+    node_query = (
+        path_match
+        + """
+    UNWIND nodes(p) AS n
+    RETURN DISTINCT n.id AS id,
+           n.title AS title,
+           coalesce(n.content, n.title) AS content,
+           coalesce(n.density_level, 2) AS density,
+           coalesce(n.origin, 'human') AS origin
+    """
+    )
+    edge_query = (
+        path_match
+        + """
+    UNWIND relationships(p) AS r
+    RETURN DISTINCT startNode(r).id AS source_id,
+           endNode(r).id AS target_id,
+           type(r) AS rel_type
+    """
+    )
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            node_rows = session.run(
+                node_query, source_id=source_id, target_id=target_id
+            ).data()
+            if not node_rows:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No path found between the selected nodes (or one/both nodes do not exist).",
+                )
+            edge_rows = session.run(
+                edge_query, source_id=source_id, target_id=target_id
+            ).data()
+    except HTTPException:
+        raise
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    return _paths_to_graph(node_rows, edge_rows)
+
+
+@app.get("/api/hierarchy", response_model=list[HierarchyNodeResponse])
+def get_hierarchy(node_id: Optional[str] = None):
+    """Return Miller Column children for a node, or Level 3 sources as root."""
+    if node_id:
+        query = """
+        MATCH (n:Concept {id: $node_id})-[r:SUMMARIZES|CONTAINS]->(child:Concept)
+        RETURN child.id AS id,
+               child.title AS title,
+               child.content AS content,
+               child.density_level AS density_level,
+               coalesce(child.origin, 'human') AS origin
+        ORDER BY child.density_level DESC, child.title
+        """
+        params = {"node_id": node_id}
+    else:
+        query = """
+        MATCH (n:Concept)
+        WHERE n.density_level = 3
+        RETURN n.id AS id,
+               n.title AS title,
+               coalesce(n.content, n.title) AS content,
+               n.density_level AS density_level,
+               coalesce(n.origin, 'human') AS origin
+        ORDER BY n.title
+        """
+        params = {}
+
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            records = session.run(query, **params).data()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    return [
+        HierarchyNodeResponse(
+            id=r["id"],
+            title=r["title"],
+            content=r["content"],
+            density_level=r["density_level"],
+            origin=r["origin"],
+        )
+        for r in records
+    ]
+
+
+@app.get("/api/document-canvas", response_model=DocumentCanvasResponse)
+def get_document_canvas(source_id: Optional[str] = None):
+    """Return source text, contained excerpts, and summarizing cards for Document Canvas."""
+    driver = _require_neo4j()
+
+    if source_id:
+        source_query = """
+        MATCH (source:Concept {id: $source_id})
+        WHERE source.density_level = 3
+        RETURN source.id AS id,
+               source.title AS title,
+               coalesce(source.content, source.title) AS content,
+               source.density_level AS density_level,
+               coalesce(source.origin, 'human') AS origin
+        LIMIT 1
+        """
+        source_params = {"source_id": source_id}
+    else:
+        source_query = """
+        MATCH (source:Concept)
+        WHERE source.density_level = 3
+        RETURN source.id AS id,
+               source.title AS title,
+               coalesce(source.content, source.title) AS content,
+               source.density_level AS density_level,
+               coalesce(source.origin, 'human') AS origin
+        ORDER BY source.created_at DESC
+        LIMIT 1
+        """
+        source_params = {}
+
+    excerpt_query = """
+    MATCH (source:Concept {id: $source_id})-[:CONTAINS]->(excerpt:Concept)
+    WHERE excerpt.density_level = 2
+    RETURN excerpt.id AS id,
+           excerpt.title AS title,
+           excerpt.content AS content,
+           excerpt.density_level AS density_level,
+           coalesce(excerpt.origin, 'human') AS origin
+    ORDER BY excerpt.created_at
+    """
+
+    summary_query = """
+    MATCH (summary:Concept)-[:SUMMARIZES]->(excerpt:Concept {id: $excerpt_id})
+    WHERE summary.density_level = 1
+    RETURN summary.id AS id,
+           summary.title AS title,
+           coalesce(summary.content, summary.title) AS content,
+           summary.density_level AS density_level,
+           coalesce(summary.origin, 'human') AS origin,
+           excerpt.id AS excerpt_id
+    ORDER BY summary.created_at
+    """
+
+    try:
+        with driver.session() as session:
+            source_row = session.run(source_query, **source_params).single()
+            if not source_row:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No Level 3 Source node found.",
+                )
+
+            excerpt_rows = session.run(
+                excerpt_query, source_id=source_row["id"]
+            ).data()
+
+            summaries: list[dict] = []
+            for excerpt in excerpt_rows:
+                for row in session.run(summary_query, excerpt_id=excerpt["id"]).data():
+                    summaries.append(row)
+    except HTTPException:
+        raise
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    source = DocumentNodeResponse(
+        id=source_row["id"],
+        title=source_row["title"],
+        content=source_row["content"],
+        density_level=source_row["density_level"],
+        origin=source_row["origin"],
+    )
+    excerpts = [
+        DocumentNodeResponse(
+            id=r["id"],
+            title=r["title"],
+            content=r["content"],
+            density_level=r["density_level"],
+            origin=r["origin"],
+        )
+        for r in excerpt_rows
+    ]
+
+    if len(source.content) > len(source.title) + 50:
+        document_text = source.content
+    else:
+        document_text = "\n\n".join(e.content for e in excerpts)
+
+    return DocumentCanvasResponse(
+        source=source,
+        document_text=document_text,
+        excerpts=excerpts,
+        summaries=[
+            DocumentSummaryResponse(
+                id=r["id"],
+                title=r["title"],
+                content=r["content"],
+                density_level=r["density_level"],
+                origin=r["origin"],
+                excerpt_id=r["excerpt_id"],
+            )
+            for r in summaries
+        ],
+    )
+
+
+@app.get("/api/macro_graph")
+def get_macro_graph(source_id: str):
+    """Return L1 summary nodes and recursive SUMMARIZES edges for Document Canvas macro pane."""
+    driver = _require_neo4j()
+
+    nodes_query = """
+    MATCH (book:Concept {id: $source_id})
+    WHERE book.density_level = 3
+    MATCH (book)-[:CONTAINS]->(excerpt:Concept)
+    WHERE excerpt.density_level = 2
+    MATCH (summary:Concept {density_level: 1})-[:SUMMARIZES*1..15]->(excerpt)
+    WITH DISTINCT summary AS s, book
+    MATCH (s)-[:SUMMARIZES*1..15]->(leaf:Concept {density_level: 2})<-[:CONTAINS]-(book)
+    WITH s, leaf
+    ORDER BY leaf.created_at
+    WITH s, collect(leaf.id)[0] AS excerpt_id
+    RETURN s.id AS id,
+           s.title AS title,
+           coalesce(s.content, s.title) AS content,
+           coalesce(s.density_level, 1) AS density,
+           coalesce(s.origin, 'human') AS origin,
+           excerpt_id
+    """
+
+    edges_query = """
+    MATCH (book:Concept {id: $source_id})
+    WHERE book.density_level = 3
+    MATCH (book)-[:CONTAINS]->(excerpt:Concept)
+    WHERE excerpt.density_level = 2
+    MATCH (summary:Concept {density_level: 1})-[:SUMMARIZES*1..15]->(excerpt)
+    WITH collect(DISTINCT summary.id) AS summary_ids
+    MATCH (a:Concept)-[r:SUMMARIZES]->(b:Concept)
+    WHERE a.id IN summary_ids
+      AND b.id IN summary_ids
+      AND a.density_level = 1
+      AND b.density_level = 1
+    RETURN DISTINCT a.id AS source_id, b.id AS target_id, type(r) AS rel_type
+    """
+
+    verify_query = """
+    MATCH (book:Concept {id: $source_id})
+    WHERE book.density_level = 3
+    RETURN book.id AS id
+    LIMIT 1
+    """
+
+    try:
+        with driver.session() as session:
+            if not session.run(verify_query, source_id=source_id).single():
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Level 3 Source not found.",
+                )
+
+            node_rows = session.run(nodes_query, source_id=source_id).data()
+            edge_rows = session.run(edges_query, source_id=source_id).data()
+    except HTTPException:
+        raise
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    nodes = [
+        {
+            "data": {
+                "id": r["id"],
+                "title": r["title"],
+                "content": r["content"],
+                "label": r["title"],
+                "density": r["density"],
+                "origin": r["origin"],
+                "excerpt_id": r["excerpt_id"],
+            }
+        }
+        for r in node_rows
+    ]
+
+    edges = [
+        {
+            "data": {
+                "source": r["source_id"],
+                "target": r["target_id"],
+                "label": r["rel_type"],
+            }
+        }
+        for r in edge_rows
+    ]
+
+    return {"nodes": nodes, "edges": edges}

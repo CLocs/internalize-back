@@ -4,3 +4,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+
+# Raw book texts (local-only)
+/books/
+*.txt
