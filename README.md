@@ -45,7 +45,36 @@ The API **starts even if Neo4j is down**. You'll see a warning in the terminal a
 
 That means FastAPI is fine — nothing is listening on Bolt port `7687` yet.
 
-### Step-by-step
+### First time setup
+
+If you don't have Neo4j installed yet, do this once before running Internalize.
+
+1. **Download Neo4j Desktop** from [neo4j.com/download](https://neo4j.com/download/).  
+   - Choose **Neo4j Desktop** (free, local). You do not need AuraDB or any cloud offering for MVP 1.
+2. **Install and open** Neo4j Desktop. Create a free account if prompted — it is only used to activate the desktop app locally.
+3. **Create a project** — click **New** → **Project** (e.g. name it `Internalize`).
+4. **Create a local database** — inside the project, click **Add** → **Local DBMS** (or **Create instance**).
+   - Pick a name (e.g. `internalize-local`).
+   - **Set a password** and write it down — you will need it for `.env`.
+   - Leave the default version; Bolt port should be **7687**.
+5. **Start the database** — click **Start** on the instance. Wait until status shows green **Running**.
+6. **Configure Internalize** — in this repo:
+   ```powershell
+   copy .env.example .env
+   ```
+   Edit `.env` and set `NEO4J_PASSWORD` to the password from step 4:
+   ```
+   NEO4J_URI=bolt://127.0.0.1:7687
+   NEO4J_USER=neo4j
+   NEO4J_PASSWORD=your_password_here
+   ```
+7. **Verify** — with the FastAPI server running, open [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health). You should see `"neo4j": "connected"`.
+
+Useful docs: [Neo4j Desktop manual](https://neo4j.com/docs/desktop-manual/current/) · [Getting started with Neo4j Desktop](https://neo4j.com/docs/getting-started/current/neo4j-desktop/)
+
+### Step-by-step (already installed)
+
+If Neo4j Desktop is already on your machine but Internalize can't connect:
 
 1. **Open Neo4j Desktop** and start your local database instance (green **Running** status).
 2. **Check the Bolt port** — click your instance → **Details**. Default is `7687`. If yours differs, update `.env`:

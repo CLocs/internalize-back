@@ -10,4 +10,5 @@ dependencies = [
     "neo4j>=5.26.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
+    "requests>=2.32.0",
 ]
