@@ -49,7 +49,12 @@ RELATIONSHIP_AXES: dict[str, list[RelationshipType]] = {
 
 ALLOWED_RELATIONSHIP_TYPES: frozenset[str] = frozenset(t.value for t in RelationshipType)
 
-DensityLevel = Literal[1, 2, 3]
+DensityLevel = Literal[1, 2, 3, 4]
+NodeType = Literal["Concept", "Document"]
+
+SOURCE_NODE_PREDICATE = (
+    "n.density_level IN [3, 4] OR coalesce(n.node_type, 'Concept') = 'Document'"
+)
 
 
 class NodeCreate(BaseModel):
@@ -58,12 +63,22 @@ class NodeCreate(BaseModel):
     density_level: DensityLevel
     significance: float = Field(default=1.0, gt=0)
     origin: str = "human"
+    node_type: NodeType = "Concept"
 
 
 class NodeResponse(BaseModel):
     id: str
     title: str
     density_level: int
+    origin: str = "human"
+    node_type: str = "Concept"
+
+
+class SourceDocumentResponse(BaseModel):
+    id: str
+    title: str
+    density_level: int
+    node_type: str = "Concept"
     origin: str = "human"
 
 
@@ -113,10 +128,16 @@ class DocumentNodeResponse(BaseModel):
     content: str
     density_level: int
     origin: str = "human"
+    node_type: str = "Concept"
 
 
 class DocumentSummaryResponse(DocumentNodeResponse):
-    excerpt_id: str
+    excerpt_id: str | None = None
+
+
+class SummaryEdgeResponse(BaseModel):
+    source_id: str
+    target_id: str
 
 
 class DocumentCanvasResponse(BaseModel):
@@ -124,6 +145,7 @@ class DocumentCanvasResponse(BaseModel):
     document_text: str
     excerpts: list[DocumentNodeResponse]
     summaries: list[DocumentSummaryResponse]
+    summary_edges: list[SummaryEdgeResponse]
 
 
 logger = logging.getLogger(__name__)
@@ -208,6 +230,7 @@ def _upsert_concept_node(
     density_level: int,
     significance: float,
     origin: str,
+    node_type: str = "Concept",
 ) -> dict:
     driver = _require_neo4j()
 
@@ -227,6 +250,7 @@ def _upsert_concept_node(
         density_level: $density_level,
         significance: $significance,
         origin: $origin,
+        node_type: $node_type,
         created_at: timestamp()
     })
     RETURN n.id AS id, n.title AS title, n.density_level AS density_level
@@ -254,6 +278,7 @@ def _upsert_concept_node(
             density_level=density_level,
             significance=significance,
             origin=origin,
+            node_type=node_type,
         ).single()
         return {
             "id": created["id"],
@@ -308,6 +333,7 @@ def create_knowledge_node(node: NodeCreate, response: Response):
             density_level=node.density_level,
             significance=node.significance,
             origin=node.origin,
+            node_type=node.node_type,
         )
     except GqlError as exc:
         raise HTTPException(
@@ -377,7 +403,8 @@ def list_knowledge_nodes():
     RETURN n.id AS id,
            n.title AS title,
            n.density_level AS density_level,
-           coalesce(n.origin, 'human') AS origin
+           coalesce(n.origin, 'human') AS origin,
+           coalesce(n.node_type, 'Concept') AS node_type
     ORDER BY n.created_at DESC
     """
     driver = _require_neo4j()
@@ -396,9 +423,72 @@ def list_knowledge_nodes():
             title=r["title"],
             density_level=r["density_level"],
             origin=r["origin"],
+            node_type=r["node_type"],
         )
         for r in records
     ]
+
+
+@app.get("/api/sources", response_model=list[SourceDocumentResponse])
+def list_source_documents():
+    """List loadable source documents (books and saved synthesis documents)."""
+    query = f"""
+    MATCH (n:Concept)
+    WHERE {SOURCE_NODE_PREDICATE}
+    RETURN n.id AS id,
+           n.title AS title,
+           n.density_level AS density_level,
+           coalesce(n.node_type, 'Concept') AS node_type,
+           coalesce(n.origin, 'human') AS origin
+    ORDER BY n.created_at DESC
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            records = session.run(query).data()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    return [
+        SourceDocumentResponse(
+            id=r["id"],
+            title=r["title"],
+            density_level=r["density_level"],
+            node_type=r["node_type"],
+            origin=r["origin"],
+        )
+        for r in records
+    ]
+
+
+@app.delete("/api/nodes/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_knowledge_node(node_id: str):
+    """Delete a Concept node and all attached relationships."""
+    query = """
+    MATCH (n:Concept {id: $node_id})
+    DETACH DELETE n
+    RETURN count(n) AS deleted
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            record = session.run(query, node_id=node_id).single()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    if not record or record["deleted"] == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Node not found: {node_id}",
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post("/api/edges", response_model=EdgeCreateResponse, status_code=status.HTTP_201_CREATED)
@@ -704,26 +794,28 @@ def get_document_canvas(source_id: Optional[str] = None):
     driver = _require_neo4j()
 
     if source_id:
-        source_query = """
-        MATCH (source:Concept {id: $source_id})
-        WHERE source.density_level = 3
+        source_query = f"""
+        MATCH (source:Concept {{id: $source_id}})
+        WHERE {SOURCE_NODE_PREDICATE.replace('n.', 'source.')}
         RETURN source.id AS id,
                source.title AS title,
                coalesce(source.content, source.title) AS content,
                source.density_level AS density_level,
-               coalesce(source.origin, 'human') AS origin
+               coalesce(source.origin, 'human') AS origin,
+               coalesce(source.node_type, 'Concept') AS node_type
         LIMIT 1
         """
         source_params = {"source_id": source_id}
     else:
-        source_query = """
+        source_query = f"""
         MATCH (source:Concept)
-        WHERE source.density_level = 3
+        WHERE {SOURCE_NODE_PREDICATE.replace('n.', 'source.')}
         RETURN source.id AS id,
                source.title AS title,
                coalesce(source.content, source.title) AS content,
                source.density_level AS density_level,
-               coalesce(source.origin, 'human') AS origin
+               coalesce(source.origin, 'human') AS origin,
+               coalesce(source.node_type, 'Concept') AS node_type
         ORDER BY source.created_at DESC
         LIMIT 1
         """
@@ -731,7 +823,7 @@ def get_document_canvas(source_id: Optional[str] = None):
 
     excerpt_query = """
     MATCH (source:Concept {id: $source_id})-[:CONTAINS]->(excerpt:Concept)
-    WHERE excerpt.density_level = 2
+    WHERE excerpt.density_level IN [1, 2]
     RETURN excerpt.id AS id,
            excerpt.title AS title,
            excerpt.content AS content,
@@ -740,16 +832,33 @@ def get_document_canvas(source_id: Optional[str] = None):
     ORDER BY excerpt.created_at
     """
 
-    summary_query = """
-    MATCH (summary:Concept)-[:SUMMARIZES]->(excerpt:Concept {id: $excerpt_id})
-    WHERE summary.density_level = 1
-    RETURN summary.id AS id,
-           summary.title AS title,
-           coalesce(summary.content, summary.title) AS content,
-           summary.density_level AS density_level,
-           coalesce(summary.origin, 'human') AS origin,
-           excerpt.id AS excerpt_id
-    ORDER BY summary.created_at
+    summary_nodes_query = """
+    MATCH (source:Concept {id: $source_id})-[:CONTAINS]->(excerpt:Concept)
+    WHERE excerpt.density_level IN [1, 2]
+    MATCH (summary:Concept {density_level: 1})-[:SUMMARIZES*1..15]->(excerpt)
+    WITH DISTINCT summary AS s, source
+    MATCH (s)-[:SUMMARIZES*1..15]->(leaf:Concept)<-[:CONTAINS]-(source)
+    WITH s, leaf
+    ORDER BY leaf.created_at
+    WITH s, collect(leaf.id)[0] AS excerpt_id
+    RETURN s.id AS id,
+           s.title AS title,
+           coalesce(s.content, s.title) AS content,
+           s.density_level AS density_level,
+           coalesce(s.origin, 'human') AS origin,
+           excerpt_id
+    ORDER BY s.created_at
+    """
+
+    summary_edges_query = """
+    MATCH (source:Concept {id: $source_id})-[:CONTAINS]->(excerpt:Concept)
+    WHERE excerpt.density_level IN [1, 2]
+    MATCH (summary:Concept {density_level: 1})-[:SUMMARIZES*1..15]->(excerpt)
+    WITH collect(DISTINCT summary) AS summaries, collect(DISTINCT excerpt) AS excerpts
+    UNWIND summaries AS parent
+    MATCH (parent)-[:SUMMARIZES]->(child:Concept)
+    WHERE child IN excerpts OR child IN summaries
+    RETURN DISTINCT parent.id AS source_id, child.id AS target_id
     """
 
     try:
@@ -758,17 +867,15 @@ def get_document_canvas(source_id: Optional[str] = None):
             if not source_row:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No Level 3 Source node found.",
+                    detail="No Source or Synthesis Document found.",
                 )
 
-            excerpt_rows = session.run(
-                excerpt_query, source_id=source_row["id"]
+            source_id = source_row["id"]
+            excerpt_rows = session.run(excerpt_query, source_id=source_id).data()
+            summary_rows = session.run(summary_nodes_query, source_id=source_id).data()
+            summary_edge_rows = session.run(
+                summary_edges_query, source_id=source_id
             ).data()
-
-            summaries: list[dict] = []
-            for excerpt in excerpt_rows:
-                for row in session.run(summary_query, excerpt_id=excerpt["id"]).data():
-                    summaries.append(row)
     except HTTPException:
         raise
     except GqlError as exc:
@@ -783,6 +890,7 @@ def get_document_canvas(source_id: Optional[str] = None):
         content=source_row["content"],
         density_level=source_row["density_level"],
         origin=source_row["origin"],
+        node_type=source_row["node_type"],
     )
     excerpts = [
         DocumentNodeResponse(
@@ -813,7 +921,14 @@ def get_document_canvas(source_id: Optional[str] = None):
                 origin=r["origin"],
                 excerpt_id=r["excerpt_id"],
             )
-            for r in summaries
+            for r in summary_rows
+        ],
+        summary_edges=[
+            SummaryEdgeResponse(
+                source_id=r["source_id"],
+                target_id=r["target_id"],
+            )
+            for r in summary_edge_rows
         ],
     )
 
@@ -823,14 +938,14 @@ def get_macro_graph(source_id: str):
     """Return L1 summary nodes and recursive SUMMARIZES edges for Document Canvas macro pane."""
     driver = _require_neo4j()
 
-    nodes_query = """
-    MATCH (book:Concept {id: $source_id})
-    WHERE book.density_level = 3
+    nodes_query = f"""
+    MATCH (book:Concept {{id: $source_id}})
+    WHERE {SOURCE_NODE_PREDICATE.replace('n.', 'book.')}
     MATCH (book)-[:CONTAINS]->(excerpt:Concept)
     WHERE excerpt.density_level = 2
-    MATCH (summary:Concept {density_level: 1})-[:SUMMARIZES*1..15]->(excerpt)
+    MATCH (summary:Concept {{density_level: 1}})-[:SUMMARIZES*1..15]->(excerpt)
     WITH DISTINCT summary AS s, book
-    MATCH (s)-[:SUMMARIZES*1..15]->(leaf:Concept {density_level: 2})<-[:CONTAINS]-(book)
+    MATCH (s)-[:SUMMARIZES*1..15]->(leaf:Concept {{density_level: 2}})<-[:CONTAINS]-(book)
     WITH s, leaf
     ORDER BY leaf.created_at
     WITH s, collect(leaf.id)[0] AS excerpt_id
@@ -842,12 +957,12 @@ def get_macro_graph(source_id: str):
            excerpt_id
     """
 
-    edges_query = """
-    MATCH (book:Concept {id: $source_id})
-    WHERE book.density_level = 3
+    edges_query = f"""
+    MATCH (book:Concept {{id: $source_id}})
+    WHERE {SOURCE_NODE_PREDICATE.replace('n.', 'book.')}
     MATCH (book)-[:CONTAINS]->(excerpt:Concept)
     WHERE excerpt.density_level = 2
-    MATCH (summary:Concept {density_level: 1})-[:SUMMARIZES*1..15]->(excerpt)
+    MATCH (summary:Concept {{density_level: 1}})-[:SUMMARIZES*1..15]->(excerpt)
     WITH collect(DISTINCT summary.id) AS summary_ids
     MATCH (a:Concept)-[r:SUMMARIZES]->(b:Concept)
     WHERE a.id IN summary_ids
@@ -857,9 +972,9 @@ def get_macro_graph(source_id: str):
     RETURN DISTINCT a.id AS source_id, b.id AS target_id, type(r) AS rel_type
     """
 
-    verify_query = """
-    MATCH (book:Concept {id: $source_id})
-    WHERE book.density_level = 3
+    verify_query = f"""
+    MATCH (book:Concept {{id: $source_id}})
+    WHERE {SOURCE_NODE_PREDICATE.replace('n.', 'book.')}
     RETURN book.id AS id
     LIMIT 1
     """
@@ -869,7 +984,7 @@ def get_macro_graph(source_id: str):
             if not session.run(verify_query, source_id=source_id).single():
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Level 3 Source not found.",
+                    detail="Source or Synthesis Document not found.",
                 )
 
             node_rows = session.run(nodes_query, source_id=source_id).data()
