@@ -6,7 +6,7 @@
   <title>Internalize — Spatial Viewer</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
   <script src="https://unpkg.com/dagre@0.7.4/dist/dagre.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+  <script src="https://unpkg.com/cytoscape-dagre/cytoscape-dagre.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AhmedAyachi/LinkerLine@master/dist/linkerline.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
   <style>
@@ -298,6 +298,12 @@
       min-height: 0;
       overflow-y: auto;
       padding: 4px 8px 10px;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    #workbench-sidebar .workbench-list.drag-over-active {
+      background: rgba(222, 255, 154, 0.06);
+      box-shadow: inset 0 0 0 2px rgba(222, 255, 154, 0.35);
     }
 
     #list-a {
@@ -995,6 +1001,67 @@
       transition: opacity 0.2s ease;
     }
 
+    .synthesis-title-row {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px 8px;
+      border-bottom: 1px solid #334155;
+      background: #0f172a;
+    }
+
+    .synthesis-title-input {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      padding: 4px 6px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+      color: #f8fafc;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .synthesis-title-input::placeholder {
+      color: #64748b;
+    }
+
+    .synthesis-title-input:hover {
+      border-color: #334155;
+    }
+
+    .synthesis-title-input:focus {
+      outline: none;
+      border-color: #475569;
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .synthesis-saved-badge {
+      flex-shrink: 0;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(222, 255, 154, 0.15);
+      border: 1px solid #deff9a;
+      color: #deff9a;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      opacity: 0;
+      transform: translateY(2px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+
+    .synthesis-saved-badge.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
     #synthesis-pane-shell.collapsed #synthesis-pane {
       opacity: 0;
       pointer-events: none;
@@ -1145,149 +1212,108 @@
       gap: 8px;
     }
 
-    #synthesis-container {
-      flex-shrink: 0;
-      max-height: 35%;
+    #synthesis-doc-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #synthesis-dropzone {
+      flex: 1 1 auto;
+      min-height: 120px;
       overflow-y: auto;
-      padding: 10px 14px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 10px;
-      border-bottom: 1px solid #334155;
     }
 
-    #synthesis-container:empty {
-      display: none;
-      border-bottom: none;
-    }
-
-    .sortable-ghost {
-      opacity: 0.45;
-      background: #334155;
-      border: 1px dashed #deff9a;
-    }
-
-    .synthesis-note.note-saved {
-      border-style: solid;
-      border-color: #475569;
-    }
-
-    .synthesis-note {
-      background: #1e293b;
-      border: 1px dashed #475569;
-      border-radius: 8px;
-      padding: 10px;
-      font-family: "Segoe UI", system-ui, sans-serif;
-    }
-
-    .synthesis-note-header {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-
-    .synthesis-note-header .note-tag-input {
-      flex: 1;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #e2e8f0;
-      font-size: 0.75rem;
-    }
-
-    .synthesis-note-header .note-tag-input:focus {
-      outline: none;
-      border-color: #deff9a;
-    }
-
-    .note-link-btn,
-    .note-remove-btn {
-      flex-shrink: 0;
-      width: 26px;
-      height: 26px;
-      border: 1px solid #334155;
-      border-radius: 4px;
-      background: #0f172a;
-      color: #94a3b8;
-      cursor: pointer;
-      font-size: 0.85rem;
-      line-height: 1;
-    }
-
-    .note-link-btn:hover {
-      color: #deff9a;
-      border-color: #deff9a;
-    }
-
-    .note-remove-btn:hover {
-      color: #f87171;
-      border-color: #991b1b;
-    }
-
-    .synthesis-note-body {
-      min-height: 60px;
-      padding: 8px;
-      border-radius: 6px;
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      font-size: 0.85rem;
-      line-height: 1.5;
-      outline: none;
-    }
-
-    .synthesis-note-body:focus {
-      border-color: #475569;
-    }
-
-    .synthesis-note-body:empty::before {
-      content: attr(data-placeholder);
+    #synthesis-dropzone:empty::before {
+      content: "Drag excerpts or summaries here to build your outline…";
+      display: block;
+      padding: 24px 8px;
       color: #64748b;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.85rem;
+      font-style: italic;
+      text-align: center;
       pointer-events: none;
     }
 
-    #synthesis-doc-wrap {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0;
-    }
-
-    #synthesis-doc {
-      min-height: 100%;
-      padding: 24px 28px 40px;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 1rem;
-      line-height: 1.75;
-      color: #e2e8f0;
-      outline: none;
-    }
-
-    #synthesis-doc:empty::before {
-      content: "Drag excerpts or summaries here to build your synthesis draft…";
-      color: #64748b;
-      font-style: italic;
-    }
-
-    #synthesis-doc.drag-over {
+    #synthesis-dropzone.drag-over {
       background: rgba(222, 255, 154, 0.04);
       box-shadow: inset 0 0 0 2px rgba(222, 255, 154, 0.35);
     }
 
-    .synthesis-paragraph {
-      margin: 0 0 1rem;
-      position: relative;
-      transition: padding-left 0.2s ease;
+    .synthesis-ghost {
+      opacity: 0.5;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px dashed #38bdf8;
+      border-radius: 8px;
     }
 
-    .synthesis-paragraph .source-link-anchor {
+    .synthesis-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      transition: margin-left 0.2s ease;
+    }
+
+    .synthesis-item .drag-handle {
+      flex-shrink: 0;
+      width: 20px;
+      height: 24px;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .synthesis-item .drag-handle:hover {
+      color: #deff9a;
+      background: rgba(222, 255, 154, 0.08);
+    }
+
+    .synthesis-item .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .synthesis-item-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .synthesis-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .synthesis-item-meta .source-link-anchor {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       width: 18px;
       height: 18px;
-      margin-right: 6px;
       padding: 0;
       border: none;
       border-radius: 50%;
@@ -1296,24 +1322,47 @@
       font-size: 10px;
       line-height: 1;
       cursor: pointer;
-      vertical-align: middle;
-      opacity: 0.55;
-      transition: opacity 0.15s, background 0.15s, transform 0.15s;
+      opacity: 0.7;
     }
 
-    .synthesis-paragraph:hover .source-link-anchor,
-    .source-link-anchor:focus {
+    .synthesis-item-meta .source-link-anchor:hover {
       opacity: 1;
       background: rgba(222, 255, 154, 0.3);
-      transform: scale(1.1);
     }
 
-    .synthesis-paragraph-text {
+    .synthesis-item-text {
+      color: #e2e8f0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.95rem;
+      line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-word;
     }
 
-    .workspace-card.dragging {
+    .synthesis-composer {
+      flex-shrink: 0;
+      min-height: 72px;
+      max-height: 140px;
+      overflow-y: auto;
+      padding: 12px 16px 16px;
+      border-top: 1px solid #334155;
+      background: #0f172a;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+      outline: none;
+    }
+
+    .synthesis-composer:empty::before {
+      content: "Add your own thoughts here… (Ctrl+Enter to save)";
+      color: #64748b;
+      font-style: italic;
+      pointer-events: none;
+    }
+
+    .workspace-card.dragging,
+    .workspace-card.is-dragging {
       opacity: 0.45;
       box-shadow: 0 0 16px rgba(222, 255, 154, 0.4);
     }
@@ -1744,7 +1793,7 @@
 
   <div id="status"></div>
   <div id="custom-context-menu">
-    <div id="menu-extract-btn">Extract (Ctrl+E)</div>
+    <div id="menu-extract-btn">Save excerpt (Ctrl+E)</div>
   </div>
 
   <div id="viewer-main">
@@ -1892,16 +1941,32 @@
           title="Expand synthesis workspace"
         ><span class="synthesis-chevron" aria-hidden="true">›</span></button>
         <div id="synthesis-pane">
+          <div class="synthesis-title-row">
+            <input
+              type="text"
+              id="synthesis-title"
+              class="synthesis-title-input"
+              placeholder="Untitled synthesis"
+              aria-label="Synthesis document title"
+            />
+            <span id="synthesis-saved-badge" class="synthesis-saved-badge" aria-live="polite">Saved!</span>
+          </div>
           <div id="synthesis-toolbar">
             <span class="pane-title">Synthesis Workspace</span>
             <div id="synthesis-toolbar-actions">
-              <button type="button" id="new-note-btn">New Note</button>
+              <button type="button" id="new-note-btn">New Document</button>
               <button type="button" id="save-synthesis-btn">Save to Graph</button>
             </div>
           </div>
-          <div id="synthesis-container"></div>
           <div id="synthesis-doc-wrap">
-            <div id="synthesis-doc" contenteditable="true" spellcheck="true"></div>
+            <div id="synthesis-dropzone" class="synthesis-dropzone"></div>
+            <div
+              id="synthesis-composer"
+              class="synthesis-composer"
+              contenteditable="true"
+              spellcheck="true"
+              aria-label="Synthesis notes"
+            ></div>
           </div>
         </div>
       </div>
@@ -1961,8 +2026,10 @@
     const cyCollapseBtn = document.getElementById("cy-collapse-btn");
     const cyGraphSizeBtn = document.getElementById("cy-graph-size-btn");
     const groupSynthesizeBtn = document.getElementById("group-synthesize-btn");
-    const synthesisDoc = document.getElementById("synthesis-doc");
-    const synthesisNotes = document.getElementById("synthesis-container");
+    const synthesisDropzone = document.getElementById("synthesis-dropzone");
+    const synthesisComposer = document.getElementById("synthesis-composer");
+    const synthesisTitleInput = document.getElementById("synthesis-title");
+    const synthesisSavedBadge = document.getElementById("synthesis-saved-badge");
     const synthesisPaneShell = document.getElementById("synthesis-pane-shell");
     const synthesisCollapseHandle = document.getElementById("synthesis-collapse-handle");
     const synthesisPaneHandle = document.getElementById("synthesis-pane-handle");
@@ -1995,16 +2062,22 @@
       }
       if (synthesisPane?.contains(element)) {
         if (
+          synthesisDropzone?.contains(element) &&
+          isScrollableOverflow(getComputedStyle(synthesisDropzone).overflowY)
+        ) {
+          return synthesisDropzone;
+        }
+        if (
+          synthesisComposer?.contains(element) &&
+          isScrollableOverflow(getComputedStyle(synthesisComposer).overflowY)
+        ) {
+          return synthesisComposer;
+        }
+        if (
           synthesisDocWrap?.contains(element) &&
           isScrollableOverflow(getComputedStyle(synthesisDocWrap).overflowY)
         ) {
           return synthesisDocWrap;
-        }
-        if (
-          synthesisNotes?.contains(element) &&
-          isScrollableOverflow(getComputedStyle(synthesisNotes).overflowY)
-        ) {
-          return synthesisNotes;
         }
         if (isScrollableOverflow(getComputedStyle(synthesisPane).overflowY)) return synthesisPane;
       }
@@ -2054,6 +2127,7 @@
     let synthesisPaneCollapsed = true;
     let workbenchSidebarCollapsed = false;
     let sourcePaneCollapsed = false;
+    let activeSynthesisDocId = null;
     let docSearchMatches = [];
     let currentSearchIndex = -1;
     let docSearchDebounceTimer = null;
@@ -2129,24 +2203,89 @@
         selector: "node",
         style: {
           shape: "ellipse",
-          width: 15,
-          height: 15,
-          "background-color": "#deff9a",
-          color: "#e2e8f0",
-          label: "data(title)",
-          "font-size": 10,
-          "min-zoomed-font-size": 10,
-          "text-valign": "bottom",
+          width: 14,
+          height: 14,
+          "background-color": "#1e293b",
+          "border-width": 1,
+          "border-color": "#475569",
+          color: "#94a3b8",
+          label: "",
+        },
+      },
+      {
+        selector: ":parent",
+        style: {
+          "background-opacity": 0.05,
+          "background-color": "#ffffff",
+          "border-width": 1,
+          "border-color": "#4a5568",
+          "border-style": "dashed",
+          shape: "roundrectangle",
+          padding: "10px",
+          label: "data(label)",
+          color: "#94a3b8",
+          "font-size": 9,
+          "text-valign": "top",
           "text-halign": "center",
-          "text-margin-y": 6,
-          "text-max-width": 80,
-          "text-wrap": "ellipsis",
-          "text-overflow-wrap": "anywhere",
+          "text-margin-y": -4,
+        },
+      },
+      {
+        selector: 'node[type = "Excerpt"]',
+        style: {
+          shape: "rectangle",
+          width: 10,
+          height: 30,
+          "background-color": "#FFD700",
+          "border-width": 0,
+          label: "",
         },
       },
       {
         selector: 'node[origin = "ingest"]',
-        style: { opacity: 0.45 },
+        style: { opacity: 0.5 },
+      },
+      {
+        selector: "node.highlighted",
+        style: {
+          "background-color": "#22d3ee",
+          "border-color": "#67e8f9",
+          "border-width": 2,
+        },
+      },
+      {
+        selector: 'node[type = "Excerpt"].highlighted',
+        style: {
+          "background-color": "#fde047",
+          "border-width": 2,
+          "border-color": "#22d3ee",
+        },
+      },
+      {
+        selector: "#source-doc-box.highlighted",
+        style: {
+          "border-color": "#22d3ee",
+          "border-width": 2,
+          "background-opacity": 0.12,
+        },
+      },
+      {
+        selector: "node.selected-target",
+        style: {
+          "border-width": 3,
+          "border-color": "#ffffff",
+          "border-style": "solid",
+          "background-color": "#00ffff",
+        },
+      },
+      {
+        selector: 'node[type = "Excerpt"].selected-target',
+        style: {
+          "border-width": 3,
+          "border-color": "#ffffff",
+          "border-style": "solid",
+          "background-color": "#00ffff",
+        },
       },
       {
         selector: "node:selected",
@@ -2160,12 +2299,16 @@
         style: {
           width: 1,
           "curve-style": "bezier",
-          "target-arrow-shape": "triangle",
-          "line-color": "#475569",
-          "target-arrow-color": "#475569",
-          label: "data(label)",
-          "font-size": 8,
-          color: "#64748b",
+          "target-arrow-shape": "none",
+          "line-color": "#64748b",
+          label: "",
+        },
+      },
+      {
+        selector: "edge.highlighted",
+        style: {
+          width: 2,
+          "line-color": "#22d3ee",
         },
       },
     ];
@@ -2184,6 +2327,21 @@
       return line || "Untitled";
     }
 
+    function autoExcerptTitle(text) {
+      const words = text.trim().split(/\s+/).filter(Boolean);
+      if (words.length === 0) return "Untitled";
+      if (words.length <= 5) return words.join(" ");
+      return `${words.slice(0, 5).join(" ")}...`;
+    }
+
+    function flashExcerptSavedToast() {
+      showStatus("Excerpt saved");
+      if (flashExcerptSavedToast._timer) {
+        clearTimeout(flashExcerptSavedToast._timer);
+      }
+      flashExcerptSavedToast._timer = window.setTimeout(clearStatus, 2000);
+    }
+
     function showStatus(message, isError = false) {
       statusEl.textContent = message;
       statusEl.className = "visible" + (isError ? " error" : "");
@@ -2194,11 +2352,204 @@
       statusEl.textContent = "";
     }
 
+    const SOURCE_DOC_BOX_ID = "source-doc-box";
+
+    function collectMacroGraphExcerptIds(graphData) {
+      const excerptIds = new Set();
+      for (const entry of graphData.nodes || []) {
+        if (entry.data?.excerpt_id) excerptIds.add(entry.data.excerpt_id);
+      }
+      for (const [id, node] of workspaceNodeMap) {
+        if (node.density_level === 2) excerptIds.add(id);
+      }
+      return excerptIds;
+    }
+
+    function buildExcerptCyNode(excerptId) {
+      const cached = workspaceNodeMap.get(excerptId);
+      const content = (cached?.content ?? cached?.text ?? "").trim();
+      const title = (cached?.title ?? "").trim() || excerptTitle(content) || "Excerpt";
+
+      return {
+        data: {
+          id: excerptId,
+          type: "Excerpt",
+          parent: SOURCE_DOC_BOX_ID,
+          label: title,
+          title,
+          content,
+          origin: cached?.origin ?? "human",
+        },
+      };
+    }
+
+    function augmentMacroGraphElements(graphData) {
+      const nodes = [...(graphData.nodes || [])];
+      const edges = [...(graphData.edges || [])];
+      const excerptIds = collectMacroGraphExcerptIds(graphData);
+
+      if (excerptIds.size > 0) {
+        const sourceLabel =
+          docTitle?.textContent?.trim() || "Source Document";
+        nodes.unshift({
+          data: {
+            id: SOURCE_DOC_BOX_ID,
+            label: sourceLabel,
+          },
+        });
+
+        for (const excerptId of excerptIds) {
+          nodes.push(buildExcerptCyNode(excerptId));
+        }
+      }
+
+      for (const entry of graphData.nodes || []) {
+        const excerptId = entry.data?.excerpt_id;
+        if (!excerptId || !excerptIds.has(excerptId)) continue;
+
+        const summaryId = entry.data.id;
+        edges.push({
+          data: {
+            id: `excerpt-link-${summaryId}`,
+            source: excerptId,
+            target: summaryId,
+            label: "",
+          },
+        });
+      }
+
+      return { nodes, edges };
+    }
+
+    function getCySummaryLayoutElements() {
+      if (!cy) return null;
+      const summaries = cy.nodes().filter((n) => {
+        if (n.isChild()) return false;
+        const id = n.id();
+        if (id === SOURCE_DOC_BOX_ID) return false;
+        return n.data("type") !== "Excerpt";
+      });
+      const summaryEdges = cy.edges().filter(
+        (e) => !e.source().isChild() && !e.target().isChild()
+      );
+      return summaries.union(summaryEdges);
+    }
+
+    function alignExcerptsInSourceDocBox() {
+      const parent = cy.getElementById(SOURCE_DOC_BOX_ID);
+      if (parent.empty()) return;
+
+      const excerpts = parent.children('[type = "Excerpt"]');
+      if (excerpts.length === 0) return;
+
+      const summaries = cy.nodes().filter((n) => {
+        if (n.isChild()) return false;
+        const id = n.id();
+        return id !== SOURCE_DOC_BOX_ID && n.data("type") !== "Excerpt";
+      });
+
+      let anchorX = 36;
+      let centerY = 0;
+      if (summaries.length > 0) {
+        const xs = summaries.map((n) => n.position("x"));
+        const ys = summaries.map((n) => n.position("y"));
+        anchorX = Math.min(...xs) - 72;
+        centerY = ys.reduce((sum, y) => sum + y, 0) / ys.length;
+      }
+
+      const spacing = 36;
+      excerpts.forEach((node, index) => {
+        const offset = (index - (excerpts.length - 1) / 2) * spacing;
+        node.position({ x: anchorX, y: centerY + offset });
+      });
+    }
+
+    function runWorkspaceCyLayout() {
+      const layoutEles = getCySummaryLayoutElements();
+      if (!layoutEles || layoutEles.length === 0) {
+        alignExcerptsInSourceDocBox();
+        fitWorkspaceCyGraph();
+        return;
+      }
+
+      const layout = cy.layout({
+        name: "dagre",
+        eles: layoutEles,
+        rankDir: "LR",
+        nodeSep: 30,
+        rankSep: 60,
+        fit: false,
+      });
+
+      layout.one("layoutstop", () => {
+        alignExcerptsInSourceDocBox();
+        syncCyGraphHighlight();
+        fitWorkspaceCyGraph();
+      });
+      layout.run();
+    }
+
+    function syncCyGraphHighlight() {
+      if (!cy) return;
+
+      cy.elements().removeClass("highlighted");
+      cy.nodes().removeClass("selected-target");
+      if (!SelectionManager.activeNode) return;
+
+      const lineageNodes = SelectionManager.activeLineageNodes;
+      const lineageEdges = SelectionManager.activeLineageEdges;
+      const clickedNodeId = SelectionManager.activeNode;
+
+      for (const nodeId of lineageNodes) {
+        const ele = cy.getElementById(nodeId);
+        if (ele.nonempty()) ele.addClass("highlighted");
+      }
+
+      cy.nodes('[type = "Excerpt"]').forEach((excerpt) => {
+        const excerptId = excerpt.id();
+        if (lineageNodes.has(excerptId)) excerpt.addClass("highlighted");
+      });
+
+      const hasHighlightedExcerpt = cy
+        .nodes('[type = "Excerpt"].highlighted')
+        .length > 0;
+      if (hasHighlightedExcerpt) {
+        cy.getElementById(SOURCE_DOC_BOX_ID).addClass("highlighted");
+      }
+
+      for (const edge of ConnectionManager.edges.values()) {
+        if (!lineageEdges.has(edge.id)) continue;
+        cy.edges(
+          `[source = "${edge.source_id}"][target = "${edge.target_id}"]`
+        ).addClass("highlighted");
+      }
+
+      cy.edges().forEach((edge) => {
+        const source = edge.source();
+        const target = edge.target();
+        if (source.data("type") !== "Excerpt") return;
+        if (lineageNodes.has(target.id()) || lineageNodes.has(source.id())) {
+          edge.addClass("highlighted");
+        }
+      });
+
+      const target = cy.getElementById(clickedNodeId);
+      if (target.nonempty()) target.addClass("selected-target");
+    }
+
     function bindWorkspaceCyTapHandler() {
       if (!cy || cyTapHandler) return;
       cyTapHandler = (evt) => {
         const node = evt.target;
-        focusDocumentCanvasTargets(node.id(), node.data("excerpt_id"));
+        if (node.data("type") === "Excerpt") {
+          SelectionManager.setActiveNode(node.id());
+          focusDocumentCanvasTargets(null, node.id());
+          return;
+        }
+        if (node.id() === SOURCE_DOC_BOX_ID) return;
+        const summaryId = node.id();
+        SelectionManager.setActiveNode(summaryId);
+        focusDocumentCanvasTargets(summaryId, node.data("excerpt_id"));
       };
       cy.on("tap", "node", cyTapHandler);
     }
@@ -2271,17 +2622,9 @@
         cy.elements().remove();
         if (data.nodes.length === 0) return;
 
-        cy.add([...data.nodes, ...data.edges]);
-        cy.layout({
-          name: "dagre",
-          rankDir: "TB",
-          nodeSep: 24,
-          rankSep: 48,
-          spacingFactor: 1.5,
-          animate: true,
-          animationDuration: 350,
-        }).run();
-        fitWorkspaceCyGraph();
+        const graphElements = augmentMacroGraphElements(data);
+        cy.add([...graphElements.nodes, ...graphElements.edges]);
+        runWorkspaceCyLayout();
       } catch (err) {
         console.error("[loadWorkspaceCyGraph]", err);
       }
@@ -2492,6 +2835,7 @@
         this.activeNode = nodeId || null;
         this.refreshActiveLineage();
         updateLineVisibility();
+        syncCyGraphHighlight();
       },
 
       getLineage(startNodeId) {
@@ -2788,6 +3132,49 @@
       }
     }
 
+    function initWorkbenchListDropzones() {
+      const listAContainer = document.getElementById("list-a");
+      const listBContainer = document.getElementById("list-b");
+
+      [listAContainer, listBContainer].forEach((container) => {
+        if (!container || container.dataset.dropBound) return;
+        container.dataset.dropBound = "1";
+
+        container.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          container.classList.add("drag-over-active");
+        });
+
+        container.addEventListener("dragleave", (e) => {
+          if (!container.contains(e.relatedTarget)) {
+            container.classList.remove("drag-over-active");
+          }
+        });
+
+        container.addEventListener("drop", (e) => {
+          e.preventDefault();
+          container.classList.remove("drag-over-active");
+
+          const nodeId = e.dataTransfer.getData("text/plain")?.trim();
+          if (!nodeId) return;
+
+          const targetList = container.id === "list-a" ? "A" : "B";
+          const nodeData = getNodeById(nodeId);
+          if (!nodeData) {
+            showStatus(`Node ${nodeId} not found in workspace.`, true);
+            return;
+          }
+
+          SelectionManager.setActiveTarget(targetList);
+          SelectionManager.addNode(nodeData);
+
+          const card = getWorkspaceCard(nodeId);
+          if (card) flashWorkbenchAdded(card);
+        });
+      });
+    }
+
     function initWorkbenchSidebar() {
       const targetA = document.getElementById("workbench-target-a");
       const targetB = document.getElementById("workbench-target-b");
@@ -2799,6 +3186,7 @@
       targetB?.addEventListener("click", () => SelectionManager.setActiveTarget("B"));
       createConnectionBtn?.addEventListener("click", () => createWorkbenchConnections());
       populateRelationshipDropdown();
+      initWorkbenchListDropzones();
       SelectionManager.setActiveTarget(SelectionManager.activeTarget);
       SelectionManager.renderSidebar();
     }
@@ -3540,71 +3928,181 @@
       });
     }
 
+    function generateTimestampTitle() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      return (
+        `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-` +
+        `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+      );
+    }
+
+    function setSynthesisTitleToTimestamp() {
+      if (synthesisTitleInput) {
+        synthesisTitleInput.value = generateTimestampTitle();
+      }
+    }
+
+    function clearSynthesisWorkspace() {
+      activeSynthesisDocId = null;
+      synthesisDropzone?.replaceChildren();
+      if (synthesisComposer) synthesisComposer.innerHTML = "";
+      setSynthesisTitleToTimestamp();
+    }
+
+    function gatherSynthesisReferencedNodeIds() {
+      const ids = new Set();
+
+      synthesisDropzone?.querySelectorAll(".synthesis-item[data-source-node]").forEach((item) => {
+        const nodeId = item.dataset.sourceNode?.trim();
+        if (nodeId) ids.add(nodeId);
+      });
+
+      if (activeSynthesisDocId) ids.delete(activeSynthesisDocId);
+      return [...ids];
+    }
+
+    async function syncSynthesisReferenceEdges(docId, referencedNodeIds) {
+      if (!docId || referencedNodeIds.length === 0) return;
+
+      const responses = await Promise.all(
+        referencedNodeIds.map((targetId) =>
+          fetch(`${API_BASE}/api/edges`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source_id: docId,
+              target_id: targetId,
+              relationship_type: "REFERENCES",
+              strength: 1.0,
+              origin: "human",
+            }),
+          })
+        )
+      );
+
+      for (const res of responses) {
+        if (res.ok) continue;
+        const body = await res.json().catch(() => ({}));
+        const detail = body.detail;
+        throw new Error(
+          typeof detail === "string"
+            ? detail
+            : `Failed to create REFERENCES edge (HTTP ${res.status})`
+        );
+      }
+    }
+
+    function flashSynthesisSavedBadge() {
+      if (!synthesisSavedBadge) return;
+      synthesisSavedBadge.classList.add("visible");
+      if (flashSynthesisSavedBadge._timer) {
+        clearTimeout(flashSynthesisSavedBadge._timer);
+      }
+      flashSynthesisSavedBadge._timer = window.setTimeout(() => {
+        synthesisSavedBadge.classList.remove("visible");
+      }, 2000);
+    }
+
     function gatherSynthesisPaneText() {
       const sections = [];
 
-      synthesisNotes.querySelectorAll(".synthesis-note-body").forEach((noteEl) => {
-        const text = noteEl.innerText.trim();
-        const tag = noteEl.closest(".synthesis-note")?.querySelector(".note-tag-input")?.value.trim();
+      synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        const nodeId = item.dataset.sourceNode?.trim();
+        const meta = item.querySelector(".synthesis-item-meta-label")?.textContent?.trim();
+        const text = item.querySelector(".synthesis-item-text")?.textContent?.trim();
         if (!text) return;
-        if (tag) {
-          sections.push(`[Note · ${tag}]\n${text}`);
+        if (nodeId && meta) {
+          sections.push(`[${meta} · ${nodeId}]\n${text}`);
         } else {
-          sections.push(`[Note]\n${text}`);
+          sections.push(text);
         }
       });
 
-      const docClone = synthesisDoc.cloneNode(true);
-      docClone.querySelectorAll(".source-link-anchor").forEach((anchor) => anchor.remove());
-      const docText = docClone.innerText.trim();
-      if (docText) sections.push(docText);
+      const composerText = synthesisComposer?.innerText.trim();
+      if (composerText) sections.push(composerText);
 
       return sections.join("\n\n");
     }
 
-    async function saveSynthesisToGraph() {
+    async function saveSynthesis() {
       const content = gatherSynthesisPaneText();
       if (!content) {
         showStatus("Synthesis workspace is empty. Add content before saving.", true);
-        return;
+        return false;
       }
 
-      const title = prompt("Title for this synthesis document:");
-      if (title === null) return;
-      const trimmedTitle = title.trim();
+      let trimmedTitle = synthesisTitleInput?.value.trim() || "";
       if (!trimmedTitle) {
-        showStatus("Title is required.", true);
-        return;
+        trimmedTitle = generateTimestampTitle();
+        if (synthesisTitleInput) synthesisTitleInput.value = trimmedTitle;
       }
+
+      const referencedNodeIds = gatherSynthesisReferencedNodeIds();
+      const isCreate = !activeSynthesisDocId;
 
       saveSynthesisBtn.disabled = true;
       try {
-        const res = await fetch(`${API_BASE}/api/nodes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: trimmedTitle,
-            content,
-            density_level: 4,
-            node_type: "Document",
-            significance: 1.0,
-            origin: "human",
-          }),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.detail || "Failed to save synthesis document");
+        let docId = activeSynthesisDocId;
+
+        if (isCreate) {
+          const res = await fetch(`${API_BASE}/api/nodes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: trimmedTitle,
+              content,
+              density_level: 4,
+              node_type: "Document",
+              significance: 1.0,
+              origin: "human",
+            }),
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.detail || "Failed to create synthesis document");
+          }
+          const result = await res.json();
+          docId = result.node_id;
+          activeSynthesisDocId = docId;
+        } else {
+          const res = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(docId)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: trimmedTitle,
+              content,
+            }),
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.detail || "Failed to update synthesis document");
+          }
         }
-        const result = await res.json();
-        await loadSourceLibrary(result.node_id);
-        await initDocumentCanvas(result.node_id);
-        clearStatus();
-        showStatus(`Saved synthesis document: “${trimmedTitle}”`);
+
+        await syncSynthesisReferenceEdges(docId, referencedNodeIds);
+        await loadSourceLibrary(documentCanvasSourceId || docId);
+
+        if (isCreate && documentCanvasSourceId !== docId) {
+          showStatus(`Created synthesis document: “${trimmedTitle}”`);
+        } else if (documentCanvasSourceId === docId) {
+          await initDocumentCanvas(docId);
+          showStatus(`Updated synthesis document: “${trimmedTitle}”`);
+        } else {
+          showStatus(`Saved synthesis document: “${trimmedTitle}”`);
+        }
+
+        return true;
       } catch (err) {
         showStatus(err.message, true);
+        return false;
       } finally {
         saveSynthesisBtn.disabled = false;
       }
+    }
+
+    async function saveSynthesisToGraph() {
+      return saveSynthesis();
     }
 
     function removeExcerptHighlightFromDoc(nodeId) {
@@ -3748,8 +4246,8 @@
       ConnectionManager.clearAll();
       reconcileView(mode);
 
-      synthesisDoc.querySelectorAll(".synthesis-paragraph").forEach((p) => {
-        applySynthesisParagraphIndent(p);
+      synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        applySynthesisItemIndent(item);
       });
 
       requestAnimationFrame(() => {
@@ -3773,12 +4271,20 @@
       }
     }
 
-    function applySynthesisParagraphIndent(paragraph) {
-      const depth = parseInt(paragraph.dataset.depthLevel, 10) || 0;
+    function getSynthesisItemMetaLabel(nodeId) {
+      const node = workspaceNodeMap.get(nodeId);
+      if (!node) return "Node";
+      if (node.density_level === 1) return "Summary";
+      if (node.density_level === 2) return "Excerpt";
+      return "Source";
+    }
+
+    function applySynthesisItemIndent(item) {
+      const depth = parseInt(item.dataset.depthLevel, 10) || 0;
       if (workspaceViewMode === "tree") {
-        paragraph.style.paddingLeft = `${depth * 20}px`;
+        item.style.marginLeft = `${depth * 20}px`;
       } else {
-        paragraph.style.paddingLeft = "";
+        item.style.marginLeft = "";
       }
     }
 
@@ -3836,11 +4342,30 @@
       }, 2000);
     }
 
-    function appendSynthesisParagraph(nodeId, text, depthLevel) {
-      const p = document.createElement("p");
-      p.className = "synthesis-paragraph";
-      p.dataset.sourceNode = nodeId;
-      p.dataset.depthLevel = String(depthLevel ?? 0);
+    function appendSynthesisItem(nodeId, text, depthLevel) {
+      if (!synthesisDropzone) return null;
+
+      const item = document.createElement("div");
+      item.className = "synthesis-item";
+      item.dataset.sourceNode = nodeId;
+      item.dataset.depthLevel = String(depthLevel ?? 0);
+
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = "drag-handle";
+      handle.setAttribute("aria-label", "Drag to reorder");
+      handle.title = "Drag to reorder";
+      handle.textContent = "⋮⋮";
+
+      const body = document.createElement("div");
+      body.className = "synthesis-item-body";
+
+      const meta = document.createElement("div");
+      meta.className = "synthesis-item-meta";
+
+      const metaLabel = document.createElement("span");
+      metaLabel.className = "synthesis-item-meta-label";
+      metaLabel.textContent = getSynthesisItemMetaLabel(nodeId);
 
       const anchor = document.createElement("button");
       anchor.type = "button";
@@ -3854,16 +4379,42 @@
         jumpToSourceNode(nodeId);
       });
 
-      const span = document.createElement("span");
-      span.className = "synthesis-paragraph-text";
-      span.textContent = text;
+      const textEl = document.createElement("div");
+      textEl.className = "synthesis-item-text";
+      textEl.textContent = text;
 
-      p.appendChild(anchor);
-      p.appendChild(document.createTextNode(" "));
-      p.appendChild(span);
-      synthesisDoc.appendChild(p);
-      applySynthesisParagraphIndent(p);
-      scrollElementInPane(p, { behavior: "smooth", block: "nearest" });
+      meta.appendChild(metaLabel);
+      meta.appendChild(anchor);
+      body.appendChild(meta);
+      body.appendChild(textEl);
+      item.appendChild(handle);
+      item.appendChild(body);
+
+      synthesisDropzone.appendChild(item);
+      applySynthesisItemIndent(item);
+      scrollElementInPane(item, { behavior: "smooth", block: "nearest" });
+      return item;
+    }
+
+    function getNodeById(nodeId) {
+      if (!nodeId) return null;
+      const cached = workspaceNodeMap.get(nodeId);
+      if (cached) return { ...cached, id: nodeId };
+
+      const card = getWorkspaceCard(nodeId);
+      if (!card) return null;
+
+      const densityLevel = parseInt(card.dataset.densityLevel, 10);
+      const title = card.querySelector(".card-title")?.textContent?.trim() || "";
+      const content = getWorkspaceCardText(card);
+
+      return {
+        id: nodeId,
+        title,
+        content,
+        density_level: Number.isFinite(densityLevel) ? densityLevel : getCardDepthLevel(nodeId),
+        origin: card.classList.contains("ingest") ? "ingest" : "human",
+      };
     }
 
     function onWorkspaceCardDragStart(e, card, nodeId) {
@@ -3875,104 +4426,25 @@
         depthLevel: Number.isFinite(depthLevel) ? depthLevel : getCardDepthLevel(nodeId),
       };
       e.dataTransfer.setData("application/x-internalize-node", JSON.stringify(payload));
-      e.dataTransfer.setData("text/plain", text);
+      e.dataTransfer.setData("text/plain", nodeId);
       e.dataTransfer.effectAllowed = "copy";
-      card.classList.add("dragging");
+      card.classList.add("is-dragging", "dragging");
     }
 
-    function saveNewNote(noteEl) {
-      const note = noteEl?.classList?.contains("synthesis-note")
-        ? noteEl
-        : noteEl?.closest?.(".synthesis-note");
-      if (!note) return;
-
-      const body = note.querySelector(".synthesis-note-body");
-      const text = body?.innerText.trim() || "";
-      if (!text) {
-        showStatus("Note is empty. Add content before saving.", true);
-        body?.focus();
-        return;
-      }
-
-      note.classList.add("note-saved");
-      note.dataset.saved = "true";
-      if (document.activeElement?.closest?.(".synthesis-note") === note) {
-        document.activeElement.blur();
-      }
-      clearStatus();
-      showStatus("Note saved.");
-    }
-
-    function bindSynthesisNoteKeyboard(note) {
-      const onNoteKeydown = (e) => {
-        if (e.ctrlKey && e.key === "Enter") {
-          e.preventDefault();
-          saveNewNote(note);
-        }
-      };
-
-      note.querySelector(".synthesis-note-body")?.addEventListener("keydown", onNoteKeydown);
-      note.querySelector(".note-tag-input")?.addEventListener("keydown", onNoteKeydown);
-    }
-
-    function initSynthesisNotesSortable() {
-      if (!synthesisNotes || synthesisNotes.dataset.sortableBound) return;
+    function initSynthesisDropzoneSortable() {
+      if (!synthesisDropzone || synthesisDropzone.dataset.sortableBound) return;
       if (typeof Sortable === "undefined") return;
-      synthesisNotes.dataset.sortableBound = "1";
+      synthesisDropzone.dataset.sortableBound = "1";
 
-      new Sortable(synthesisNotes, {
+      new Sortable(synthesisDropzone, {
         animation: 150,
-        ghostClass: "sortable-ghost",
-        handle: ".synthesis-note-header",
-        draggable: ".synthesis-note",
+        ghostClass: "synthesis-ghost",
+        handle: ".drag-handle",
+        draggable: ".synthesis-item",
         onEnd() {
-          // Future logic: update the database order based on the new DOM index
+          // DOM order updated; persist on explicit save via saveSynthesis()
         },
       });
-    }
-
-    function createSynthesisNote(taggedNodeId = "") {
-      const note = document.createElement("div");
-      note.className = "synthesis-note";
-
-      const header = document.createElement("div");
-      header.className = "synthesis-note-header";
-
-      const tagInput = document.createElement("input");
-      tagInput.type = "text";
-      tagInput.className = "note-tag-input";
-      tagInput.placeholder = "Tag node ID…";
-      tagInput.value = taggedNodeId;
-
-      const linkBtn = document.createElement("button");
-      linkBtn.type = "button";
-      linkBtn.className = "note-link-btn";
-      linkBtn.title = "Jump to tagged node";
-      linkBtn.textContent = "⛓";
-      linkBtn.addEventListener("click", () => {
-        jumpToSourceNode(tagInput.value.trim());
-      });
-
-      const removeBtn = document.createElement("button");
-      removeBtn.type = "button";
-      removeBtn.className = "note-remove-btn";
-      removeBtn.title = "Remove note";
-      removeBtn.textContent = "×";
-      removeBtn.addEventListener("click", () => note.remove());
-
-      const body = document.createElement("div");
-      body.className = "synthesis-note-body";
-      body.contentEditable = "true";
-      body.dataset.placeholder = "Write a note (not part of the tree)…";
-
-      header.appendChild(tagInput);
-      header.appendChild(linkBtn);
-      header.appendChild(removeBtn);
-      note.appendChild(header);
-      note.appendChild(body);
-      synthesisNotes.appendChild(note);
-      bindSynthesisNoteKeyboard(note);
-      body.focus();
     }
 
     function initPaneRecoveryHandles() {
@@ -4005,28 +4477,52 @@
       });
     }
 
-    function initSynthesisPane() {
-      initSynthesisPaneCollapse();
-      initPaneRecoveryHandles();
-      initSynthesisNotesSortable();
-      if (synthesisDoc.dataset.bound) return;
-      synthesisDoc.dataset.bound = "1";
+    function initSynthesisTitleAndSave() {
+      if (document.getElementById("synthesis-pane")?.dataset.titleSaveBound) return;
+      document.getElementById("synthesis-pane").dataset.titleSaveBound = "1";
 
-      synthesisDoc.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
-        synthesisDoc.classList.add("drag-over");
+      if (!synthesisTitleInput?.value.trim()) {
+        setSynthesisTitleToTimestamp();
+      }
+
+      newNoteBtn?.addEventListener("click", () => {
+        activeSynthesisDocId = null;
+        clearSynthesisWorkspace();
       });
 
-      synthesisDoc.addEventListener("dragleave", (e) => {
-        if (!synthesisDoc.contains(e.relatedTarget)) {
-          synthesisDoc.classList.remove("drag-over");
+      saveSynthesisBtn?.addEventListener("click", async () => {
+        const saved = await saveSynthesis();
+        if (saved) flashSynthesisSavedBadge();
+      });
+
+      synthesisComposer?.addEventListener("keydown", (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.key !== "Enter") return;
+        e.preventDefault();
+        saveSynthesis().then((saved) => {
+          if (saved) flashSynthesisSavedBadge();
+        });
+      });
+    }
+
+    function bindSynthesisDropzoneDnD() {
+      if (!synthesisDropzone || synthesisDropzone.dataset.dndBound) return;
+      synthesisDropzone.dataset.dndBound = "1";
+
+      synthesisDropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        synthesisDropzone.classList.add("drag-over");
+      });
+
+      synthesisDropzone.addEventListener("dragleave", (e) => {
+        if (!synthesisDropzone.contains(e.relatedTarget)) {
+          synthesisDropzone.classList.remove("drag-over");
         }
       });
 
-      synthesisDoc.addEventListener("drop", (e) => {
+      synthesisDropzone.addEventListener("drop", (e) => {
         e.preventDefault();
-        synthesisDoc.classList.remove("drag-over");
+        synthesisDropzone.classList.remove("drag-over");
 
         const raw = e.dataTransfer.getData("application/x-internalize-node");
         if (!raw) return;
@@ -4034,21 +4530,26 @@
         try {
           const { nodeId, text, depthLevel } = JSON.parse(raw);
           if (!text) return;
-          appendSynthesisParagraph(nodeId, text, depthLevel);
+          appendSynthesisItem(nodeId, text, depthLevel);
         } catch (_) {
           showStatus("Could not read dropped card data.", true);
         }
       });
 
-      synthesisDoc.addEventListener("click", (e) => {
+      synthesisDropzone.addEventListener("click", (e) => {
         const anchor = e.target.closest(".source-link-anchor");
         if (!anchor) return;
         e.preventDefault();
         jumpToSourceNode(anchor.dataset.nodeId);
       });
+    }
 
-      newNoteBtn.addEventListener("click", () => createSynthesisNote());
-      saveSynthesisBtn.addEventListener("click", saveSynthesisToGraph);
+    function initSynthesisPane() {
+      initSynthesisPaneCollapse();
+      initPaneRecoveryHandles();
+      initSynthesisDropzoneSortable();
+      initSynthesisTitleAndSave();
+      bindSynthesisDropzoneDnD();
     }
 
     function initWorkspaceViewToggle() {
@@ -4362,6 +4863,35 @@
       scheduleDrawConnections();
     }
 
+    function computeSummaryColumnForChildren(childIds) {
+      if (!childIds.length) return 2;
+      return Math.max(...childIds.map((id) => getCardColumnIndex(id))) + 1;
+    }
+
+    function assignNodeColumn(nodeId, columnIndex) {
+      nodeColumnMap.set(nodeId, columnIndex);
+      const card = getWorkspaceCard(nodeId);
+      if (card) {
+        card.dataset.columnIndex = String(columnIndex);
+        card.dataset.depthLevel = String(Math.max(0, columnIndex - 1));
+      }
+    }
+
+    async function refreshWorkspaceAfterGraphMutation() {
+      reconcileView(workspaceViewMode);
+      if (documentCanvasSourceId) {
+        try {
+          await loadWorkspaceCyGraph(documentCanvasSourceId);
+        } catch (err) {
+          console.error("[refreshWorkspaceAfterGraphMutation]", err);
+        }
+      }
+      requestAnimationFrame(() => {
+        ConnectionManager.drawAllConnections();
+        repositionDocumentCanvasLines();
+      });
+    }
+
     function computeNodeColumns(excerptIds, summaryEdges) {
       const columns = new Map();
       for (const id of excerptIds) {
@@ -4432,7 +4962,7 @@
     function bindWorkspaceCardInteractions(card, nodeId) {
       card.draggable = true;
       card.addEventListener("dragstart", (e) => onWorkspaceCardDragStart(e, card, nodeId));
-      card.addEventListener("dragend", () => card.classList.remove("dragging"));
+      card.addEventListener("dragend", () => card.classList.remove("is-dragging", "dragging"));
 
       card.addEventListener("click", (e) => {
         if (e.target.closest(".promote-btn, .card-delete-btn")) return;
@@ -4701,6 +5231,22 @@
 
         applyPromotedSummaryStyle(parentCard, parentId, childIds);
 
+        const promotedTitle =
+          parentCard.querySelector(".card-title")?.textContent?.trim() ||
+          excerptTitle(parentCard.querySelector(".card-content")?.textContent?.trim() || "");
+        const promotedContent = parentCard.querySelector(".card-content")?.textContent?.trim() || "";
+        const existingNode = workspaceNodeMap.get(parentId) || { id: parentId, origin: "human" };
+        workspaceNodeMap.set(parentId, {
+          ...existingNode,
+          id: parentId,
+          title: promotedTitle,
+          content: promotedContent,
+          density_level: 1,
+        });
+
+        const newColumn = computeSummaryColumnForChildren(childIds);
+        assignNodeColumn(parentId, newColumn);
+
         nodePane.querySelectorAll(".workspace-card.selected-for-grouping").forEach((card) => {
           card.classList.remove("selected-for-grouping");
           card.querySelector(".promote-btn")?.remove();
@@ -4717,10 +5263,7 @@
           });
         }
 
-        requestAnimationFrame(() => {
-          refreshFlowViewIfActive();
-          scheduleDrawConnections();
-        });
+        await refreshWorkspaceAfterGraphMutation();
 
         clearStatus();
       } catch (err) {
@@ -4966,10 +5509,7 @@
           });
         }
 
-        requestAnimationFrame(() => {
-          refreshFlowViewIfActive();
-          scheduleDrawConnections();
-        });
+        await refreshWorkspaceAfterGraphMutation();
 
         clearStatus();
       } catch (err) {
@@ -5100,10 +5640,7 @@
           });
         }
 
-        requestAnimationFrame(() => {
-          refreshFlowViewIfActive();
-          scheduleDrawConnections();
-        });
+        await refreshWorkspaceAfterGraphMutation();
 
         clearStatus();
       } catch (err) {
@@ -5128,7 +5665,7 @@
       });
     }
 
-    function handleCanvasExtraction(storedRange) {
+    async function autoSaveExcerptFromSelection(storedRange) {
       let range;
       let text;
 
@@ -5141,11 +5678,89 @@
         text = selection.toString().trim();
         if (!text || !isSelectionInsideDocBody(selection)) return;
         range = selection.getRangeAt(0).cloneRange();
-        selection.removeAllRanges();
       }
 
+      if (!documentCanvasSourceId) {
+        showStatus("Document source not loaded.", true);
+        return;
+      }
+
+      const title = autoExcerptTitle(text);
+      const content = text;
       const anchorSpan = wrapSelectionInPendingSpan(range);
-      openCanvasInlineEditor(text, anchorSpan);
+      window.getSelection()?.removeAllRanges();
+
+      try {
+        const nodeRes = await fetch(`${API_BASE}/api/nodes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            content,
+            density_level: 2,
+            significance: 1.0,
+            origin: "human",
+          }),
+        });
+        if (!nodeRes.ok) {
+          const body = await nodeRes.json().catch(() => ({}));
+          throw new Error(body.detail || "Failed to create excerpt");
+        }
+        const nodeData = await nodeRes.json();
+        const nodeId = nodeData.node_id;
+
+        const edgeRes = await fetch(`${API_BASE}/api/edges`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source_id: documentCanvasSourceId,
+            target_id: nodeId,
+            relationship_type: "CONTAINS",
+            strength: 1.0,
+            origin: "human",
+          }),
+        });
+        if (!edgeRes.ok) {
+          const body = await edgeRes.json().catch(() => ({}));
+          throw new Error(body.detail || "Failed to link excerpt to document");
+        }
+
+        anchorSpan.id = `excerpt-${nodeId}`;
+        anchorSpan.classList.add("excerpt-highlight");
+        anchorSpan.removeAttribute("style");
+
+        addHierarchyChild(documentCanvasSourceId, nodeId);
+        const columnIndex = 1;
+        nodeColumnMap.set(nodeId, columnIndex);
+        workspaceNodeMap.set(nodeId, {
+          id: nodeId,
+          title,
+          content,
+          density_level: 2,
+          origin: "human",
+        });
+        workspaceNodeOrder.set(nodeId, workspaceNodeOrder.size);
+
+        const card = createWorkspaceCard(
+          { id: nodeId, title, content, density_level: 2, origin: "human" },
+          columnIndex
+        );
+        appendToColumn(columnIndex, card);
+        scrollElementInPane(card, { behavior: "smooth", block: "nearest" });
+
+        ConnectionManager.registerEdge({
+          id: ConnectionManager.edgeKey("CONTAINS", documentCanvasSourceId, nodeId),
+          source_id: documentCanvasSourceId,
+          target_id: nodeId,
+          relationship_type: "CONTAINS",
+        });
+
+        await refreshWorkspaceAfterGraphMutation();
+        flashExcerptSavedToast();
+      } catch (err) {
+        unwrapPendingExtraction();
+        showStatus(err.message, true);
+      }
     }
 
     function isRangeInsideDocBody(range) {
@@ -5179,7 +5794,7 @@
         e.stopPropagation();
         const range = canvasContextMenuRange;
         hideCustomContextMenu();
-        handleCanvasExtraction(range);
+        autoSaveExcerptFromSelection(range);
       });
 
       document.addEventListener("click", (e) => {
@@ -5308,7 +5923,7 @@
           if (e.target.closest("textarea, input, select")) return;
           e.preventDefault();
           hideCustomContextMenu();
-          handleCanvasExtraction();
+          autoSaveExcerptFromSelection();
         }
       });
 

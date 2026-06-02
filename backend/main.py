@@ -38,13 +38,14 @@ class RelationshipType(str, Enum):
     REQUIRES = "REQUIRES"
     EXAMPLE_OF = "EXAMPLE_OF"
     FOLLOWS = "FOLLOWS"
+    REFERENCES = "REFERENCES"
 
 
 RELATIONSHIP_AXES: dict[str, list[RelationshipType]] = {
     "Hierarchy": [RelationshipType.SUMMARIZES, RelationshipType.CONTAINS],
     "Evaluation": [RelationshipType.SUPPORTS, RelationshipType.CONTRADICTS],
     "Logical": [RelationshipType.CAUSES, RelationshipType.REQUIRES, RelationshipType.EXAMPLE_OF],
-    "Narrative": [RelationshipType.FOLLOWS],
+    "Narrative": [RelationshipType.FOLLOWS, RelationshipType.REFERENCES],
 }
 
 ALLOWED_RELATIONSHIP_TYPES: frozenset[str] = frozenset(t.value for t in RelationshipType)
@@ -90,7 +91,9 @@ class NodeCreateResponse(BaseModel):
 
 
 class NodeUpdate(BaseModel):
-    density_level: DensityLevel
+    density_level: Optional[DensityLevel] = None
+    title: Optional[str] = Field(default=None, min_length=1)
+    content: Optional[str] = Field(default=None, min_length=1)
 
 
 class EdgeCreate(BaseModel):
@@ -360,10 +363,29 @@ def create_knowledge_node(node: NodeCreate, response: Response):
 
 @app.put("/api/nodes/{node_id}", response_model=NodeResponse)
 def update_knowledge_node(node_id: str, update: NodeUpdate):
-    """Update an existing Concept node (e.g. promote excerpt to summary)."""
-    query = """
-    MATCH (n:Concept {id: $node_id})
-    SET n.density_level = $density_level
+    """Update an existing Concept node (title, content, and/or density)."""
+    set_clauses: list[str] = []
+    params: dict = {"node_id": node_id}
+
+    if update.density_level is not None:
+        set_clauses.append("n.density_level = $density_level")
+        params["density_level"] = update.density_level
+    if update.title is not None:
+        set_clauses.append("n.title = $title")
+        params["title"] = update.title
+    if update.content is not None:
+        set_clauses.append("n.content = $content")
+        params["content"] = update.content
+
+    if not set_clauses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one of density_level, title, or content is required",
+        )
+
+    query = f"""
+    MATCH (n:Concept {{id: $node_id}})
+    SET {", ".join(set_clauses)}
     RETURN n.id AS id,
            n.title AS title,
            n.density_level AS density_level,
@@ -372,9 +394,7 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
     driver = _require_neo4j()
     try:
         with driver.session() as session:
-            record = session.run(
-                query, node_id=node_id, density_level=update.density_level
-            ).single()
+            record = session.run(query, **params).single()
     except GqlError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
