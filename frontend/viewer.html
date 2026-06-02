@@ -8,12 +8,37 @@
   <script src="https://unpkg.com/dagre@0.7.4/dist/dagre.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AhmedAyachi/LinkerLine@master/dist/linkerline.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #0f172a; }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --bg-darker: #0b1120;
+      --border-color: #334155;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: #0f172a;
+    }
+
     body {
       display: flex;
       flex-direction: column;
+    }
+
+    #app {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
     }
 
     #viewer-header {
@@ -25,8 +50,7 @@
       padding: 0 1.25rem;
       background: #0f172a;
       border-bottom: 1px solid #334155;
-      position: sticky;
-      top: 0;
+      position: relative;
       z-index: 100;
       font-family: "Segoe UI", system-ui, sans-serif;
     }
@@ -78,22 +102,31 @@
       cursor: pointer;
     }
 
-    #toggle-connections-btn {
-      padding: 0.4rem 0.75rem;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      background: #1e293b;
-      color: #e2e8f0;
-      font-family: "Segoe UI", system-ui, sans-serif;
+    #connection-mode-label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
       font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
+      color: #e2e8f0;
+      text-transform: none;
+      letter-spacing: normal;
       white-space: nowrap;
     }
 
-    #toggle-connections-btn:hover {
-      border-color: #475569;
-      color: #deff9a;
+    #connection-mode {
+      min-width: 88px;
+      padding: 0.45rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #f8fafc;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    #connection-mode:focus {
+      outline: none;
+      border-color: #deff9a;
     }
 
     #viewer-main {
@@ -117,6 +150,344 @@
       background-color: #0f172a;
     }
 
+    #workbench-sidebar {
+      width: 250px;
+      flex-shrink: 0;
+      height: 100%;
+      min-height: 0;
+      background: var(--bg-darker);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      transition: width 0.3s ease, padding 0.3s ease, opacity 0.3s ease, border-width 0.3s ease;
+    }
+
+    #workbench-sidebar.collapsed-sidebar {
+      width: 0;
+      padding: 0;
+      opacity: 0;
+      overflow: hidden;
+      border-right-width: 0;
+      pointer-events: none;
+    }
+
+    #workbench-sidebar .workbench-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px 14px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      color: #deff9a;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .workbench-title,
+    .doc-pane-title {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pane-collapse-btn {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pane-collapse-btn:hover {
+      color: #deff9a;
+      border-color: #475569;
+    }
+
+    .pane-collapse-chevron {
+      display: inline-block;
+      line-height: 1;
+    }
+
+    #workbench-node-search {
+      flex-shrink: 0;
+      margin: 10px 12px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 0.85rem;
+    }
+
+    #workbench-node-search:focus {
+      outline: none;
+      border-color: #475569;
+    }
+
+    .workbench-target-toggle {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 0 12px 10px;
+      flex-shrink: 0;
+    }
+
+    .workbench-target-btn {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: #0f172a;
+      color: #94a3b8;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      line-height: 1.3;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .workbench-target-btn:hover {
+      border-color: #475569;
+      color: #e2e8f0;
+    }
+
+    .workbench-target-btn.active {
+      border-color: #deff9a;
+      color: #deff9a;
+      background: rgba(222, 255, 154, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(222, 255, 154, 0.15);
+    }
+
+    .workbench-list-section {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .workbench-list-heading {
+      flex-shrink: 0;
+      padding: 8px 12px 4px;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    #workbench-sidebar .workbench-list {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 4px 8px 10px;
+    }
+
+    #list-a {
+      border-top: none;
+    }
+
+    .workbench-list-empty {
+      padding: 8px 6px;
+      font-size: 0.75rem;
+      color: #64748b;
+      font-style: italic;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      border-radius: 4px;
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      font-size: 0.75rem;
+      color: #e2e8f0;
+    }
+
+    .sidebar-item-label {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sidebar-item-remove {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: 1px solid var(--border-color);
+      border-radius: 3px;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.85rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .sidebar-item-remove:hover {
+      color: #f87171;
+      border-color: #991b1b;
+    }
+
+    .workbench-actions {
+      flex-shrink: 0;
+      margin-top: auto;
+      padding: 12px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .workbench-actions label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    #relationship-dropdown {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    #relationship-dropdown:focus {
+      outline: none;
+      border-color: #deff9a;
+    }
+
+    .edge-direction-control {
+      margin: 0;
+      padding: 0;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .edge-direction-control legend {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 600;
+      padding: 0;
+    }
+
+    .edge-direction-options {
+      display: flex;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .edge-direction-option {
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .edge-direction-option input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .edge-direction-option span {
+      display: block;
+      padding: 6px 4px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.2;
+      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+
+    .edge-direction-option:hover span {
+      border-color: #475569;
+      color: #e2e8f0;
+    }
+
+    .edge-direction-option input:checked + span {
+      border-color: #deff9a;
+      color: #deff9a;
+      background: rgba(222, 255, 154, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(222, 255, 154, 0.15);
+    }
+
+    .edge-direction-option input:focus-visible + span {
+      outline: 2px solid #deff9a;
+      outline-offset: 1px;
+    }
+
+    #create-connection-btn {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background: #1e293b;
+      color: #deff9a;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #create-connection-btn:hover:not(:disabled) {
+      border-color: #deff9a;
+      background: rgba(222, 255, 154, 0.08);
+    }
+
+    #create-connection-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .workspace-card.workbench-added {
+      outline: 2px solid #deff9a;
+      box-shadow: 0 0 14px rgba(222, 255, 154, 0.45);
+      animation: workbench-card-flash 0.65s ease;
+    }
+
+    @keyframes workbench-card-flash {
+      0%, 100% { background-color: inherit; }
+      50% { background-color: rgba(222, 255, 154, 0.12); }
+    }
+
     #main-workspace-container {
       flex: 1 1 auto;
       min-width: 0;
@@ -135,10 +506,46 @@
       height: 100%;
       min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 0;
       border-right: 1px solid #334155;
       position: relative;
       z-index: 2;
+      transition: flex 0.3s ease, width 0.3s ease, min-width 0.3s ease, padding 0.3s ease, opacity 0.3s ease, border-width 0.3s ease;
+    }
+
+    #doc-pane.collapsed-source {
+      flex: 0 0 0;
+      width: 0;
+      min-width: 0;
+      padding: 0;
+      opacity: 0;
+      overflow: hidden;
+      border-right-width: 0;
+      pointer-events: none;
+    }
+
+    .doc-pane-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      position: sticky;
+      top: 0;
+      z-index: 55;
+    }
+
+    .doc-pane-header .doc-pane-title {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      color: #deff9a;
     }
 
     #doc-search-bar {
@@ -247,7 +654,8 @@
     }
 
     #node-pane {
-      flex: 1 1 auto;
+      flex: 1 1 0;
+      flex-grow: 1;
       min-width: 0;
       min-height: 0;
       height: 100%;
@@ -258,8 +666,6 @@
       position: relative;
       z-index: 2;
       overflow: hidden;
-      overflow-anchor: auto;
-      scroll-behavior: smooth;
     }
 
     #workspace-stack {
@@ -285,26 +691,25 @@
       align-content: stretch;
     }
 
-    #node-pane.graph-visible #workspace-columns {
-      padding-bottom: 320px;
-    }
-
     #graph-container {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      z-index: 20;
-      width: min(100%, 420px);
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 100;
+      width: 350px;
       height: 300px;
       display: flex;
       flex-direction: column;
-      border-top: 1px solid #334155;
-      border-left: 1px solid #334155;
-      border-radius: 8px 0 0 0;
-      background: #0f172a;
-      box-shadow: -6px -6px 18px rgba(0, 0, 0, 0.35);
+      background: var(--bg-darker);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       overflow: hidden;
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      transition: height 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    #graph-container.graph-size-expanded {
+      height: min(50vh, 600px);
     }
 
     #graph-container.graph-collapsed {
@@ -328,6 +733,13 @@
       border-bottom: 1px solid #334155;
     }
 
+    #workspace-graph-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
     #workspace-graph-header .pane-title {
       font-family: "Segoe UI", system-ui, sans-serif;
       font-size: 0.7rem;
@@ -337,7 +749,8 @@
       font-weight: 600;
     }
 
-    #cy-collapse-btn {
+    #cy-collapse-btn,
+    #cy-graph-size-btn {
       padding: 0.3rem 0.65rem;
       border: 1px solid #334155;
       border-radius: 4px;
@@ -347,9 +760,11 @@
       font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
+      white-space: nowrap;
     }
 
-    #cy-collapse-btn:hover {
+    #cy-collapse-btn:hover,
+    #cy-graph-size-btn:hover {
       border-color: #475569;
       color: #deff9a;
     }
@@ -516,7 +931,7 @@
       width: 300px;
       min-width: 0;
       height: 100%;
-      overflow: visible;
+      overflow: hidden;
       transition: width 0.3s ease, flex-basis 0.3s ease;
     }
 
@@ -573,7 +988,8 @@
       min-width: 300px;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
       background: #0f172a;
       border-left: 1px solid #334155;
       transition: opacity 0.2s ease;
@@ -627,6 +1043,29 @@
 
     .pane-handle-synthesis .pane-handle-chevron {
       transform: rotate(180deg);
+    }
+
+    .pane-handle-workbench,
+    .pane-handle-source {
+      left: 0;
+      width: 22px;
+      height: 56px;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .pane-handle-workbench {
+      top: calc(72px + 18vh);
+      transform: translateY(-50%);
+    }
+
+    .pane-handle-source {
+      top: calc(72px + 42vh);
+      transform: translateY(-50%);
+    }
+
+    .pane-handle-workbench .pane-handle-chevron,
+    .pane-handle-source .pane-handle-chevron {
+      transform: rotate(0deg);
     }
 
     .pane-handle-graph {
@@ -706,7 +1145,7 @@
       gap: 8px;
     }
 
-    #synthesis-notes {
+    #synthesis-container {
       flex-shrink: 0;
       max-height: 35%;
       overflow-y: auto;
@@ -717,9 +1156,20 @@
       border-bottom: 1px solid #334155;
     }
 
-    #synthesis-notes:empty {
+    #synthesis-container:empty {
       display: none;
       border-bottom: none;
+    }
+
+    .sortable-ghost {
+      opacity: 0.45;
+      background: #334155;
+      border: 1px dashed #deff9a;
+    }
+
+    .synthesis-note.note-saved {
+      border-style: solid;
+      border-color: #475569;
     }
 
     .synthesis-note {
@@ -1265,6 +1715,7 @@
   </style>
 </head>
 <body>
+  <div id="app">
   <header id="viewer-header">
     <label for="source-selector">Source</label>
     <select id="source-selector">
@@ -1283,7 +1734,12 @@
       <input type="checkbox" id="show-labels-toggle" checked />
       Show Node Labels
     </label>
-    <button type="button" id="toggle-connections-btn" aria-pressed="true">Hide Connections</button>
+    <label id="connection-mode-label" for="connection-mode">Connections</label>
+    <select id="connection-mode" aria-label="Connection visibility mode">
+      <option value="none">None</option>
+      <option value="active" selected>Active</option>
+      <option value="all">All</option>
+    </select>
   </header>
 
   <div id="status"></div>
@@ -1293,8 +1749,95 @@
 
   <div id="viewer-main">
     <div id="document-canvas">
+      <div id="workbench-sidebar">
+        <div class="workbench-header">
+          <span class="workbench-title">Connections</span>
+          <button
+            type="button"
+            id="workbench-collapse-btn"
+            class="pane-collapse-btn"
+            aria-label="Collapse connections sidebar"
+            title="Collapse connections sidebar"
+          ><span class="pane-collapse-chevron" aria-hidden="true">‹</span></button>
+        </div>
+        <input
+          type="text"
+          id="workbench-node-search"
+          placeholder="Search Nodes"
+          aria-label="Search Nodes"
+        />
+        <div class="workbench-target-toggle" role="group" aria-label="Active connection list">
+          <button
+            type="button"
+            id="workbench-target-a"
+            class="workbench-target-btn active"
+            data-target="A"
+          >Select for Source (List A)</button>
+          <button
+            type="button"
+            id="workbench-target-b"
+            class="workbench-target-btn"
+            data-target="B"
+          >Select for Target (List B)</button>
+        </div>
+        <div class="workbench-list-section">
+          <div class="workbench-list-heading">List A · Source</div>
+          <div id="list-a" class="workbench-list"></div>
+        </div>
+        <div class="workbench-list-section">
+          <div class="workbench-list-heading">List B · Target</div>
+          <div id="list-b" class="workbench-list"></div>
+        </div>
+        <div class="workbench-actions">
+          <label for="relationship-dropdown">Relationship</label>
+          <select id="relationship-dropdown" aria-label="Relationship type">
+            <option value="SUMMARIZES">SUMMARIZES</option>
+            <option value="SUPPORTS">SUPPORTS</option>
+            <option value="CONTRADICTS">CONTRADICTS</option>
+            <option value="CAUSES">CAUSES</option>
+            <option value="REQUIRES">REQUIRES</option>
+            <option value="EXAMPLE_OF">EXAMPLE_OF</option>
+            <option value="FOLLOWS">FOLLOWS</option>
+          </select>
+          <fieldset class="edge-direction-control">
+            <legend class="edge-direction-label">Direction</legend>
+            <div class="edge-direction-options" role="radiogroup" aria-label="Edge direction">
+              <label class="edge-direction-option">
+                <input type="radio" name="edge-direction" value="AtoB" checked />
+                <span>A ➔ B</span>
+              </label>
+              <label class="edge-direction-option">
+                <input type="radio" name="edge-direction" value="BtoA" />
+                <span>A ⬅ B</span>
+              </label>
+              <label class="edge-direction-option">
+                <input type="radio" name="edge-direction" value="BiDir" />
+                <span>A ⬌ B</span>
+              </label>
+            </div>
+          </fieldset>
+          <button type="button" id="create-connection-btn">Create Connection</button>
+        </div>
+      </div>
+      <button
+        type="button"
+        id="workbench-pane-handle"
+        class="pane-handle pane-handle-workbench"
+        aria-label="Expand connections sidebar"
+        title="Expand connections sidebar"
+      ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
       <div id="main-workspace-container">
         <div id="doc-pane">
+          <div class="doc-pane-header">
+            <span class="doc-pane-title">Source Document</span>
+            <button
+              type="button"
+              id="doc-pane-collapse-btn"
+              class="pane-collapse-btn"
+              aria-label="Collapse source document"
+              title="Collapse source document"
+            ><span class="pane-collapse-chevron" aria-hidden="true">‹</span></button>
+          </div>
           <div id="doc-search-bar">
             <input type="text" id="doc-search-input" placeholder="Search document..." />
             <span id="doc-search-counter">0/0</span>
@@ -1316,7 +1859,10 @@
           <div id="graph-container">
             <div id="workspace-graph-header">
               <span class="pane-title">Graph</span>
-              <button type="button" id="cy-collapse-btn">Collapse</button>
+              <div id="workspace-graph-header-actions">
+                <button type="button" id="cy-graph-size-btn">Expand Graph</button>
+                <button type="button" id="cy-collapse-btn">Collapse</button>
+              </div>
             </div>
             <div id="cy"></div>
           </div>
@@ -1329,6 +1875,13 @@
           ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
         </div>
       </div>
+      <button
+        type="button"
+        id="source-pane-handle"
+        class="pane-handle pane-handle-source"
+        aria-label="Expand source document"
+        title="Expand source document"
+      ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
       <div id="synthesis-pane-shell" class="collapsed">
         <button
           type="button"
@@ -1346,7 +1899,7 @@
               <button type="button" id="save-synthesis-btn">Save to Graph</button>
             </div>
           </div>
-          <div id="synthesis-notes"></div>
+          <div id="synthesis-container"></div>
           <div id="synthesis-doc-wrap">
             <div id="synthesis-doc" contenteditable="true" spellcheck="true"></div>
           </div>
@@ -1360,6 +1913,7 @@
         title="Expand synthesis workspace"
       ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
     </div>
+  </div>
   </div>
 
   <template id="inline-editor-template">
@@ -1384,10 +1938,15 @@
       : "http://127.0.0.1:8000";
 
     const statusEl = document.getElementById("status");
-    const toggleConnectionsBtn = document.getElementById("toggle-connections-btn");
+    const connectionModeSelect = document.getElementById("connection-mode");
     const documentCanvas = document.getElementById("document-canvas");
     const lineCanvas = document.getElementById("line-canvas");
     const docPane = document.getElementById("doc-pane");
+    const workbenchSidebar = document.getElementById("workbench-sidebar");
+    const workbenchCollapseBtn = document.getElementById("workbench-collapse-btn");
+    const workbenchPaneHandle = document.getElementById("workbench-pane-handle");
+    const docPaneCollapseBtn = document.getElementById("doc-pane-collapse-btn");
+    const sourcePaneHandle = document.getElementById("source-pane-handle");
     const docSearchInput = document.getElementById("doc-search-input");
     const docSearchCounter = document.getElementById("doc-search-counter");
     const docSearchPrev = document.getElementById("doc-search-prev");
@@ -1400,9 +1959,10 @@
     const workspaceColumns = document.getElementById("workspace-columns");
     const graphContainer = document.getElementById("graph-container");
     const cyCollapseBtn = document.getElementById("cy-collapse-btn");
+    const cyGraphSizeBtn = document.getElementById("cy-graph-size-btn");
     const groupSynthesizeBtn = document.getElementById("group-synthesize-btn");
     const synthesisDoc = document.getElementById("synthesis-doc");
-    const synthesisNotes = document.getElementById("synthesis-notes");
+    const synthesisNotes = document.getElementById("synthesis-container");
     const synthesisPaneShell = document.getElementById("synthesis-pane-shell");
     const synthesisCollapseHandle = document.getElementById("synthesis-collapse-handle");
     const synthesisPaneHandle = document.getElementById("synthesis-pane-handle");
@@ -1415,11 +1975,85 @@
     const showLabelsToggle = document.getElementById("show-labels-toggle");
     const customContextMenu = document.getElementById("custom-context-menu");
     const menuExtractBtn = document.getElementById("menu-extract-btn");
+    const synthesisPane = document.getElementById("synthesis-pane");
+    const synthesisDocWrap = document.getElementById("synthesis-doc-wrap");
+
+    function isScrollableOverflow(value) {
+      return value === "auto" || value === "scroll" || value === "overlay";
+    }
+
+    function getPaneScrollContainer(element) {
+      if (!element) return null;
+      if (docPane.contains(element)) return docPane;
+      const column = element.closest(".workspace-column");
+      if (column) return column;
+      if (
+        workspaceColumns.contains(element) &&
+        isScrollableOverflow(getComputedStyle(workspaceColumns).overflowY)
+      ) {
+        return workspaceColumns;
+      }
+      if (synthesisPane?.contains(element)) {
+        if (
+          synthesisDocWrap?.contains(element) &&
+          isScrollableOverflow(getComputedStyle(synthesisDocWrap).overflowY)
+        ) {
+          return synthesisDocWrap;
+        }
+        if (
+          synthesisNotes?.contains(element) &&
+          isScrollableOverflow(getComputedStyle(synthesisNotes).overflowY)
+        ) {
+          return synthesisNotes;
+        }
+        if (isScrollableOverflow(getComputedStyle(synthesisPane).overflowY)) return synthesisPane;
+      }
+      return null;
+    }
+
+    function scrollElementInPane(element, options = {}) {
+      const container = options.container || getPaneScrollContainer(element);
+      if (!element || !container) return;
+
+      const block = options.block ?? "nearest";
+      const inline = options.inline ?? "nearest";
+      const behavior = options.behavior ?? "auto";
+      const elRect = element.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      let top = container.scrollTop;
+      let left = container.scrollLeft;
+
+      if (block === "center") {
+        top += elRect.top - containerRect.top - container.clientHeight / 2 + elRect.height / 2;
+      } else if (block === "end") {
+        top += elRect.bottom - containerRect.bottom;
+      } else {
+        if (elRect.top < containerRect.top) top += elRect.top - containerRect.top;
+        else if (elRect.bottom > containerRect.bottom) top += elRect.bottom - containerRect.bottom;
+      }
+
+      if (inline === "center") {
+        left += elRect.left - containerRect.left - container.clientWidth / 2 + elRect.width / 2;
+      } else {
+        if (elRect.left < containerRect.left) left += elRect.left - containerRect.left;
+        else if (elRect.right > containerRect.right) left += elRect.right - containerRect.right;
+      }
+
+      if (behavior === "smooth" && typeof container.scrollTo === "function") {
+        container.scrollTo({ top, left, behavior: "smooth" });
+      } else {
+        container.scrollTop = top;
+        container.scrollLeft = left;
+      }
+    }
 
     let cy = null;
     let cyTapHandler = null;
     let workspaceGraphCollapsed = false;
+    let workspaceGraphSizeExpanded = false;
     let synthesisPaneCollapsed = true;
+    let workbenchSidebarCollapsed = false;
+    let sourcePaneCollapsed = false;
     let docSearchMatches = [];
     let currentSearchIndex = -1;
     let docSearchDebounceTimer = null;
@@ -1438,7 +2072,6 @@
     let flowCollapsedBranches = new Set();
     let workspaceViewMode = "tree";
     let showNodeLabels = true;
-    let connectionsForcedByView = false;
     let flowResizeObserver = null;
     let pendingFlowScrollAnchor = null;
     let suppressSourceChange = false;
@@ -1502,6 +2135,7 @@
           color: "#e2e8f0",
           label: "data(title)",
           "font-size": 10,
+          "min-zoomed-font-size": 10,
           "text-valign": "bottom",
           "text-halign": "center",
           "text-margin-y": 6,
@@ -1595,6 +2229,16 @@
       }, { passive: false });
     }
 
+    function fitWorkspaceCyGraph() {
+      if (!cy) return;
+      requestAnimationFrame(() => {
+        try {
+          cy.resize();
+          cy.fit(undefined, 24);
+        } catch (_) { /* not ready */ }
+      });
+    }
+
     function initWorkspaceCyInstance() {
       if (cy) return;
       cy = cytoscape({
@@ -1633,10 +2277,11 @@
           rankDir: "TB",
           nodeSep: 24,
           rankSep: 48,
+          spacingFactor: 1.5,
           animate: true,
           animationDuration: 350,
         }).run();
-        cy.fit(undefined, 24);
+        fitWorkspaceCyGraph();
       } catch (err) {
         console.error("[loadWorkspaceCyGraph]", err);
       }
@@ -1645,6 +2290,88 @@
     function updatePaneRecoveryHandles() {
       synthesisPaneHandle?.classList.toggle("visible", synthesisPaneCollapsed);
       graphPaneHandle?.classList.toggle("visible", workspaceGraphCollapsed);
+      workbenchPaneHandle?.classList.toggle("visible", workbenchSidebarCollapsed);
+      sourcePaneHandle?.classList.toggle("visible", sourcePaneCollapsed);
+    }
+
+    function onLeftPaneTransitionEnd(e) {
+      if (e.propertyName !== "width" && e.propertyName !== "flex" && e.propertyName !== "min-width") {
+        return;
+      }
+      repositionDocumentCanvasLines();
+      fitWorkspaceCyGraph();
+      scheduleDrawConnections();
+    }
+
+    function setWorkbenchSidebarCollapsed(collapsed) {
+      workbenchSidebarCollapsed = collapsed;
+      workbenchSidebar?.classList.toggle("collapsed-sidebar", collapsed);
+      workbenchCollapseBtn?.setAttribute("aria-expanded", String(!collapsed));
+      workbenchCollapseBtn?.setAttribute(
+        "title",
+        collapsed ? "Expand connections sidebar" : "Collapse connections sidebar"
+      );
+      updatePaneRecoveryHandles();
+    }
+
+    function collapseWorkbenchSidebar() {
+      setWorkbenchSidebarCollapsed(true);
+    }
+
+    function expandWorkbenchSidebar() {
+      setWorkbenchSidebarCollapsed(false);
+    }
+
+    function setSourcePaneCollapsed(collapsed) {
+      sourcePaneCollapsed = collapsed;
+      docPane?.classList.toggle("collapsed-source", collapsed);
+      docPaneCollapseBtn?.setAttribute("aria-expanded", String(!collapsed));
+      docPaneCollapseBtn?.setAttribute(
+        "title",
+        collapsed ? "Expand source document" : "Collapse source document"
+      );
+      updatePaneRecoveryHandles();
+    }
+
+    function collapseSourcePane() {
+      setSourcePaneCollapsed(true);
+    }
+
+    function expandSourcePane() {
+      setSourcePaneCollapsed(false);
+    }
+
+    function initLeftPaneCollapses() {
+      if (workbenchCollapseBtn && !workbenchCollapseBtn.dataset.bound) {
+        workbenchCollapseBtn.dataset.bound = "1";
+        workbenchCollapseBtn.addEventListener("click", () => {
+          if (workbenchSidebarCollapsed) expandWorkbenchSidebar();
+          else collapseWorkbenchSidebar();
+        });
+      }
+
+      if (docPaneCollapseBtn && !docPaneCollapseBtn.dataset.bound) {
+        docPaneCollapseBtn.dataset.bound = "1";
+        docPaneCollapseBtn.addEventListener("click", () => {
+          if (sourcePaneCollapsed) expandSourcePane();
+          else collapseSourcePane();
+        });
+      }
+
+      workbenchSidebar?.addEventListener("transitionend", onLeftPaneTransitionEnd);
+      docPane?.addEventListener("transitionend", onLeftPaneTransitionEnd);
+
+      if (workbenchPaneHandle && !workbenchPaneHandle.dataset.bound) {
+        workbenchPaneHandle.dataset.bound = "1";
+        workbenchPaneHandle.addEventListener("click", () => expandWorkbenchSidebar());
+      }
+
+      if (sourcePaneHandle && !sourcePaneHandle.dataset.bound) {
+        sourcePaneHandle.dataset.bound = "1";
+        sourcePaneHandle.addEventListener("click", () => expandSourcePane());
+      }
+
+      updatePaneRecoveryHandles();
     }
 
     function collapseSynthesisPane() {
@@ -1665,18 +2392,28 @@
       updatePaneRecoveryHandles();
     }
 
+    function setWorkspaceGraphSizeExpanded(expanded) {
+      workspaceGraphSizeExpanded = expanded;
+      graphContainer.classList.toggle("graph-size-expanded", expanded);
+      if (cyGraphSizeBtn) {
+        cyGraphSizeBtn.textContent = expanded ? "Shrink Graph" : "Expand Graph";
+        cyGraphSizeBtn.setAttribute("aria-pressed", String(expanded));
+      }
+      fitWorkspaceCyGraph();
+      scheduleDrawConnections();
+    }
+
+    function toggleWorkspaceGraphSize() {
+      setWorkspaceGraphSizeExpanded(!workspaceGraphSizeExpanded);
+    }
+
     function setWorkspaceGraphCollapsed(collapsed) {
       workspaceGraphCollapsed = collapsed;
       graphContainer.classList.toggle("graph-collapsed", collapsed);
-      nodePane.classList.toggle("graph-visible", !collapsed);
       cyCollapseBtn.textContent = collapsed ? "Expand Graph" : "Collapse";
       updatePaneRecoveryHandles();
-      requestAnimationFrame(() => {
-        if (cy) {
-          try { cy.resize(); } catch (_) { /* not ready */ }
-        }
-        scheduleDrawConnections();
-      });
+      fitWorkspaceCyGraph();
+      scheduleDrawConnections();
     }
 
     function collapseWorkspaceGraph() {
@@ -1691,15 +2428,20 @@
         setWorkspaceGraphCollapsed(!workspaceGraphCollapsed);
       });
 
+      if (cyGraphSizeBtn && !cyGraphSizeBtn.dataset.bound) {
+        cyGraphSizeBtn.dataset.bound = "1";
+        cyGraphSizeBtn.addEventListener("click", () => toggleWorkspaceGraphSize());
+      }
+
       graphContainer.addEventListener("transitionend", (e) => {
-        if (e.propertyName !== "opacity" && e.propertyName !== "transform") return;
-        if (cy) {
-          try { cy.resize(); } catch (_) { /* not ready */ }
+        if (e.propertyName !== "opacity" && e.propertyName !== "transform" && e.propertyName !== "height") {
+          return;
         }
+        fitWorkspaceCyGraph();
         scheduleDrawConnections();
       });
 
-      nodePane.classList.toggle("graph-visible", !workspaceGraphCollapsed);
+      updatePaneRecoveryHandles();
     }
 
     function clearDocumentCanvasLines() {
@@ -1738,37 +2480,378 @@
 
     const CONNECTION_DRAW_DELAY_MS = 100;
 
+    const SelectionManager = {
+      activeNode: null,
+      activeTarget: "A",
+      listA: new Map(),
+      listB: new Map(),
+      activeLineageNodes: new Set(),
+      activeLineageEdges: new Set(),
+
+      setActiveNode(nodeId) {
+        this.activeNode = nodeId || null;
+        this.refreshActiveLineage();
+        updateLineVisibility();
+      },
+
+      getLineage(startNodeId) {
+        const nodeIds = new Set();
+        const edgeIds = new Set();
+        if (!startNodeId) return { nodeIds, edgeIds };
+
+        const lineageEdgeTypes = new Set(["SUMMARIZES", "CONTAINS"]);
+        const childrenOf = new Map();
+        const parentsOf = new Map();
+
+        for (const edge of ConnectionManager.edges.values()) {
+          if (!lineageEdgeTypes.has(edge.relationship_type)) continue;
+
+          if (!childrenOf.has(edge.source_id)) childrenOf.set(edge.source_id, []);
+          childrenOf.get(edge.source_id).push({ edgeId: edge.id, nodeId: edge.target_id });
+
+          if (!parentsOf.has(edge.target_id)) parentsOf.set(edge.target_id, []);
+          parentsOf.get(edge.target_id).push({ edgeId: edge.id, nodeId: edge.source_id });
+        }
+
+        const walk = (queue, adjacency, visited) => {
+          while (queue.length) {
+            const currentId = queue.shift();
+            for (const { edgeId, nodeId } of adjacency.get(currentId) || []) {
+              edgeIds.add(edgeId);
+              if (!visited.has(nodeId)) {
+                visited.add(nodeId);
+                nodeIds.add(nodeId);
+                queue.push(nodeId);
+              }
+            }
+          }
+        };
+
+        nodeIds.add(startNodeId);
+
+        const downVisited = new Set([startNodeId]);
+        walk([startNodeId], childrenOf, downVisited);
+
+        const upVisited = new Set([startNodeId]);
+        walk([startNodeId], parentsOf, upVisited);
+
+        for (const edge of ConnectionManager.edges.values()) {
+          if (edge.relationship_type !== "CONTAINS") continue;
+          if (!nodeIds.has(edge.target_id)) continue;
+          edgeIds.add(edge.id);
+          nodeIds.add(edge.source_id);
+        }
+
+        return { nodeIds, edgeIds };
+      },
+
+      refreshActiveLineage() {
+        this.activeLineageNodes.clear();
+        this.activeLineageEdges.clear();
+        if (!this.activeNode) return;
+
+        const { nodeIds, edgeIds } = this.getLineage(this.activeNode);
+        for (const id of nodeIds) this.activeLineageNodes.add(id);
+        for (const id of edgeIds) this.activeLineageEdges.add(id);
+      },
+
+      setActiveTarget(target) {
+        if (target !== "A" && target !== "B") return;
+        this.activeTarget = target;
+        document.getElementById("workbench-target-a")?.classList.toggle("active", target === "A");
+        document.getElementById("workbench-target-b")?.classList.toggle("active", target === "B");
+      },
+
+      getNodeLabel(node) {
+        const title = (node.title ?? "").trim();
+        const content = (node.content ?? node.text ?? "").trim();
+        return title || content.slice(0, 60) || node.id;
+      },
+
+      addNode(node) {
+        if (!node?.id) return;
+        if (this.activeTarget === "A") this.listA.set(node.id, node);
+        else this.listB.set(node.id, node);
+        this.renderSidebar();
+      },
+
+      addNodeFromCard(nodeId) {
+        const node = workspaceNodeMap.get(nodeId);
+        if (!node) {
+          showStatus(`Node ${nodeId} not found in workspace.`, true);
+          return false;
+        }
+        this.addNode({ ...node });
+        return true;
+      },
+
+      removeNode(list, id) {
+        if (list !== "listA" && list !== "listB") return;
+        this[list].delete(id);
+        this.renderSidebar();
+      },
+
+      renderSidebarList(container, map, listKey) {
+        if (!container) return;
+        container.replaceChildren();
+
+        if (map.size === 0) {
+          const empty = document.createElement("div");
+          empty.className = "workbench-list-empty";
+          empty.textContent = "No nodes";
+          container.appendChild(empty);
+          return;
+        }
+
+        for (const node of map.values()) {
+          const row = document.createElement("div");
+          row.className = "sidebar-item";
+          row.dataset.nodeId = node.id;
+
+          const label = document.createElement("span");
+          label.className = "sidebar-item-label";
+          label.textContent = this.getNodeLabel(node);
+          label.title = this.getNodeLabel(node);
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "sidebar-item-remove";
+          removeBtn.textContent = "×";
+          removeBtn.title = "Remove";
+          removeBtn.addEventListener("click", () => this.removeNode(listKey, node.id));
+
+          row.appendChild(label);
+          row.appendChild(removeBtn);
+          container.appendChild(row);
+        }
+      },
+
+      renderSidebar() {
+        this.renderSidebarList(document.getElementById("list-a"), this.listA, "listA");
+        this.renderSidebarList(document.getElementById("list-b"), this.listB, "listB");
+      },
+
+      clearLists() {
+        this.listA.clear();
+        this.listB.clear();
+        this.renderSidebar();
+      },
+    };
+
+    function flashWorkbenchAdded(card) {
+      if (!card) return;
+      card.classList.remove("workbench-added");
+      void card.offsetWidth;
+      card.classList.add("workbench-added");
+      window.setTimeout(() => card.classList.remove("workbench-added"), 800);
+    }
+
+    async function populateRelationshipDropdown() {
+      const select = document.getElementById("relationship-dropdown");
+      if (!select) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/ontology/relationship-types`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const types = data.allowed_types;
+        if (!Array.isArray(types) || types.length === 0) return;
+
+        const current = select.value;
+        select.replaceChildren();
+        for (const type of types) {
+          const option = document.createElement("option");
+          option.value = type;
+          option.textContent = type;
+          select.appendChild(option);
+        }
+        if (types.includes(current)) select.value = current;
+        else if (types.includes("SUMMARIZES")) select.value = "SUMMARIZES";
+      } catch (_) {
+        /* keep static fallback options */
+      }
+    }
+
+    function getWorkbenchEdgeDirection() {
+      const selected = document.querySelector('input[name="edge-direction"]:checked');
+      return selected?.value || "AtoB";
+    }
+
+    function buildWorkbenchEdgePairs(direction) {
+      const pairs = [];
+
+      for (const nodeA of SelectionManager.listA.values()) {
+        for (const nodeB of SelectionManager.listB.values()) {
+          if (nodeA.id === nodeB.id) continue;
+
+          if (direction === "AtoB") {
+            pairs.push({ source_id: nodeA.id, target_id: nodeB.id });
+          } else if (direction === "BtoA") {
+            pairs.push({ source_id: nodeB.id, target_id: nodeA.id });
+          } else if (direction === "BiDir") {
+            pairs.push({ source_id: nodeA.id, target_id: nodeB.id });
+            pairs.push({ source_id: nodeB.id, target_id: nodeA.id });
+          }
+        }
+      }
+
+      return pairs;
+    }
+
+    async function refreshWorkbenchGraphAndLines() {
+      if (documentCanvasSourceId) {
+        await loadWorkspaceCyGraph(documentCanvasSourceId);
+      }
+      scheduleDrawConnections();
+      repositionDocumentCanvasLines();
+    }
+
+    async function createWorkbenchConnections() {
+      const relationshipDropdown = document.getElementById("relationship-dropdown");
+      const createConnectionBtn = document.getElementById("create-connection-btn");
+      if (!relationshipDropdown || !createConnectionBtn) return;
+
+      const relationshipType = relationshipDropdown.value;
+      if (!relationshipType) {
+        showStatus("Select a relationship type.", true);
+        return;
+      }
+
+      if (SelectionManager.listA.size === 0 || SelectionManager.listB.size === 0) {
+        showStatus("Add at least one source (List A) and one target (List B).", true);
+        return;
+      }
+
+      const direction = getWorkbenchEdgeDirection();
+      const pairs = buildWorkbenchEdgePairs(direction);
+
+      if (pairs.length === 0) {
+        showStatus("No valid source–target pairs to connect.", true);
+        return;
+      }
+
+      createConnectionBtn.disabled = true;
+      showStatus(`Creating ${pairs.length} connection(s)…`);
+
+      try {
+        const responses = await Promise.all(
+          pairs.map(({ source_id, target_id }) =>
+            fetch(`${API_BASE}/api/edges`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                source_id,
+                target_id,
+                relationship_type: relationshipType,
+                strength: 1.0,
+                origin: "human",
+              }),
+            })
+          )
+        );
+
+        const errors = [];
+        for (const res of responses) {
+          if (res.ok) continue;
+          const body = await res.json().catch(() => ({}));
+          const detail = body.detail;
+          errors.push(
+            typeof detail === "string"
+              ? detail
+              : Array.isArray(detail)
+                ? detail.map((d) => d.msg || String(d)).join("; ")
+                : `HTTP ${res.status}`
+          );
+        }
+
+        if (errors.length > 0) {
+          throw new Error(errors[0] || "Failed to create one or more connections");
+        }
+
+        SelectionManager.clearLists();
+
+        if (documentCanvasSourceId) {
+          await initDocumentCanvas(documentCanvasSourceId);
+        }
+        await refreshWorkbenchGraphAndLines();
+
+        clearStatus();
+        const directionLabel =
+          direction === "BtoA" ? "B ➔ A" : direction === "BiDir" ? "bidirectional" : "A ➔ B";
+        showStatus(
+          `Success: created ${pairs.length} ${relationshipType} connection(s) (${directionLabel}).`
+        );
+      } catch (err) {
+        showStatus(err.message, true);
+      } finally {
+        createConnectionBtn.disabled = false;
+      }
+    }
+
+    function initWorkbenchSidebar() {
+      const targetA = document.getElementById("workbench-target-a");
+      const targetB = document.getElementById("workbench-target-b");
+      const createConnectionBtn = document.getElementById("create-connection-btn");
+      if (!targetA || targetA.dataset.bound) return;
+      targetA.dataset.bound = "1";
+
+      targetA.addEventListener("click", () => SelectionManager.setActiveTarget("A"));
+      targetB?.addEventListener("click", () => SelectionManager.setActiveTarget("B"));
+      createConnectionBtn?.addEventListener("click", () => createWorkbenchConnections());
+      populateRelationshipDropdown();
+      SelectionManager.setActiveTarget(SelectionManager.activeTarget);
+      SelectionManager.renderSidebar();
+    }
+
+    function getNodeIdFromLineEndpoint(element) {
+      if (!element) return null;
+      if (element.dataset?.nodeId) return element.dataset.nodeId;
+      if (element.id?.startsWith("workspace-card-")) {
+        return element.id.slice("workspace-card-".length);
+      }
+      if (element.id?.startsWith("excerpt-")) {
+        return element.id.slice("excerpt-".length);
+      }
+      return null;
+    }
+
+    function isDocumentSourceLine(line, edge) {
+      if (!line || edge?.relationship_type !== "CONTAINS") return false;
+      const startEl = line.start;
+      const endEl = line.end;
+      if (!startEl || !endEl) return false;
+      return docPane.contains(startEl) && endEl.classList.contains("workspace-card");
+    }
+
+    function isActiveConnectionLine(edgeId, line, activeLineageNodes, activeLineageEdges) {
+      if (activeLineageEdges.has(edgeId)) return true;
+
+      const edge = ConnectionManager.edges.get(edgeId);
+      if (!isDocumentSourceLine(line, edge)) return false;
+
+      const excerptId = edge.target_id || getNodeIdFromLineEndpoint(line.end);
+      return Boolean(excerptId && activeLineageNodes.has(excerptId));
+    }
+
     const ConnectionManager = {
       lines: new Map(),
       edges: new Map(),
       _drawScheduled: false,
       _drawRaf: null,
       _drawTimeout: null,
-      globalHidden: false,
-      hardHidden: false,
+      connectionMode: "active",
 
-      setGlobalHidden(hidden) {
-        this.globalHidden = hidden;
+      setConnectionMode(mode) {
+        if (!["none", "active", "all"].includes(mode)) return;
+        this.connectionMode = mode;
+        if (connectionModeSelect && connectionModeSelect.value !== mode) {
+          connectionModeSelect.value = mode;
+        }
         this.updateVisibility();
       },
 
       getLineElement(line) {
         return line?.element || line?.svg || null;
-      },
-
-      applyHardHideOverride() {
-        for (const line of this.lines.values()) {
-          const el = this.getLineElement(line);
-          if (!el) continue;
-          el.style.display = this.hardHidden ? "none" : "";
-          el.style.visibility = this.hardHidden ? "hidden" : "";
-        }
-      },
-
-      setHardHidden(hidden) {
-        this.hardHidden = hidden;
-        this.applyHardHideOverride();
-        this.updateVisibility();
       },
 
       edgeKey(type, sourceId, targetId) {
@@ -1912,7 +2995,6 @@
         line._baseColor = style.color;
         line._edgeId = edge.id;
         this.lines.set(edge.id, line);
-        this.applyHardHideOverride();
         return line;
       },
 
@@ -1981,16 +3063,72 @@
         this.updateVisibility();
       },
 
+      applyLineAppearance(line, show) {
+        if (!show) {
+          line.hide("none");
+          return;
+        }
+
+        const startEl = line.start;
+        const targetEl = line.end;
+        const targetRect = targetEl.getBoundingClientRect();
+        if (targetRect.width === 0 && targetRect.height === 0) {
+          line.hide("none");
+          return;
+        }
+
+        line.show("none");
+
+        const paneRect = getConnectionViewportRect();
+        const startRect = startEl.getBoundingClientRect();
+        const isLongDistance =
+          Math.abs(targetRect.left - startRect.left) > paneRect.width * LONG_DISTANCE_VIEWPORT_FACTOR;
+        const baseColor = line._baseColor || "#deff9a";
+        line.color = isLongDistance
+          ? "rgba(100, 100, 100, 0.2)"
+          : leaderColorWithAlpha(baseColor, 1);
+      },
+
       updateVisibility() {
-        if (this.globalHidden || this.hardHidden) {
+        const mode = this.connectionMode;
+
+        if (mode === "none") {
           for (const line of this.lines.values()) {
             try { line.hide("none"); } catch (_) { /* element gone */ }
           }
-          this.applyHardHideOverride();
           return;
         }
 
         this.purgeInvalidLines();
+
+        if (mode === "active") {
+          SelectionManager.refreshActiveLineage();
+          const activeLineageEdges = SelectionManager.activeLineageEdges;
+          const activeLineageNodes = SelectionManager.activeLineageNodes;
+
+          for (const [edgeId, line] of this.lines.entries()) {
+            try {
+              const startEl = line.start;
+              const targetEl = line.end;
+
+              if (!this.isEndpointValid(startEl) || !this.isEndpointValid(targetEl)) {
+                this.destroyLine(edgeId);
+                continue;
+              }
+
+              const isActive = isActiveConnectionLine(
+                edgeId,
+                line,
+                activeLineageNodes,
+                activeLineageEdges
+              );
+              this.applyLineAppearance(line, isActive);
+            } catch (_) {
+              this.destroyLine(edgeId);
+            }
+          }
+          return;
+        }
 
         const paneRect = getConnectionViewportRect();
         const buffer = VIEWPORT_CULL_BUFFER;
@@ -2015,20 +3153,7 @@
               targetRect.right > paneRect.left - buffer &&
               targetRect.left < paneRect.right + buffer;
 
-            if (isTargetVisible) {
-              line.show("none");
-
-              const startRect = startEl.getBoundingClientRect();
-              const isLongDistance =
-                Math.abs(targetRect.left - startRect.left) > paneRect.width * LONG_DISTANCE_VIEWPORT_FACTOR;
-
-              const baseColor = line._baseColor || "#deff9a";
-              line.color = isLongDistance
-                ? "rgba(100, 100, 100, 0.2)"
-                : leaderColorWithAlpha(baseColor, 1);
-            } else {
-              line.hide("none");
-            }
+            this.applyLineAppearance(line, isTargetVisible);
           } catch (_) {
             this.destroyLine(edgeId);
           }
@@ -2066,15 +3191,10 @@
       ConnectionManager.scheduleDraw();
     }
 
-    function setConnectionsHidden(hidden, { forceByView = false } = {}) {
-      connectionsForcedByView = forceByView;
-      ConnectionManager.setGlobalHidden(hidden);
-      ConnectionManager.setHardHidden(hidden);
-      toggleConnectionsBtn.textContent = hidden ? "Show Connections" : "Hide Connections";
-      toggleConnectionsBtn.setAttribute("aria-pressed", String(!hidden));
-      if (!hidden) {
-        ConnectionManager.reposition();
-      }
+    function setConnectionMode(mode) {
+      ConnectionManager.setConnectionMode(mode);
+      if (!mode || mode === "none") return;
+      ConnectionManager.reposition();
     }
 
     function onNodePaneScroll() {
@@ -2111,12 +3231,12 @@
       }
     }
 
-    function initConnectionsToggle() {
-      if (toggleConnectionsBtn.dataset.bound) return;
-      toggleConnectionsBtn.dataset.bound = "1";
+    function initConnectionModeSelect() {
+      if (!connectionModeSelect || connectionModeSelect.dataset.bound) return;
+      connectionModeSelect.dataset.bound = "1";
 
-      toggleConnectionsBtn.addEventListener("click", () => {
-        setConnectionsHidden(!ConnectionManager.globalHidden);
+      connectionModeSelect.addEventListener("change", () => {
+        setConnectionMode(connectionModeSelect.value);
       });
     }
 
@@ -2128,7 +3248,7 @@
 
     function scrollWithLineReposition(element, options) {
       if (!element) return;
-      element.scrollIntoView(options);
+      scrollElementInPane(element, options);
       const scrollEnd = Date.now() + 800;
       const tick = () => {
         repositionDocumentCanvasLines();
@@ -2218,7 +3338,7 @@
     }
 
     function scrollActiveSearchIntoView(activeMark) {
-      activeMark.scrollIntoView({ behavior: "smooth", block: "center" });
+      scrollElementInPane(activeMark, { block: "center", behavior: "smooth" });
       repositionDocumentCanvasLines();
       const scrollEnd = Date.now() + 800;
       const tick = () => {
@@ -2623,11 +3743,7 @@
       viewFlowBtn.classList.toggle("active", mode === "flow");
 
       applyShowNodeLabels(defaultShowNodeLabelsForView(mode));
-      if (mode === "flow") {
-        setConnectionsHidden(true, { forceByView: true });
-      } else if (connectionsForcedByView) {
-        setConnectionsHidden(false, { forceByView: false });
-      }
+      setConnectionMode(mode === "flow" ? "none" : "active");
 
       ConnectionManager.clearAll();
       reconcileView(mode);
@@ -2669,6 +3785,8 @@
     function getWorkspaceCardText(card) {
       const contentEl = card.querySelector(".card-content");
       if (contentEl) return contentEl.textContent.trim();
+      const titleEl = card.querySelector(".card-title");
+      if (titleEl) return titleEl.textContent.trim();
       return card.textContent.trim();
     }
 
@@ -2682,18 +3800,23 @@
 
       const column = card.closest(".workspace-column");
       if (column) {
-        column.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+        scrollElementInPane(column, {
+          container: workspaceColumns,
+          behavior: "smooth",
+          inline: "nearest",
+          block: "nearest",
+        });
       }
 
       card.classList.remove("workspace-focus", "trace-highlight");
       void card.offsetWidth;
       card.classList.add("workspace-focus", "trace-highlight");
-      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      scrollElementInPane(card, { behavior: "smooth", block: "center" });
 
       if (card.dataset.sourceSpan) {
         const span = document.getElementById(card.dataset.sourceSpan);
         if (span) {
-          span.scrollIntoView({ behavior: "smooth", block: "center" });
+          scrollElementInPane(span, { behavior: "smooth", block: "center" });
           span.classList.add("trace-highlight");
         }
       } else if (card.classList.contains("summary-card")) {
@@ -2740,7 +3863,7 @@
       p.appendChild(span);
       synthesisDoc.appendChild(p);
       applySynthesisParagraphIndent(p);
-      p.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      scrollElementInPane(p, { behavior: "smooth", block: "nearest" });
     }
 
     function onWorkspaceCardDragStart(e, card, nodeId) {
@@ -2755,6 +3878,57 @@
       e.dataTransfer.setData("text/plain", text);
       e.dataTransfer.effectAllowed = "copy";
       card.classList.add("dragging");
+    }
+
+    function saveNewNote(noteEl) {
+      const note = noteEl?.classList?.contains("synthesis-note")
+        ? noteEl
+        : noteEl?.closest?.(".synthesis-note");
+      if (!note) return;
+
+      const body = note.querySelector(".synthesis-note-body");
+      const text = body?.innerText.trim() || "";
+      if (!text) {
+        showStatus("Note is empty. Add content before saving.", true);
+        body?.focus();
+        return;
+      }
+
+      note.classList.add("note-saved");
+      note.dataset.saved = "true";
+      if (document.activeElement?.closest?.(".synthesis-note") === note) {
+        document.activeElement.blur();
+      }
+      clearStatus();
+      showStatus("Note saved.");
+    }
+
+    function bindSynthesisNoteKeyboard(note) {
+      const onNoteKeydown = (e) => {
+        if (e.ctrlKey && e.key === "Enter") {
+          e.preventDefault();
+          saveNewNote(note);
+        }
+      };
+
+      note.querySelector(".synthesis-note-body")?.addEventListener("keydown", onNoteKeydown);
+      note.querySelector(".note-tag-input")?.addEventListener("keydown", onNoteKeydown);
+    }
+
+    function initSynthesisNotesSortable() {
+      if (!synthesisNotes || synthesisNotes.dataset.sortableBound) return;
+      if (typeof Sortable === "undefined") return;
+      synthesisNotes.dataset.sortableBound = "1";
+
+      new Sortable(synthesisNotes, {
+        animation: 150,
+        ghostClass: "sortable-ghost",
+        handle: ".synthesis-note-header",
+        draggable: ".synthesis-note",
+        onEnd() {
+          // Future logic: update the database order based on the new DOM index
+        },
+      });
     }
 
     function createSynthesisNote(taggedNodeId = "") {
@@ -2797,6 +3971,7 @@
       note.appendChild(header);
       note.appendChild(body);
       synthesisNotes.appendChild(note);
+      bindSynthesisNoteKeyboard(note);
       body.focus();
     }
 
@@ -2833,6 +4008,7 @@
     function initSynthesisPane() {
       initSynthesisPaneCollapse();
       initPaneRecoveryHandles();
+      initSynthesisNotesSortable();
       if (synthesisDoc.dataset.bound) return;
       synthesisDoc.dataset.bound = "1";
 
@@ -3223,6 +4399,19 @@
       return maxCol + 1;
     }
 
+    function getSummaryCardHtml(node) {
+      const title = (node.title ?? "").trim();
+      const body = (node.content ?? node.text ?? "").trim();
+      const heading = title || body || "Untitled";
+      const showBody = Boolean(body && body !== title);
+
+      return `
+        <div class="card-label node-label">Level 1: Summary</div>
+        <div class="card-title">${escapeHtml(heading)}</div>
+        ${showBody ? `<div class="card-content">${escapeHtml(body)}</div>` : ""}
+      `;
+    }
+
     function applyCardPresentation(card, node) {
       const isSummary = isSummaryDensity(node.density_level);
       card.classList.toggle("summary-card", isSummary);
@@ -3230,11 +4419,7 @@
       card.dataset.densityLevel = String(node.density_level);
 
       if (isSummary) {
-        card.innerHTML = `
-          <div class="card-label node-label">Level 1: Summary</div>
-          <div class="card-title">${escapeHtml(node.title)}</div>
-          <div class="card-content">${escapeHtml(node.content)}</div>
-        `;
+        card.innerHTML = getSummaryCardHtml(node);
       } else {
         card.dataset.sourceSpan = `excerpt-${node.id}`;
         card.innerHTML = `
@@ -3251,6 +4436,17 @@
 
       card.addEventListener("click", (e) => {
         if (e.target.closest(".promote-btn, .card-delete-btn")) return;
+
+        if (e.altKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (SelectionManager.addNodeFromCard(nodeId)) {
+            flashWorkbenchAdded(card);
+          }
+          return;
+        }
+
+        SelectionManager.setActiveNode(nodeId);
         if (e.ctrlKey || e.metaKey || e.shiftKey) {
           e.preventDefault();
           e.stopPropagation();
@@ -3618,7 +4814,7 @@
       bindEditorSaveHotkey(textarea, saveBtn);
 
       appendToColumn(1, editor);
-      editor.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      scrollElementInPane(editor, { behavior: "smooth", block: "nearest" });
       textarea.focus();
     }
 
@@ -3626,11 +4822,9 @@
       const selectedTexts = [];
       for (const id of cardIds) {
         const card = getWorkspaceCard(id);
-        const contentEl = card?.querySelector(".card-content");
-        if (contentEl) {
-          const text = contentEl.textContent.trim();
-          if (text) selectedTexts.push(text);
-        }
+        if (!card) continue;
+        const text = getWorkspaceCardText(card);
+        if (text) selectedTexts.push(text);
       }
       return selectedTexts.join("\n\n");
     }
@@ -3677,7 +4871,7 @@
       const targetColumn = getSynthesisTargetColumn(groupedIds);
       appendToColumn(targetColumn, editor);
 
-      editor.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      scrollElementInPane(editor, { behavior: "smooth", block: "nearest" });
       textarea.focus();
     }
 
@@ -3888,7 +5082,7 @@
         if (!card.parentElement) {
           appendToColumn(columnIndex, card);
         }
-        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        scrollElementInPane(card, { behavior: "smooth", block: "nearest" });
 
         if (densityLevel === 2) {
           ConnectionManager.registerEdge({
@@ -4002,7 +5196,7 @@
           span.classList.remove("excerpt-focus");
           void span.offsetWidth;
           span.classList.add("excerpt-focus");
-          span.scrollIntoView({ behavior: "smooth", block: "center" });
+          scrollElementInPane(span, { behavior: "smooth", block: "center" });
           setTimeout(() => span.classList.remove("excerpt-focus"), 2000);
         }
       }
@@ -4012,7 +5206,7 @@
         card.classList.remove("workspace-focus");
         void card.offsetWidth;
         card.classList.add("workspace-focus");
-        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        scrollElementInPane(card, { behavior: "smooth", block: "nearest" });
         setTimeout(() => card.classList.remove("workspace-focus"), 2000);
       }
 
@@ -4090,8 +5284,10 @@
       initShowNodeLabelsToggle();
       initWorkspaceViewToggle();
       initSourceSelector();
-      initConnectionsToggle();
+      initConnectionModeSelect();
       initWorkspaceGraphPane();
+      initLeftPaneCollapses();
+      initWorkbenchSidebar();
 
       if (!isDocumentLoaded()) {
         collapseSynthesisPane();
