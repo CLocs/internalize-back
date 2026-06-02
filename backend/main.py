@@ -1,13 +1,14 @@
 """Internalize MVP 1 — The Human Linker. FastAPI backend for the semantic knowledge graph."""
 
+import json
 import logging
 from contextlib import asynccontextmanager
 from enum import Enum
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, HTTPException, Query, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from neo4j import Driver, GraphDatabase
@@ -65,6 +66,7 @@ class NodeCreate(BaseModel):
     significance: float = Field(default=1.0, gt=0)
     origin: str = "human"
     node_type: NodeType = "Concept"
+    blocks: list[dict[str, Any]] | None = None
 
 
 class NodeResponse(BaseModel):
@@ -73,6 +75,8 @@ class NodeResponse(BaseModel):
     density_level: int
     origin: str = "human"
     node_type: str = "Concept"
+    content: str | None = None
+    created_at: str | None = None
 
 
 class SourceDocumentResponse(BaseModel):
@@ -94,6 +98,7 @@ class NodeUpdate(BaseModel):
     density_level: Optional[DensityLevel] = None
     title: Optional[str] = Field(default=None, min_length=1)
     content: Optional[str] = Field(default=None, min_length=1)
+    blocks: list[dict[str, Any]] | None = None
 
 
 class EdgeCreate(BaseModel):
@@ -132,6 +137,7 @@ class DocumentNodeResponse(BaseModel):
     density_level: int
     origin: str = "human"
     node_type: str = "Concept"
+    blocks: list[dict[str, Any]] | None = None
 
 
 class DocumentSummaryResponse(DocumentNodeResponse):
@@ -294,6 +300,88 @@ def _upsert_concept_node(
         return session.execute_write(_tx)
 
 
+def _serialize_blocks(blocks: list[dict[str, Any]]) -> str:
+    """Neo4j properties cannot store arrays of maps; persist blocks as JSON text."""
+    return json.dumps(blocks)
+
+
+def _deserialize_blocks(raw: Any) -> list[dict[str, Any]] | None:
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        return parsed if isinstance(parsed, list) else None
+    if isinstance(raw, list):
+        return raw
+    return None
+
+
+def _extract_reference_ids_from_blocks(blocks: list[dict[str, Any]] | None) -> list[str]:
+    if not blocks:
+        return []
+    ref_ids: list[str] = []
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") != "reference":
+            continue
+        node_id = block.get("nodeId") or block.get("node_id")
+        if isinstance(node_id, str) and node_id.strip():
+            ref_ids.append(node_id.strip())
+    return ref_ids
+
+
+def _set_node_blocks(node_id: str, blocks: list[dict[str, Any]]) -> None:
+    query = """
+    MATCH (n:Concept {id: $node_id})
+    SET n.blocks = $blocks_json
+    RETURN n.id AS id
+    """
+    driver = _require_neo4j()
+    with driver.session() as session:
+        record = session.run(
+            query,
+            node_id=node_id,
+            blocks_json=_serialize_blocks(blocks),
+        ).single()
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Node not found: {node_id}",
+        )
+
+
+def _sync_document_reference_edges(doc_id: str, blocks: list[dict[str, Any]] | None) -> None:
+    """Replace REFERENCES edges for a document using block-based reference node IDs."""
+    ref_ids = _extract_reference_ids_from_blocks(blocks)
+    clear_query = """
+    MATCH (doc:Concept {id: $doc_id})-[r:REFERENCES]->()
+    DELETE r
+    """
+    create_query = """
+    MATCH (doc:Concept {id: $doc_id})
+    UNWIND $target_ids AS target_id
+    MATCH (target:Concept {id: target_id})
+    MERGE (doc)-[:REFERENCES]->(target)
+    """
+    driver = _require_neo4j()
+    with driver.session() as session:
+        if not session.run(
+            "MATCH (doc:Concept {id: $doc_id}) RETURN doc.id AS id LIMIT 1",
+            doc_id=doc_id,
+        ).single():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Node not found: {doc_id}",
+            )
+        session.run(clear_query, doc_id=doc_id)
+        if ref_ids:
+            session.run(create_query, doc_id=doc_id, target_ids=ref_ids)
+
+
 @app.get("/")
 def serve_input_pane():
     """Serve the Human Linker input pane."""
@@ -350,6 +438,11 @@ def create_knowledge_node(node: NodeCreate, response: Response):
             detail="Failed to create node",
         )
 
+    doc_id = record["id"]
+    if node.blocks is not None:
+        _set_node_blocks(doc_id, node.blocks)
+        _sync_document_reference_edges(doc_id, node.blocks)
+
     response.status_code = (
         status.HTTP_200_OK if record["status"] == "already_exists" else status.HTTP_201_CREATED
     )
@@ -376,11 +469,14 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
     if update.content is not None:
         set_clauses.append("n.content = $content")
         params["content"] = update.content
+    if update.blocks is not None:
+        set_clauses.append("n.blocks = $blocks")
+        params["blocks"] = _serialize_blocks(update.blocks)
 
     if not set_clauses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one of density_level, title, or content is required",
+            detail="At least one of density_level, title, content, or blocks is required",
         )
 
     query = f"""
@@ -407,6 +503,9 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
             detail=f"Node not found: {node_id}",
         )
 
+    if update.blocks is not None:
+        _sync_document_reference_edges(node_id, update.blocks)
+
     return NodeResponse(
         id=record["id"],
         title=record["title"],
@@ -415,22 +514,45 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
     )
 
 
+def _format_neo4j_datetime(value) -> str | None:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
 @app.get("/api/nodes", response_model=list[NodeResponse])
-def list_knowledge_nodes():
-    """List all Concept nodes (for the Human Linker dropdown)."""
-    query = """
+def list_knowledge_nodes(
+    type: str | None = Query(None, description="Filter by node_type (e.g. Document)"),
+):
+    """List Concept nodes; optional filter by node_type for synthesis document library."""
+    if type == "Document":
+        where_clause = (
+            "coalesce(n.node_type, 'Concept') = 'Document' OR n.density_level = 4"
+        )
+    elif type:
+        where_clause = "coalesce(n.node_type, 'Concept') = $node_type"
+    else:
+        where_clause = "true"
+
+    query = f"""
     MATCH (n:Concept)
+    WHERE {where_clause}
     RETURN n.id AS id,
            n.title AS title,
            n.density_level AS density_level,
            coalesce(n.origin, 'human') AS origin,
-           coalesce(n.node_type, 'Concept') AS node_type
+           coalesce(n.node_type, 'Concept') AS node_type,
+           coalesce(n.content, n.title, '') AS content,
+           n.created_at AS created_at
     ORDER BY n.created_at DESC
     """
     driver = _require_neo4j()
+    params = {"node_type": type} if type and type != "Document" else {}
     try:
         with driver.session() as session:
-            records = session.run(query).data()
+            records = session.run(query, **params).data()
     except GqlError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -441,6 +563,88 @@ def list_knowledge_nodes():
         NodeResponse(
             id=r["id"],
             title=r["title"],
+            density_level=r["density_level"],
+            origin=r["origin"],
+            node_type=r["node_type"],
+            content=r["content"],
+            created_at=_format_neo4j_datetime(r.get("created_at")),
+        )
+        for r in records
+    ]
+
+
+@app.get("/api/nodes/{node_id}", response_model=DocumentNodeResponse)
+def get_knowledge_node(node_id: str):
+    """Return a single Concept node including content (for loading synthesis documents)."""
+    query = """
+    MATCH (n:Concept {id: $node_id})
+    RETURN n.id AS id,
+           n.title AS title,
+           coalesce(n.content, n.title) AS content,
+           n.density_level AS density_level,
+           coalesce(n.origin, 'human') AS origin,
+           coalesce(n.node_type, 'Concept') AS node_type,
+           n.blocks AS blocks
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            record = session.run(query, node_id=node_id).single()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Node not found: {node_id}",
+        )
+
+    blocks = _deserialize_blocks(record.get("blocks"))
+
+    return DocumentNodeResponse(
+        id=record["id"],
+        title=record["title"],
+        content=record["content"],
+        density_level=record["density_level"],
+        origin=record["origin"],
+        node_type=record["node_type"],
+        blocks=blocks,
+    )
+
+
+@app.get("/api/nodes/{node_id}/references", response_model=list[DocumentNodeResponse])
+def get_node_references(node_id: str):
+    """Return Excerpt/Summary nodes referenced by a synthesis Document via REFERENCES edges."""
+    query = """
+    MATCH (doc:Concept {id: $node_id})-[:REFERENCES]->(target:Concept)
+    WHERE target.density_level IN [1, 2]
+    RETURN target.id AS id,
+           target.title AS title,
+           coalesce(target.content, target.title) AS content,
+           target.density_level AS density_level,
+           coalesce(target.origin, 'human') AS origin,
+           coalesce(target.node_type, 'Concept') AS node_type,
+           target.created_at AS created_at
+    ORDER BY target.created_at ASC
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            records = session.run(query, node_id=node_id).data()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    return [
+        DocumentNodeResponse(
+            id=r["id"],
+            title=r["title"],
+            content=r["content"],
             density_level=r["density_level"],
             origin=r["origin"],
             node_type=r["node_type"],

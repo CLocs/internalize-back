@@ -1162,6 +1162,7 @@
       padding: 10px 14px;
       background: #1e293b;
       border-bottom: 1px solid #334155;
+      flex-wrap: wrap;
     }
 
     #synthesis-toolbar .pane-title {
@@ -1171,6 +1172,69 @@
       letter-spacing: 0.06em;
       color: #deff9a;
       font-weight: 600;
+    }
+
+    .synthesis-toolbar-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .synthesis-view-toggle {
+      display: inline-flex;
+      align-items: stretch;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #0f172a;
+    }
+
+    .synthesis-view-toggle button {
+      margin: 0;
+      padding: 0.3rem 0.65rem;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .synthesis-view-toggle button + button {
+      border-left: 1px solid #334155;
+    }
+
+    .synthesis-view-toggle button.active {
+      background: #334155;
+      color: #f8fafc;
+    }
+
+    .synthesis-view-toggle button:hover:not(.active) {
+      color: #deff9a;
+    }
+
+    #synthesis-export-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 0.85rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    #synthesis-export-btn:hover {
+      color: #deff9a;
+      border-color: #475569;
+      background: rgba(222, 255, 154, 0.08);
     }
 
     #new-note-btn {
@@ -1188,6 +1252,152 @@
     #new-note-btn:hover {
       border-color: #deff9a;
       background: rgba(222, 255, 154, 0.08);
+    }
+
+    #load-doc-btn {
+      padding: 0.35rem 0.65rem;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #94a3b8;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #load-doc-btn:hover {
+      border-color: #475569;
+      color: #f8fafc;
+      background: #1e293b;
+    }
+
+    #document-library-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(2, 6, 23, 0.72);
+    }
+
+    #document-library-modal.open {
+      display: flex;
+    }
+
+    .document-library-panel {
+      width: min(520px, 100%);
+      max-height: min(70vh, 640px);
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      background: #1e293b;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+
+    .document-library-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #334155;
+      background: #0f172a;
+    }
+
+    .document-library-header h2 {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+
+    #document-library-close {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #1e293b;
+      color: #94a3b8;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    #document-library-close:hover {
+      color: #f8fafc;
+      border-color: #475569;
+    }
+
+    #document-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .document-list-empty {
+      padding: 28px 16px;
+      text-align: center;
+      color: #64748b;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+
+    .document-list-item {
+      display: block;
+      width: 100%;
+      margin: 0;
+      padding: 12px 14px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0f172a;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .document-list-item:hover {
+      border-color: #475569;
+      background: #1e293b;
+    }
+
+    .document-list-item-title {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 4px;
+    }
+
+    .document-list-item-meta {
+      display: block;
+      font-size: 0.68rem;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .document-list-item-snippet {
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: #94a3b8;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
 
     #save-synthesis-btn {
@@ -1255,15 +1465,49 @@
     }
 
     .synthesis-item {
+      position: relative;
       display: flex;
       align-items: flex-start;
       gap: 8px;
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 10px 28px 10px 12px;
       font-family: "Segoe UI", system-ui, sans-serif;
       transition: margin-left 0.2s ease;
+    }
+
+    .remove-synthesis-block {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 2;
+      width: 20px;
+      height: 20px;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .remove-synthesis-block:hover {
+      color: #f87171;
+      background: rgba(248, 113, 113, 0.12);
+    }
+
+    .synthesis-item:hover .remove-synthesis-block {
+      opacity: 1;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .remove-synthesis-block {
+      display: none;
     }
 
     .synthesis-item .drag-handle {
@@ -1339,12 +1583,108 @@
       word-break: break-word;
     }
 
+    .synthesis-reading-notes {
+      display: none;
+      flex-shrink: 0;
+      padding: 16px;
+      border-top: 1px solid #334155;
+      font-family: Georgia, "Times New Roman", serif;
+      color: #e2e8f0;
+    }
+
+    .synthesis-reading-notes p {
+      margin: 0 0 1rem;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+
+    .synthesis-reading-notes p:last-child {
+      margin-bottom: 0;
+    }
+
+    #synthesis-doc-wrap.synthesis-reading-mode #synthesis-custom-input {
+      display: none;
+    }
+
+    #synthesis-doc-wrap.synthesis-reading-mode .synthesis-reading-notes {
+      display: block;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode:empty::before {
+      content: none;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item .drag-handle,
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item-meta {
+      display: none;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      margin-left: 0 !important;
+      gap: 0;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item-body {
+      width: 100%;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item-text {
+      margin: 0 0 1.25rem;
+      white-space: pre-wrap;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item h3.synthesis-item-text {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f8fafc;
+      line-height: 1.35;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item blockquote.synthesis-item-text {
+      margin: 0 0 1.25rem;
+      padding: 0.35rem 0 0.35rem 14px;
+      border-left: 3px solid #475569;
+      color: #94a3b8;
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .reference-link {
+      display: inline;
+      margin-left: 4px;
+      padding: 0 2px;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.62rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      vertical-align: super;
+      transition: color 0.15s ease;
+    }
+
+    .reference-link:hover {
+      color: #22d3ee;
+    }
+
     .synthesis-composer {
       flex-shrink: 0;
+      width: 100%;
       min-height: 72px;
       max-height: 140px;
+      resize: vertical;
       overflow-y: auto;
       padding: 12px 16px 16px;
+      border: none;
       border-top: 1px solid #334155;
       background: #0f172a;
       font-family: Georgia, "Times New Roman", serif;
@@ -1354,11 +1694,46 @@
       outline: none;
     }
 
-    .synthesis-composer:empty::before {
-      content: "Add your own thoughts here… (Ctrl+Enter to save)";
+    .synthesis-composer::placeholder {
       color: #64748b;
       font-style: italic;
-      pointer-events: none;
+    }
+
+    .synthesis-item.custom-thought {
+      cursor: default;
+    }
+
+    .synthesis-item.custom-thought .custom-thought-text {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      color: #e2e8f0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .synthesis-item.custom-thought .custom-thought-editor {
+      flex: 1;
+      min-width: 0;
+      min-height: 72px;
+      margin: 0;
+      padding: 8px 10px;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item.custom-thought .custom-thought-text {
+      margin: 0 0 1rem;
     }
 
     .workspace-card.dragging,
@@ -1953,20 +2328,35 @@
           </div>
           <div id="synthesis-toolbar">
             <span class="pane-title">Synthesis Workspace</span>
+            <div class="synthesis-toolbar-center">
+              <div id="synthesis-view-toggle" class="synthesis-view-toggle" role="tablist" aria-label="Synthesis view mode">
+                <button type="button" id="synthesis-edit-btn" class="active" role="tab" aria-selected="true">Edit</button>
+                <button type="button" id="synthesis-read-btn" role="tab" aria-selected="false">Read</button>
+              </div>
+              <button
+                type="button"
+                id="synthesis-export-btn"
+                title="Copy as Markdown"
+                aria-label="Export synthesis as Markdown"
+              >⎘</button>
+            </div>
             <div id="synthesis-toolbar-actions">
               <button type="button" id="new-note-btn">New Document</button>
+              <button type="button" id="load-doc-btn">Load</button>
               <button type="button" id="save-synthesis-btn">Save to Graph</button>
             </div>
           </div>
           <div id="synthesis-doc-wrap">
             <div id="synthesis-dropzone" class="synthesis-dropzone"></div>
-            <div
-              id="synthesis-composer"
+            <textarea
+              id="synthesis-custom-input"
               class="synthesis-composer"
-              contenteditable="true"
+              placeholder="Add a thought… (Enter to add block, Shift+Enter for new line, Ctrl+Enter to save)"
               spellcheck="true"
               aria-label="Synthesis notes"
-            ></div>
+              rows="3"
+            ></textarea>
+            <div id="synthesis-reading-notes" class="synthesis-reading-notes" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -1979,6 +2369,16 @@
       ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
     </div>
   </div>
+  </div>
+
+  <div id="document-library-modal" aria-hidden="true" role="dialog" aria-labelledby="document-library-title">
+    <div class="document-library-panel">
+      <div class="document-library-header">
+        <h2 id="document-library-title">Saved Synthesis Documents</h2>
+        <button type="button" id="document-library-close" aria-label="Close library">×</button>
+      </div>
+      <div id="document-list" role="list"></div>
+    </div>
   </div>
 
   <template id="inline-editor-template">
@@ -2027,7 +2427,8 @@
     const cyGraphSizeBtn = document.getElementById("cy-graph-size-btn");
     const groupSynthesizeBtn = document.getElementById("group-synthesize-btn");
     const synthesisDropzone = document.getElementById("synthesis-dropzone");
-    const synthesisComposer = document.getElementById("synthesis-composer");
+    const synthesisComposer = document.getElementById("synthesis-custom-input");
+    const synthesisCustomInput = synthesisComposer;
     const synthesisTitleInput = document.getElementById("synthesis-title");
     const synthesisSavedBadge = document.getElementById("synthesis-saved-badge");
     const synthesisPaneShell = document.getElementById("synthesis-pane-shell");
@@ -2035,7 +2436,11 @@
     const synthesisPaneHandle = document.getElementById("synthesis-pane-handle");
     const graphPaneHandle = document.getElementById("graph-pane-handle");
     const newNoteBtn = document.getElementById("new-note-btn");
+    const loadDocBtn = document.getElementById("load-doc-btn");
     const saveSynthesisBtn = document.getElementById("save-synthesis-btn");
+    const documentLibraryModal = document.getElementById("document-library-modal");
+    const documentLibraryClose = document.getElementById("document-library-close");
+    const documentList = document.getElementById("document-list");
     const sourceSelector = document.getElementById("source-selector");
     const viewTreeBtn = document.getElementById("view-tree-btn");
     const viewFlowBtn = document.getElementById("view-flow-btn");
@@ -2044,6 +2449,10 @@
     const menuExtractBtn = document.getElementById("menu-extract-btn");
     const synthesisPane = document.getElementById("synthesis-pane");
     const synthesisDocWrap = document.getElementById("synthesis-doc-wrap");
+    const synthesisEditBtn = document.getElementById("synthesis-edit-btn");
+    const synthesisReadBtn = document.getElementById("synthesis-read-btn");
+    const synthesisExportBtn = document.getElementById("synthesis-export-btn");
+    const synthesisReadingNotes = document.getElementById("synthesis-reading-notes");
 
     function isScrollableOverflow(value) {
       return value === "auto" || value === "scroll" || value === "overlay";
@@ -2145,6 +2554,9 @@
     const FLOW_CARD_MAX_WIDTH = 800;
     let flowCollapsedBranches = new Set();
     let workspaceViewMode = "tree";
+    let synthesisViewMode = "edit";
+    let synthesisSortable = null;
+    let loadSynthesisStatusTimer = null;
     let showNodeLabels = true;
     let flowResizeObserver = null;
     let pendingFlowScrollAnchor = null;
@@ -3945,16 +4357,478 @@
 
     function clearSynthesisWorkspace() {
       activeSynthesisDocId = null;
-      synthesisDropzone?.replaceChildren();
-      if (synthesisComposer) synthesisComposer.innerHTML = "";
+      resetSynthesisWorkspaceContent();
       setSynthesisTitleToTimestamp();
+    }
+
+    function resetSynthesisWorkspaceContent() {
+      synthesisDropzone?.replaceChildren();
+      if (synthesisComposer) synthesisComposer.value = "";
+      if (synthesisReadingNotes) {
+        synthesisReadingNotes.replaceChildren();
+        synthesisReadingNotes.hidden = true;
+      }
+      setSynthesisViewMode("edit");
+    }
+
+    const SYNTHESIS_REF_BLOCK_RE =
+      /^\[(Summary|Excerpt|Node|Source) · ([^\]]+)\]\n([\s\S]*)$/;
+
+    function parseSynthesisSavedContent(content) {
+      const items = [];
+      const composerParts = [];
+      const blocks = (content || "").split(/\n\n+/);
+
+      for (const block of blocks) {
+        const trimmed = block.trim();
+        if (!trimmed) continue;
+
+        const match = trimmed.match(SYNTHESIS_REF_BLOCK_RE);
+        if (match) {
+          items.push({
+            meta: match[1],
+            nodeId: match[2].trim(),
+            text: match[3].trim(),
+          });
+        } else {
+          composerParts.push(trimmed);
+        }
+      }
+
+      return {
+        items,
+        composerText: composerParts.join("\n\n"),
+      };
+    }
+
+    function registerReferenceNodeInWorkspace(node) {
+      if (!node?.id) return;
+      workspaceNodeMap.set(node.id, {
+        id: node.id,
+        title: node.title,
+        content: node.content,
+        density_level: node.density_level,
+        origin: node.origin || "human",
+      });
+    }
+
+    function synthesisNodeDisplayText(nodeId, savedText, referenceNode) {
+      const trimmedSaved = (savedText || "").trim();
+      if (trimmedSaved) return trimmedSaved;
+
+      if (referenceNode) {
+        const content = (referenceNode.content || "").trim();
+        const title = (referenceNode.title || "").trim();
+        if (referenceNode.density_level === 1) {
+          return content || title || "";
+        }
+        return content || title || "";
+      }
+
+      const cached = getNodeById(nodeId);
+      if (!cached) return "";
+      return (cached.content || cached.title || "").trim();
+    }
+
+    function getCustomThoughtText(item) {
+      const editor = item.querySelector(".custom-thought-editor");
+      if (editor) return editor.value.trim();
+      return item.querySelector(".custom-thought-text")?.textContent?.trim() || "";
+    }
+
+    function serializeSynthesisBlocks() {
+      const documentBlocks = [];
+      if (!synthesisDropzone) return documentBlocks;
+
+      Array.from(synthesisDropzone.children).forEach((item, index) => {
+        if (!(item instanceof HTMLElement) || !item.classList.contains("synthesis-item")) {
+          return;
+        }
+
+        const nodeId = item.dataset.nodeId || item.getAttribute("data-node-id");
+        if (nodeId && item.dataset.type !== "custom-text") {
+          documentBlocks.push({
+            type: "reference",
+            nodeId,
+            order: index,
+          });
+          return;
+        }
+
+        if (item.dataset.type === "custom-text" || item.classList.contains("custom-thought")) {
+          const text = getCustomThoughtText(item);
+          if (!text) return;
+          documentBlocks.push({
+            type: "text",
+            content: text,
+            order: index,
+          });
+        }
+      });
+
+      const composerText = synthesisComposer?.value.trim();
+      if (composerText) {
+        documentBlocks.push({
+          type: "text",
+          content: composerText,
+          order: documentBlocks.length,
+          source: "composer",
+        });
+      }
+
+      return documentBlocks;
+    }
+
+    function getReferenceNodeIdsFromBlocks(blocks) {
+      return (blocks || [])
+        .filter((block) => block?.type === "reference" && block.nodeId)
+        .map((block) => block.nodeId);
+    }
+
+    function blocksToLegacyContent(blocks) {
+      return (blocks || [])
+        .map((block) => {
+          if (block.type === "text") return block.content || "";
+          if (block.type === "reference") {
+            return `[Reference · ${block.nodeId}]`;
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    function normalizeDocumentBlocks(rawBlocks) {
+      if (!rawBlocks) return [];
+      if (typeof rawBlocks === "string") {
+        try {
+          return normalizeDocumentBlocks(JSON.parse(rawBlocks));
+        } catch (_) {
+          return [];
+        }
+      }
+      if (!Array.isArray(rawBlocks)) return [];
+      return [...rawBlocks].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0)
+      );
+    }
+
+    async function enrichReferenceNodesForBlocks(blocks, referenceNodes) {
+      const refById = new Map((referenceNodes || []).map((node) => [node.id, node]));
+      const referenceIds = getReferenceNodeIdsFromBlocks(blocks);
+      const missingIds = referenceIds.filter((id) => !refById.has(id));
+
+      if (missingIds.length === 0) {
+        return referenceIds.map((id) => refById.get(id)).filter(Boolean);
+      }
+
+      const fetched = await Promise.all(
+        missingIds.map(async (nodeId) => {
+          try {
+            const res = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(nodeId)}`);
+            if (!res.ok) return null;
+            return await res.json();
+          } catch (_) {
+            return null;
+          }
+        })
+      );
+
+      for (const node of fetched) {
+        if (node?.id) refById.set(node.id, node);
+      }
+
+      return referenceIds.map((id) => refById.get(id)).filter(Boolean);
+    }
+
+    function rebuildSynthesisDropzoneFromBlocks(blocks, referenceNodes) {
+      const sortedBlocks = normalizeDocumentBlocks(blocks);
+      const refById = new Map((referenceNodes || []).map((node) => [node.id, node]));
+
+      synthesisDropzone?.replaceChildren();
+      if (synthesisComposer) synthesisComposer.value = "";
+
+      for (const ref of referenceNodes || []) {
+        registerReferenceNodeInWorkspace(ref);
+      }
+
+      sortedBlocks.forEach((block) => {
+        if (block.type === "reference" && block.nodeId) {
+          const nodeData = refById.get(block.nodeId) || getNodeById(block.nodeId);
+          if (nodeData) registerReferenceNodeInWorkspace(nodeData);
+
+          const text = synthesisNodeDisplayText(block.nodeId, "", nodeData);
+          if (!text) return;
+
+          appendSynthesisItem(block.nodeId, text, getCardDepthLevel(block.nodeId));
+          return;
+        }
+
+        if (block.type === "text" && block.content) {
+          if (block.source === "composer") {
+            if (synthesisComposer) synthesisComposer.value = block.content;
+          } else {
+            appendCustomThought(block.content);
+          }
+        }
+      });
+    }
+
+    function hydrateSynthesisWorkspaceFromBlocks(blocks, referenceNodes) {
+      rebuildSynthesisDropzoneFromBlocks(blocks, referenceNodes);
+    }
+
+    function hydrateSynthesisWorkspace(savedContent, referenceNodes, blocks) {
+      if (blocks && normalizeDocumentBlocks(blocks).length > 0) {
+        hydrateSynthesisWorkspaceFromBlocks(blocks, referenceNodes);
+        return;
+      }
+
+      const { items, composerText } = parseSynthesisSavedContent(savedContent || "");
+      const refById = new Map((referenceNodes || []).map((node) => [node.id, node]));
+      const renderedIds = new Set();
+
+      for (const ref of referenceNodes || []) {
+        registerReferenceNodeInWorkspace(ref);
+      }
+
+      for (const item of items) {
+        const ref = refById.get(item.nodeId);
+        const text = synthesisNodeDisplayText(item.nodeId, item.text, ref);
+        if (!text) continue;
+
+        const depthLevel = getCardDepthLevel(item.nodeId);
+        appendSynthesisItem(item.nodeId, text, depthLevel);
+        renderedIds.add(item.nodeId);
+      }
+
+      for (const ref of referenceNodes || []) {
+        if (renderedIds.has(ref.id)) continue;
+        const text = synthesisNodeDisplayText(ref.id, "", ref);
+        if (!text) continue;
+        appendSynthesisItem(ref.id, text, getCardDepthLevel(ref.id));
+        renderedIds.add(ref.id);
+      }
+
+      if (synthesisComposer) {
+        if (composerText) {
+          synthesisComposer.value = composerText;
+        } else if (!items.length && (savedContent || "").trim()) {
+          synthesisComposer.value = savedContent.trim();
+        } else {
+          synthesisComposer.value = "";
+        }
+      }
+    }
+
+    function refreshSynthesisWorkspaceLayout() {
+      synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        applySynthesisItemIndent(item);
+      });
+
+      if (synthesisViewMode === "read") {
+        applySynthesisReadingPresentation();
+      }
+
+      requestAnimationFrame(() => {
+        const firstItem = synthesisDropzone?.querySelector(".synthesis-item");
+        if (firstItem) {
+          scrollElementInPane(firstItem, { behavior: "smooth", block: "nearest" });
+        } else if (synthesisComposer?.value.trim()) {
+          scrollElementInPane(synthesisComposer, { behavior: "smooth", block: "nearest" });
+        }
+      });
+    }
+
+    async function fetchSynthesisDocumentState(docId) {
+      const [docRes, refsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/nodes/${encodeURIComponent(docId)}`),
+        fetch(`${API_BASE}/api/nodes/${encodeURIComponent(docId)}/references`),
+      ]);
+
+      if (!docRes.ok) {
+        const body = await docRes.json().catch(() => ({}));
+        throw new Error(body.detail || "Failed to load synthesis document");
+      }
+
+      const doc = await docRes.json();
+      let references = [];
+      if (refsRes.ok) {
+        references = await refsRes.json();
+      } else if (refsRes.status !== 404) {
+        const body = await refsRes.json().catch(() => ({}));
+        throw new Error(body.detail || "Failed to load synthesis references");
+      }
+
+      return { doc, references };
+    }
+
+    function formatDocumentLibraryDate(createdAt) {
+      if (!createdAt) return "";
+      const date = new Date(createdAt);
+      if (Number.isNaN(date.getTime())) return createdAt;
+      return date.toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    function documentLibrarySnippet(content, maxLen = 120) {
+      const flat = (content || "").replace(/\s+/g, " ").trim();
+      if (!flat) return "No content yet";
+      if (flat.length <= maxLen) return flat;
+      return `${flat.slice(0, maxLen - 1)}…`;
+    }
+
+    function closeDocumentLibraryModal() {
+      documentLibraryModal?.classList.remove("open");
+      documentLibraryModal?.setAttribute("aria-hidden", "true");
+    }
+
+    function openDocumentLibraryModal() {
+      documentLibraryModal?.classList.add("open");
+      documentLibraryModal?.setAttribute("aria-hidden", "false");
+    }
+
+    function renderDocumentLibraryList(documents) {
+      if (!documentList) return;
+      documentList.replaceChildren();
+
+      if (!documents.length) {
+        const empty = document.createElement("div");
+        empty.className = "document-list-empty";
+        empty.textContent = "No saved synthesis documents yet.";
+        documentList.appendChild(empty);
+        return;
+      }
+
+      for (const doc of documents) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "document-list-item";
+        button.dataset.docId = doc.id;
+        button.setAttribute("role", "listitem");
+
+        const title = document.createElement("span");
+        title.className = "document-list-item-title";
+        title.textContent = doc.title || "Untitled synthesis";
+
+        const meta = document.createElement("span");
+        meta.className = "document-list-item-meta";
+        const dateLabel = formatDocumentLibraryDate(doc.created_at);
+        meta.textContent = dateLabel || doc.id;
+
+        const snippet = document.createElement("span");
+        snippet.className = "document-list-item-snippet";
+        snippet.textContent = documentLibrarySnippet(doc.content);
+
+        button.appendChild(title);
+        button.appendChild(meta);
+        button.appendChild(snippet);
+        button.addEventListener("click", () => {
+          loadSynthesisDocument(doc.id);
+          closeDocumentLibraryModal();
+        });
+        documentList.appendChild(button);
+      }
+    }
+
+    async function fetchSynthesisDocumentLibrary() {
+      const res = await fetch(`${API_BASE}/api/nodes?type=Document`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || "Failed to load document library");
+      }
+      const documents = await res.json();
+      documents.sort((a, b) => {
+        const aTime = a.created_at ? Date.parse(a.created_at) : 0;
+        const bTime = b.created_at ? Date.parse(b.created_at) : 0;
+        return bTime - aTime;
+      });
+      return documents;
+    }
+
+    async function openDocumentLibrary() {
+      if (!documentList) return;
+      openDocumentLibraryModal();
+      documentList.replaceChildren();
+      const loading = document.createElement("div");
+      loading.className = "document-list-empty";
+      loading.textContent = "Loading documents…";
+      documentList.appendChild(loading);
+
+      try {
+        const documents = await fetchSynthesisDocumentLibrary();
+        renderDocumentLibraryList(documents);
+      } catch (err) {
+        documentList.replaceChildren();
+        const error = document.createElement("div");
+        error.className = "document-list-empty";
+        error.textContent = err.message;
+        documentList.appendChild(error);
+      }
+    }
+
+    async function loadSynthesisDocument(docId) {
+      if (!docId) return;
+
+      try {
+        showStatus("Loading synthesis document…");
+        const { doc, references } = await fetchSynthesisDocumentState(docId);
+
+        activeSynthesisDocId = doc.id;
+        if (synthesisTitleInput) {
+          synthesisTitleInput.value = doc.title || generateTimestampTitle();
+        }
+
+        resetSynthesisWorkspaceContent();
+
+        const blocks = normalizeDocumentBlocks(doc.blocks);
+        if (blocks.length > 0) {
+          const referenceNodes = await enrichReferenceNodesForBlocks(blocks, references);
+          rebuildSynthesisDropzoneFromBlocks(blocks, referenceNodes);
+        } else {
+          hydrateSynthesisWorkspace(doc.content || "", references, null);
+        }
+
+        refreshSynthesisWorkspaceLayout();
+        expandSynthesisPane();
+
+        clearStatus();
+        showStatus(`Loaded “${doc.title || "Untitled"}”`);
+        if (loadSynthesisStatusTimer) clearTimeout(loadSynthesisStatusTimer);
+        loadSynthesisStatusTimer = setTimeout(clearStatus, 2500);
+      } catch (err) {
+        showStatus(err.message, true);
+      }
+    }
+
+    function initDocumentLibraryModal() {
+      if (loadDocBtn?.dataset.bound) return;
+      if (loadDocBtn) loadDocBtn.dataset.bound = "1";
+
+      loadDocBtn?.addEventListener("click", () => openDocumentLibrary());
+      documentLibraryClose?.addEventListener("click", () => closeDocumentLibraryModal());
+
+      documentLibraryModal?.addEventListener("click", (e) => {
+        if (e.target === documentLibraryModal) closeDocumentLibraryModal();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        if (!documentLibraryModal?.classList.contains("open")) return;
+        closeDocumentLibraryModal();
+      });
     }
 
     function gatherSynthesisReferencedNodeIds() {
       const ids = new Set();
 
-      synthesisDropzone?.querySelectorAll(".synthesis-item[data-source-node]").forEach((item) => {
-        const nodeId = item.dataset.sourceNode?.trim();
+      synthesisDropzone?.querySelectorAll(".synthesis-item[data-source-node], .synthesis-item[data-node-id]").forEach((item) => {
+        const nodeId = item.dataset.nodeId?.trim() || item.dataset.sourceNode?.trim();
         if (nodeId) ids.add(nodeId);
       });
 
@@ -4004,10 +4878,224 @@
       }, 2000);
     }
 
+    function flashSynthesisCopiedToast() {
+      showStatus("Copied to Clipboard");
+      if (flashSynthesisCopiedToast._timer) {
+        clearTimeout(flashSynthesisCopiedToast._timer);
+      }
+      flashSynthesisCopiedToast._timer = window.setTimeout(clearStatus, 2000);
+    }
+
+    function getSynthesisItemType(nodeId) {
+      const node = getNodeById(nodeId);
+      if (node?.density_level === 1) return "summary";
+      if (node?.density_level === 2) return "excerpt";
+      return "note";
+    }
+
+    function getSynthesisItemTextTag(itemType, readingMode) {
+      if (!readingMode) return "div";
+      if (itemType === "summary") return "h3";
+      if (itemType === "excerpt") return "blockquote";
+      return "p";
+    }
+
+    function ensureSynthesisItemTextElement(item, readingMode = synthesisViewMode === "read") {
+      const textEl = item.querySelector(".synthesis-item-text");
+      if (!textEl) return null;
+
+      const itemType = item.dataset.itemType || "note";
+      const desiredTag = getSynthesisItemTextTag(itemType, readingMode);
+      const currentTag = textEl.tagName.toLowerCase();
+
+      if (currentTag === desiredTag) return textEl;
+
+      const replacement = document.createElement(desiredTag);
+      replacement.className = "synthesis-item-text";
+      replacement.textContent = textEl.textContent;
+      textEl.replaceWith(replacement);
+      return replacement;
+    }
+
+    function appendSynthesisReferenceLink(item) {
+      const nodeId = item.dataset.nodeId || item.dataset.sourceNode;
+      const itemType = item.dataset.itemType || getSynthesisItemType(nodeId);
+      if (!nodeId || (itemType !== "summary" && itemType !== "excerpt")) return;
+
+      item.querySelector(".reference-link")?.remove();
+
+      const body = item.querySelector(".synthesis-item-body");
+      if (!body) return;
+
+      const link = document.createElement("sup");
+      link.className = "reference-link";
+      link.dataset.refId = nodeId;
+      link.textContent = "[ref]";
+      link.title = "Jump to source in graph";
+      link.setAttribute("role", "button");
+      link.setAttribute("tabindex", "0");
+      body.appendChild(link);
+    }
+
+    function removeSynthesisReferenceLinks(item) {
+      item.querySelector(".reference-link")?.remove();
+    }
+
+    function focusGraphNodeFromReference(nodeId) {
+      if (!nodeId) return;
+
+      const card = getWorkspaceCard(nodeId);
+      if (!card) {
+        showStatus(`Source node ${nodeId} not found in workspace.`, true);
+        return;
+      }
+
+      SelectionManager.setActiveNode(nodeId);
+      jumpToSourceNode(nodeId);
+
+      const node = getNodeById(nodeId);
+      if (node?.density_level === 1) {
+        const excerptId =
+          node.excerpt_id ||
+          cy?.getElementById(nodeId)?.data("excerpt_id") ||
+          null;
+        focusDocumentCanvasTargets(nodeId, excerptId);
+      } else if (node?.density_level === 2) {
+        focusDocumentCanvasTargets(null, nodeId);
+      }
+    }
+
+    function renderSynthesisReadingNotes() {
+      if (!synthesisReadingNotes || !synthesisComposer) return;
+
+      const text = synthesisComposer.value.trim();
+      if (!text) {
+        synthesisReadingNotes.replaceChildren();
+        synthesisReadingNotes.hidden = true;
+        return;
+      }
+
+      const paragraphs = text.split(/\n\s*\n/).filter((part) => part.trim());
+      synthesisReadingNotes.replaceChildren();
+      for (const part of paragraphs) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = part.trim();
+        synthesisReadingNotes.appendChild(paragraph);
+      }
+      synthesisReadingNotes.hidden = false;
+    }
+
+    function applySynthesisReadingPresentation() {
+      synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        ensureSynthesisItemTextElement(item, true);
+        appendSynthesisReferenceLink(item);
+      });
+      renderSynthesisReadingNotes();
+    }
+
+    function revertSynthesisReadingPresentation() {
+      synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        removeSynthesisReferenceLinks(item);
+        ensureSynthesisItemTextElement(item, false);
+      });
+      if (synthesisReadingNotes) {
+        synthesisReadingNotes.replaceChildren();
+        synthesisReadingNotes.hidden = true;
+      }
+    }
+
+    function setSynthesisViewMode(mode) {
+      if (mode !== "edit" && mode !== "read") return;
+      synthesisViewMode = mode;
+
+      synthesisDocWrap?.classList.toggle("synthesis-reading-mode", mode === "read");
+      synthesisDropzone?.classList.toggle("synthesis-reading-mode", mode === "read");
+
+      synthesisEditBtn?.classList.toggle("active", mode === "edit");
+      synthesisReadBtn?.classList.toggle("active", mode === "read");
+      synthesisEditBtn?.setAttribute("aria-selected", mode === "edit" ? "true" : "false");
+      synthesisReadBtn?.setAttribute("aria-selected", mode === "read" ? "true" : "false");
+
+      if (synthesisSortable) {
+        synthesisSortable.option("disabled", mode === "read");
+      }
+
+      if (mode === "read") {
+        applySynthesisReadingPresentation();
+      } else {
+        revertSynthesisReadingPresentation();
+      }
+    }
+
+    function buildSynthesisMarkdown() {
+      const parts = [];
+
+      synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        if (item.dataset.type === "custom-text") {
+          const text = item.querySelector(".custom-thought-text")?.textContent?.trim() || "";
+          if (text) parts.push(text);
+          return;
+        }
+
+        const nodeId = item.dataset.sourceNode?.trim();
+        const itemType = item.dataset.itemType || getSynthesisItemType(nodeId);
+        const text = item.querySelector(".synthesis-item-text")?.textContent?.trim() || "";
+        if (!text) return;
+
+        const node = nodeId ? getNodeById(nodeId) : null;
+
+        if (itemType === "summary") {
+          const title = (node?.title || text.split("\n", 1)[0] || text).trim();
+          parts.push(`### ${title}`);
+          const body = (node?.content || text).trim();
+          if (body && body !== title) parts.push(body);
+        } else if (itemType === "excerpt") {
+          parts.push(
+            text
+              .split("\n")
+              .map((line) => `> ${line}`)
+              .join("\n")
+          );
+        } else {
+          parts.push(text);
+        }
+      });
+
+      const composerText = synthesisComposer?.value.trim();
+      if (composerText) {
+        if (parts.length) parts.push("");
+        parts.push(composerText);
+      }
+
+      return parts.join("\n\n").trim();
+    }
+
+    async function exportSynthesisMarkdown() {
+      const markdown = buildSynthesisMarkdown();
+      if (!markdown) {
+        showStatus("Nothing to export yet.", true);
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(markdown);
+        flashSynthesisCopiedToast();
+      } catch (err) {
+        showStatus("Could not copy to clipboard.", true);
+        console.error("[exportSynthesisMarkdown]", err);
+      }
+    }
+
     function gatherSynthesisPaneText() {
       const sections = [];
 
       synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        if (item.dataset.type === "custom-text") {
+          const text = item.querySelector(".custom-thought-text")?.textContent?.trim() || "";
+          if (text) sections.push(text);
+          return;
+        }
+
         const nodeId = item.dataset.sourceNode?.trim();
         const meta = item.querySelector(".synthesis-item-meta-label")?.textContent?.trim();
         const text = item.querySelector(".synthesis-item-text")?.textContent?.trim();
@@ -4019,18 +5107,20 @@
         }
       });
 
-      const composerText = synthesisComposer?.innerText.trim();
+      const composerText = synthesisComposer?.value.trim();
       if (composerText) sections.push(composerText);
 
       return sections.join("\n\n");
     }
 
     async function saveSynthesis() {
-      const content = gatherSynthesisPaneText();
-      if (!content) {
+      const documentBlocks = serializeSynthesisBlocks();
+      if (documentBlocks.length === 0) {
         showStatus("Synthesis workspace is empty. Add content before saving.", true);
         return false;
       }
+
+      const content = blocksToLegacyContent(documentBlocks);
 
       let trimmedTitle = synthesisTitleInput?.value.trim() || "";
       if (!trimmedTitle) {
@@ -4038,7 +5128,6 @@
         if (synthesisTitleInput) synthesisTitleInput.value = trimmedTitle;
       }
 
-      const referencedNodeIds = gatherSynthesisReferencedNodeIds();
       const isCreate = !activeSynthesisDocId;
 
       saveSynthesisBtn.disabled = true;
@@ -4052,6 +5141,7 @@
             body: JSON.stringify({
               title: trimmedTitle,
               content,
+              blocks: documentBlocks,
               density_level: 4,
               node_type: "Document",
               significance: 1.0,
@@ -4072,6 +5162,7 @@
             body: JSON.stringify({
               title: trimmedTitle,
               content,
+              blocks: documentBlocks,
             }),
           });
           if (!res.ok) {
@@ -4080,7 +5171,6 @@
           }
         }
 
-        await syncSynthesisReferenceEdges(docId, referencedNodeIds);
         await loadSourceLibrary(documentCanvasSourceId || docId);
 
         if (isCreate && documentCanvasSourceId !== docId) {
@@ -4342,13 +5432,124 @@
       }, 2000);
     }
 
+    function scrollSynthesisDropzoneToBottom() {
+      if (!synthesisDropzone) return;
+      requestAnimationFrame(() => {
+        synthesisDropzone.scrollTop = synthesisDropzone.scrollHeight;
+      });
+    }
+
+    function finishCustomThoughtEdit(item, textarea) {
+      const text = textarea.value.trim();
+      const paragraph = document.createElement("p");
+      paragraph.className = "custom-thought-text";
+      paragraph.textContent = text;
+      textarea.replaceWith(paragraph);
+
+      if (!text) item.remove();
+    }
+
+    function startCustomThoughtEdit(item) {
+      if (item.querySelector(".custom-thought-editor")) return;
+
+      const paragraph = item.querySelector(".custom-thought-text");
+      if (!paragraph) return;
+
+      const textarea = document.createElement("textarea");
+      textarea.className = "custom-thought-editor";
+      textarea.value = paragraph.textContent;
+      paragraph.replaceWith(textarea);
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+      textarea.addEventListener("blur", () => {
+        finishCustomThoughtEdit(item, textarea);
+      });
+
+      textarea.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          textarea.blur();
+        }
+      });
+    }
+
+    function createSynthesisRemoveButton() {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "remove-synthesis-block";
+      button.title = "Remove";
+      button.setAttribute("aria-label", "Remove block");
+      button.textContent = "×";
+      return button;
+    }
+
+    function appendCustomThought(text) {
+      if (!synthesisDropzone) return null;
+
+      const item = document.createElement("div");
+      item.className = "synthesis-item custom-thought draggable";
+      item.dataset.type = "custom-text";
+
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = "drag-handle";
+      handle.setAttribute("aria-label", "Drag to reorder");
+      handle.title = "Drag to reorder";
+      handle.textContent = "⋮⋮";
+
+      const paragraph = document.createElement("p");
+      paragraph.className = "custom-thought-text";
+      paragraph.textContent = text;
+
+      item.appendChild(handle);
+      item.appendChild(paragraph);
+      item.appendChild(createSynthesisRemoveButton());
+      synthesisDropzone.appendChild(item);
+      applySynthesisItemIndent(item);
+      scrollSynthesisDropzoneToBottom();
+      return item;
+    }
+
+    function initSynthesisCustomInput() {
+      if (synthesisCustomInput?.dataset.bound) return;
+      if (synthesisCustomInput) synthesisCustomInput.dataset.bound = "1";
+
+      synthesisCustomInput?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey && !(e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          const text = synthesisCustomInput.value.trim();
+          if (!text) return;
+          appendCustomThought(text);
+          synthesisCustomInput.value = "";
+          return;
+        }
+
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          saveSynthesis().then((saved) => {
+            if (saved) flashSynthesisSavedBadge();
+          });
+        }
+      });
+
+      synthesisDropzone?.addEventListener("dblclick", (e) => {
+        const item = e.target.closest(".synthesis-item.custom-thought");
+        if (!item || e.target.closest(".custom-thought-editor, .drag-handle")) return;
+        e.preventDefault();
+        startCustomThoughtEdit(item);
+      });
+    }
+
     function appendSynthesisItem(nodeId, text, depthLevel) {
       if (!synthesisDropzone) return null;
 
       const item = document.createElement("div");
       item.className = "synthesis-item";
       item.dataset.sourceNode = nodeId;
+      item.dataset.nodeId = nodeId;
       item.dataset.depthLevel = String(depthLevel ?? 0);
+      item.dataset.itemType = getSynthesisItemType(nodeId);
 
       const handle = document.createElement("button");
       handle.type = "button";
@@ -4376,7 +5577,7 @@
       anchor.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        jumpToSourceNode(nodeId);
+        focusGraphNodeFromReference(nodeId);
       });
 
       const textEl = document.createElement("div");
@@ -4389,9 +5590,14 @@
       body.appendChild(textEl);
       item.appendChild(handle);
       item.appendChild(body);
+      item.appendChild(createSynthesisRemoveButton());
 
       synthesisDropzone.appendChild(item);
       applySynthesisItemIndent(item);
+      if (synthesisViewMode === "read") {
+        ensureSynthesisItemTextElement(item, true);
+        appendSynthesisReferenceLink(item);
+      }
       scrollElementInPane(item, { behavior: "smooth", block: "nearest" });
       return item;
     }
@@ -4436,7 +5642,7 @@
       if (typeof Sortable === "undefined") return;
       synthesisDropzone.dataset.sortableBound = "1";
 
-      new Sortable(synthesisDropzone, {
+      synthesisSortable = new Sortable(synthesisDropzone, {
         animation: 150,
         ghostClass: "synthesis-ghost",
         handle: ".drag-handle",
@@ -4445,6 +5651,15 @@
           // DOM order updated; persist on explicit save via saveSynthesis()
         },
       });
+    }
+
+    function initSynthesisViewToggle() {
+      if (synthesisEditBtn?.dataset.bound) return;
+      if (synthesisEditBtn) synthesisEditBtn.dataset.bound = "1";
+
+      synthesisEditBtn?.addEventListener("click", () => setSynthesisViewMode("edit"));
+      synthesisReadBtn?.addEventListener("click", () => setSynthesisViewMode("read"));
+      synthesisExportBtn?.addEventListener("click", () => exportSynthesisMarkdown());
     }
 
     function initPaneRecoveryHandles() {
@@ -4494,14 +5709,6 @@
         const saved = await saveSynthesis();
         if (saved) flashSynthesisSavedBadge();
       });
-
-      synthesisComposer?.addEventListener("keydown", (e) => {
-        if (!(e.ctrlKey || e.metaKey) || e.key !== "Enter") return;
-        e.preventDefault();
-        saveSynthesis().then((saved) => {
-          if (saved) flashSynthesisSavedBadge();
-        });
-      });
     }
 
     function bindSynthesisDropzoneDnD() {
@@ -4537,10 +5744,34 @@
       });
 
       synthesisDropzone.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".remove-synthesis-block");
+        if (removeBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          removeBtn.closest(".synthesis-item")?.remove();
+          return;
+        }
+
+        const refLink = e.target.closest(".reference-link");
+        if (refLink) {
+          e.preventDefault();
+          e.stopPropagation();
+          focusGraphNodeFromReference(refLink.dataset.refId);
+          return;
+        }
+
         const anchor = e.target.closest(".source-link-anchor");
         if (!anchor) return;
         e.preventDefault();
-        jumpToSourceNode(anchor.dataset.nodeId);
+        focusGraphNodeFromReference(anchor.dataset.nodeId);
+      });
+
+      synthesisDropzone.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const refLink = e.target.closest(".reference-link");
+        if (!refLink) return;
+        e.preventDefault();
+        focusGraphNodeFromReference(refLink.dataset.refId);
       });
     }
 
@@ -4548,6 +5779,9 @@
       initSynthesisPaneCollapse();
       initPaneRecoveryHandles();
       initSynthesisDropzoneSortable();
+      initSynthesisViewToggle();
+      initDocumentLibraryModal();
+      initSynthesisCustomInput();
       initSynthesisTitleAndSave();
       bindSynthesisDropzoneDnD();
     }
