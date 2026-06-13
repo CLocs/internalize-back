@@ -35,7 +35,12 @@ copy .env.example .env
 uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Open **http://127.0.0.1:8000/** for the Human Linker UI. API docs: **http://127.0.0.1:8000/docs**.
+URLs:
+* Spatial viewer: http://127.0.0.1:8000/viewer
+* Human Linker UI: http://127.0.0.1:8000/
+* API docs: http://127.0.0.1:8000/docs
+* Health check: http://127.0.0.1:8000/health
+
 
 ## Connecting Neo4j
 
