@@ -1502,11 +1502,44 @@
       background: rgba(248, 113, 113, 0.12);
     }
 
-    .synthesis-item:hover .remove-synthesis-block {
+    .synthesis-item:hover .remove-synthesis-block,
+    .synthesis-item:hover .synthesis-item-actions {
       opacity: 1;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .remove-synthesis-block {
+    .synthesis-item-actions {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .edit-synthesis-block {
+      width: 20px;
+      height: 20px;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .edit-synthesis-block:hover {
+      color: #22d3ee;
+      background: rgba(34, 211, 238, 0.12);
+    }
+
+    #synthesis-dropzone.synthesis-reading-mode .remove-synthesis-block,
+    #synthesis-dropzone.synthesis-reading-mode .synthesis-item-actions {
       display: none;
     }
 
@@ -1703,7 +1736,8 @@
       cursor: default;
     }
 
-    .synthesis-item.custom-thought .custom-thought-text {
+    .synthesis-item.custom-thought .custom-thought-text,
+    .synthesis-item.custom-thought .inline-edit-area {
       flex: 1;
       min-width: 0;
       margin: 0;
@@ -1715,21 +1749,20 @@
       word-break: break-word;
     }
 
-    .synthesis-item.custom-thought .custom-thought-editor {
-      flex: 1;
-      min-width: 0;
+    .synthesis-item.custom-thought .inline-edit-area {
       min-height: 72px;
-      margin: 0;
       padding: 8px 10px;
       border: 1px solid #475569;
       border-radius: 6px;
       background: #0f172a;
       color: #f8fafc;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 0.95rem;
-      line-height: 1.6;
-      resize: vertical;
+      resize: none;
+      overflow: hidden;
       outline: none;
+    }
+
+    .synthesis-item.custom-thought .inline-edit-area:focus {
+      border-color: #22d3ee;
     }
 
     #synthesis-dropzone.synthesis-reading-mode .synthesis-item.custom-thought .custom-thought-text {
@@ -3392,7 +3425,60 @@
         this.listB.clear();
         this.renderSidebar();
       },
+
+      deselectAll() {
+        this.listA.clear();
+        this.listB.clear();
+        this.activeTarget = "A";
+        this.setActiveTarget("A");
+        this.activeNode = null;
+        this.activeLineageNodes.clear();
+        this.activeLineageEdges.clear();
+        this.renderSidebar();
+        updateLineVisibility();
+        syncCyGraphHighlight();
+      },
     };
+
+    function clearWorkspaceSelectionClasses() {
+      nodePane.querySelectorAll(".workspace-card").forEach((card) => {
+        card.classList.remove(
+          "selected-for-grouping",
+          "trace-highlight",
+          "workspace-focus",
+          "workbench-added",
+          "is-selected",
+          "highlighted"
+        );
+      });
+      docBody.querySelectorAll(".excerpt-highlight.trace-highlight").forEach((el) => {
+        el.classList.remove("trace-highlight");
+      });
+    }
+
+    function deselectAllGlobal() {
+      SelectionManager.deselectAll();
+      clearGroupingSelection();
+      clearWorkspaceSelectionClasses();
+      if (cy) {
+        cy.elements().removeClass("highlighted");
+        cy.elements().removeClass("selected-target");
+      }
+      updateLineVisibility();
+      repositionDocumentCanvasLines();
+    }
+
+    function initGlobalDeselectHotkey() {
+      if (document.body.dataset.deselectHotkeyBound) return;
+      document.body.dataset.deselectHotkeyBound = "1";
+
+      window.addEventListener("keydown", (e) => {
+        if (!(e.ctrlKey && e.key.toLowerCase() === "d")) return;
+
+        e.preventDefault();
+        deselectAllGlobal();
+      });
+    }
 
     function flashWorkbenchAdded(card) {
       if (!card) return;
@@ -5439,38 +5525,98 @@
       });
     }
 
-    function finishCustomThoughtEdit(item, textarea) {
+    function getCustomThoughtText(item) {
+      const editor = item.querySelector(".inline-edit-area");
+      if (editor) return editor.value.trim();
+      return item.querySelector(".custom-thought-text")?.textContent?.trim() || "";
+    }
+
+    function adjustInlineEditTextareaHeight(textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+
+    async function commitCustomThoughtEdit(item, textarea) {
+      if (textarea.dataset.committing) return;
+      textarea.dataset.committing = "1";
+
       const text = textarea.value.trim();
       const paragraph = document.createElement("p");
       paragraph.className = "custom-thought-text";
       paragraph.textContent = text;
       textarea.replaceWith(paragraph);
 
-      if (!text) item.remove();
+      if (!text) {
+        item.remove();
+      }
+
+      const saved = await saveSynthesis();
+      if (saved) flashSynthesisSavedBadge();
     }
 
     function startCustomThoughtEdit(item) {
-      if (item.querySelector(".custom-thought-editor")) return;
+      if (!item || item.dataset.type !== "custom-text") return;
+      if (item.querySelector(".inline-edit-area")) return;
 
       const paragraph = item.querySelector(".custom-thought-text");
       if (!paragraph) return;
 
+      const text = paragraph.textContent;
       const textarea = document.createElement("textarea");
-      textarea.className = "custom-thought-editor";
-      textarea.value = paragraph.textContent;
+      textarea.className = "inline-edit-area";
+      textarea.value = text;
       paragraph.replaceWith(textarea);
+
+      adjustInlineEditTextareaHeight(textarea);
       textarea.focus();
       textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
+      textarea.addEventListener("input", () => {
+        adjustInlineEditTextareaHeight(textarea);
+      });
+
       textarea.addEventListener("blur", () => {
-        finishCustomThoughtEdit(item, textarea);
+        commitCustomThoughtEdit(item, textarea);
       });
 
       textarea.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
           e.preventDefault();
           textarea.blur();
+          return;
         }
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          textarea.blur();
+        }
+      });
+    }
+
+    function createSynthesisCustomThoughtActions() {
+      const actions = document.createElement("div");
+      actions.className = "synthesis-item-actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "edit-synthesis-block";
+      editBtn.title = "Edit";
+      editBtn.setAttribute("aria-label", "Edit block");
+      editBtn.textContent = "✎";
+
+      actions.appendChild(editBtn);
+      actions.appendChild(createSynthesisRemoveButton());
+      return actions;
+    }
+
+    function bindCustomThoughtBlock(item) {
+      if (!item || item.dataset.thoughtBound) return;
+      item.dataset.thoughtBound = "1";
+
+      item.querySelector(".edit-synthesis-block")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startCustomThoughtEdit(item);
       });
     }
 
@@ -5504,7 +5650,8 @@
 
       item.appendChild(handle);
       item.appendChild(paragraph);
-      item.appendChild(createSynthesisRemoveButton());
+      item.appendChild(createSynthesisCustomThoughtActions());
+      bindCustomThoughtBlock(item);
       synthesisDropzone.appendChild(item);
       applySynthesisItemIndent(item);
       scrollSynthesisDropzoneToBottom();
@@ -5534,8 +5681,10 @@
       });
 
       synthesisDropzone?.addEventListener("dblclick", (e) => {
-        const item = e.target.closest(".synthesis-item.custom-thought");
-        if (!item || e.target.closest(".custom-thought-editor, .drag-handle")) return;
+        const item = e.target.closest('.synthesis-item[data-type="custom-text"]');
+        if (!item || e.target.closest(".inline-edit-area, .drag-handle, .synthesis-item-actions")) {
+          return;
+        }
         e.preventDefault();
         startCustomThoughtEdit(item);
       });
@@ -7137,6 +7286,7 @@
       initWorkspaceGraphPane();
       initLeftPaneCollapses();
       initWorkbenchSidebar();
+      initGlobalDeselectHotkey();
 
       if (!isDocumentLoaded()) {
         collapseSynthesisPane();

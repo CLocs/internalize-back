@@ -32,7 +32,7 @@ copy .env.example .env
 # Edit .env — set NEO4J_PASSWORD to your actual Neo4j password
 
 # Run the API + Input Pane (hot reload)
-uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Open **http://127.0.0.1:8000/** for the Human Linker UI. API docs: **http://127.0.0.1:8000/docs**.
@@ -219,7 +219,7 @@ When you come back:
 2. Confirm `.env` has the correct `NEO4J_PASSWORD`.
 3. Start the server:
    ```powershell
-   uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
+   uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
    ```
 4. Open **http://127.0.0.1:8000/** and confirm the green *Connected to Neo4j* banner.
 5. Create a node (left column), then link it to another node (right column).
