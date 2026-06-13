@@ -6,7 +6,7 @@
   <title>Internalize — Spatial Viewer</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
   <script src="https://unpkg.com/dagre@0.7.4/dist/dagre.js"></script>
-  <script src="https://unpkg.com/cytoscape-dagre/cytoscape-dagre.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AhmedAyachi/LinkerLine@master/dist/linkerline.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
   <style>
@@ -1878,6 +1878,17 @@
       position: relative;
       z-index: 10;
       cursor: pointer;
+      user-select: none;
+    }
+
+    .workspace-card .text-content {
+      user-select: text;
+      -webkit-user-select: text;
+      cursor: text;
+    }
+
+    .workspace-card[draggable="true"] .text-content {
+      cursor: text;
     }
 
     .workspace-card.ingest {
@@ -2172,6 +2183,7 @@
   </style>
 </head>
 <body>
+  <div id="line-canvas" aria-hidden="true"></div>
   <div id="app">
   <header id="viewer-header">
     <label for="source-selector">Source</label>
@@ -5773,6 +5785,16 @@
     }
 
     function onWorkspaceCardDragStart(e, card, nodeId) {
+      if (e.target.closest(".text-content")) {
+        e.preventDefault();
+        return;
+      }
+      const selection = window.getSelection?.();
+      if (selection && !selection.isCollapsed && selection.toString().trim()) {
+        e.preventDefault();
+        return;
+      }
+
       const text = getWorkspaceCardText(card);
       const depthLevel = parseInt(card.dataset.depthLevel, 10);
       const payload = {
@@ -6320,8 +6342,8 @@
 
       return `
         <div class="card-label node-label">Level 1: Summary</div>
-        <div class="card-title">${escapeHtml(heading)}</div>
-        ${showBody ? `<div class="card-content">${escapeHtml(body)}</div>` : ""}
+        <div class="card-title text-content">${escapeHtml(heading)}</div>
+        ${showBody ? `<div class="card-content text-content">${escapeHtml(body)}</div>` : ""}
       `;
     }
 
@@ -6337,18 +6359,30 @@
         card.dataset.sourceSpan = `excerpt-${node.id}`;
         card.innerHTML = `
           <div class="card-label node-label">Level 2: Excerpt</div>
-          <div class="card-content">${escapeHtml(node.content)}</div>
+          <div class="card-content text-content">${escapeHtml(node.content)}</div>
         `;
       }
     }
 
     function bindWorkspaceCardInteractions(card, nodeId) {
       card.draggable = true;
+
+      card.addEventListener("mousedown", (e) => {
+        card.draggable = !e.target.closest(".text-content");
+      });
+
+      card.addEventListener("mouseup", () => {
+        card.draggable = true;
+      });
+
       card.addEventListener("dragstart", (e) => onWorkspaceCardDragStart(e, card, nodeId));
       card.addEventListener("dragend", () => card.classList.remove("is-dragging", "dragging"));
 
       card.addEventListener("click", (e) => {
         if (e.target.closest(".promote-btn, .card-delete-btn")) return;
+
+        const selection = window.getSelection?.();
+        if (selection && !selection.isCollapsed && selection.toString().trim()) return;
 
         if (e.altKey) {
           e.preventDefault();
@@ -6660,6 +6694,102 @@
       const container = range.commonAncestorContainer;
       const el = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
       return el && docBody.contains(el);
+    }
+
+    function getExcerptCardFromSelection(selection, range = null) {
+      let anchorNode = selection?.anchorNode;
+      if (!anchorNode && range) {
+        anchorNode = range.startContainer;
+      }
+      if (!anchorNode) return null;
+
+      const anchorEl =
+        anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+      const card = anchorEl?.closest?.(".workspace-card.excerpt-card");
+      if (!card) return null;
+
+      const parentId = card.dataset.nodeId?.trim();
+      if (!parentId) return null;
+
+      return { card, parentId };
+    }
+
+    async function saveRecursiveSummaryFromExcerptCard(text, { parentId }, selection) {
+      const title = autoExcerptTitle(text);
+      const content = text;
+      selection?.removeAllRanges();
+
+      try {
+        const nodeRes = await fetch(`${API_BASE}/api/nodes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            content,
+            density_level: 1,
+            significance: 1.0,
+            origin: "human",
+          }),
+        });
+        if (!nodeRes.ok) {
+          const body = await nodeRes.json().catch(() => ({}));
+          throw new Error(body.detail || "Failed to create summary");
+        }
+        const nodeData = await nodeRes.json();
+        const nodeId = nodeData.node_id;
+
+        const edgeRes = await fetch(`${API_BASE}/api/edges`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source_id: nodeId,
+            target_id: parentId,
+            relationship_type: "SUMMARIZES",
+            strength: 1.0,
+            origin: "human",
+          }),
+        });
+        if (!edgeRes.ok) {
+          const body = await edgeRes.json().catch(() => ({}));
+          throw new Error(body.detail || "Failed to link summary to excerpt");
+        }
+
+        mergeSummaryChildren(nodeId, [parentId]);
+
+        const columnIndex = getCardColumnIndex(parentId) + 1;
+        nodeColumnMap.set(nodeId, columnIndex);
+        workspaceNodeMap.set(nodeId, {
+          id: nodeId,
+          title,
+          content,
+          density_level: 1,
+          origin: "human",
+        });
+        workspaceNodeOrder.set(nodeId, workspaceNodeOrder.size);
+
+        const card = createWorkspaceCard(
+          { id: nodeId, title, content, density_level: 1, origin: "human" },
+          columnIndex
+        );
+        appendToColumn(columnIndex, card);
+        scrollElementInPane(card, { behavior: "smooth", block: "nearest" });
+
+        ConnectionManager.registerEdge({
+          id: ConnectionManager.edgeKey("SUMMARIZES", nodeId, parentId),
+          source_id: nodeId,
+          target_id: parentId,
+          relationship_type: "SUMMARIZES",
+        });
+
+        await refreshWorkspaceAfterGraphMutation();
+        showStatus("Summary saved from excerpt");
+        if (saveRecursiveSummaryFromExcerptCard._timer) {
+          clearTimeout(saveRecursiveSummaryFromExcerptCard._timer);
+        }
+        saveRecursiveSummaryFromExcerptCard._timer = window.setTimeout(clearStatus, 2000);
+      } catch (err) {
+        showStatus(err.message, true);
+      }
     }
 
     function unwrapPendingExtraction() {
@@ -7051,17 +7181,29 @@
     async function autoSaveExcerptFromSelection(storedRange) {
       let range;
       let text;
+      let selection;
 
       if (storedRange) {
         text = storedRange.toString().trim();
-        if (!text || !isRangeInsideDocBody(storedRange)) return;
+        if (!text) return;
         range = storedRange.cloneRange();
+        selection = window.getSelection();
       } else {
-        const selection = window.getSelection();
+        selection = window.getSelection();
         text = selection.toString().trim();
-        if (!text || !isSelectionInsideDocBody(selection)) return;
-        range = selection.getRangeAt(0).cloneRange();
+        if (!text) return;
+        if (selection.rangeCount) {
+          range = selection.getRangeAt(0).cloneRange();
+        }
       }
+
+      const excerptCardContext = getExcerptCardFromSelection(selection, range);
+      if (excerptCardContext) {
+        await saveRecursiveSummaryFromExcerptCard(text, excerptCardContext, selection);
+        return;
+      }
+
+      if (!range || !isRangeInsideDocBody(range)) return;
 
       if (!documentCanvasSourceId) {
         showStatus("Document source not loaded.", true);
@@ -7313,10 +7455,12 @@
 
       try {
         showStatus("Loading…");
+        await loadSourceLibrary();
         await initDocumentCanvas();
         clearStatus();
       } catch (err) {
         showStatus(err.message, true);
+        await loadSourceLibrary().catch(() => {});
         if (!isDocumentLoaded()) {
           collapseSynthesisPane();
         }
@@ -7325,6 +7469,5 @@
 
     init();
   </script>
-  <div id="line-canvas" aria-hidden="true"></div>
 </body>
 </html>
