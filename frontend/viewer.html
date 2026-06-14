@@ -1891,6 +1891,29 @@
       cursor: text;
     }
 
+    .workspace-card .inline-edit-area {
+      width: 100%;
+      min-height: 72px;
+      padding: 8px 10px;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      resize: none;
+      overflow: hidden;
+      outline: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-sizing: border-box;
+    }
+
+    .workspace-card .inline-edit-area:focus {
+      border-color: #deff9a;
+    }
+
     .workspace-card.ingest {
       opacity: 0.45;
     }
@@ -2064,27 +2087,38 @@
       border-radius: 2px;
     }
 
-    #custom-context-menu {
+    .hidden {
       display: none;
+    }
+
+    #custom-context-menu {
       position: absolute;
-      z-index: 1000;
+      z-index: 9999;
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 4px;
-      padding: 5px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      padding: 4px 0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+      min-width: 200px;
+      list-style: none;
     }
 
-    #menu-extract-btn {
+    #custom-context-menu ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #custom-context-menu li {
       color: #f8fafc;
-      padding: 5px 10px;
+      padding: 8px 14px;
       cursor: pointer;
       font-size: 14px;
-      border-radius: 2px;
       font-family: "Segoe UI", system-ui, sans-serif;
+      white-space: nowrap;
     }
 
-    #menu-extract-btn:hover {
+    #custom-context-menu li:hover {
       background: #334155;
     }
 
@@ -2212,8 +2246,12 @@
   </header>
 
   <div id="status"></div>
-  <div id="custom-context-menu">
-    <div id="menu-extract-btn">Save excerpt (Ctrl+E)</div>
+  <div id="custom-context-menu" class="hidden">
+    <ul>
+      <li id="menu-create-excerpt">Create Excerpt (Ctrl+E)</li>
+      <li id="menu-create-summary" style="display: none;">Summarize (Ctrl+E)</li>
+      <li id="menu-summarize-node" style="display: none;">Summarize Node</li>
+    </ul>
   </div>
 
   <div id="viewer-main">
@@ -2491,7 +2529,9 @@
     const viewFlowBtn = document.getElementById("view-flow-btn");
     const showLabelsToggle = document.getElementById("show-labels-toggle");
     const customContextMenu = document.getElementById("custom-context-menu");
-    const menuExtractBtn = document.getElementById("menu-extract-btn");
+    const menuCreateExcerpt = document.getElementById("menu-create-excerpt");
+    const menuCreateSummary = document.getElementById("menu-create-summary");
+    const menuCreateSummarizeNode = document.getElementById("menu-summarize-node");
     const synthesisPane = document.getElementById("synthesis-pane");
     const synthesisDocWrap = document.getElementById("synthesis-doc-wrap");
     const synthesisEditBtn = document.getElementById("synthesis-edit-btn");
@@ -2587,6 +2627,8 @@
     let docSearchDebounceTimer = null;
     let documentCanvasSourceId = null;
     let canvasContextMenuRange = null;
+    let contextMenuTargetId = null;
+    let contextMenuTargetText = null;
     let selectedCardIds = [];
     let summaryChildMap = new Map();
     let hierarchyChildMap = new Map();
@@ -3560,6 +3602,20 @@
       repositionDocumentCanvasLines();
     }
 
+    function isExcerptNode(nodeId) {
+      const node = getNodeById(nodeId);
+      return node?.density_level === 2;
+    }
+
+    function collectExcerptSourcesToElevate(pairs, relationshipType) {
+      if (relationshipType !== "SUMMARIZES") return [];
+      const nodeIds = new Set();
+      for (const { source_id } of pairs) {
+        if (isExcerptNode(source_id)) nodeIds.add(source_id);
+      }
+      return [...nodeIds];
+    }
+
     async function createWorkbenchConnections() {
       const relationshipDropdown = document.getElementById("relationship-dropdown");
       const createConnectionBtn = document.getElementById("create-connection-btn");
@@ -3588,8 +3644,20 @@
       showStatus(`Creating ${pairs.length} connection(s)…`);
 
       try {
-        const responses = await Promise.all(
-          pairs.map(({ source_id, target_id }) =>
+        const promises = [];
+
+        for (const nodeId of collectExcerptSourcesToElevate(pairs, relationshipType)) {
+          promises.push(
+            fetch(`${API_BASE}/api/nodes/${encodeURIComponent(nodeId)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ density_level: 1 }),
+            })
+          );
+        }
+
+        for (const { source_id, target_id } of pairs) {
+          promises.push(
             fetch(`${API_BASE}/api/edges`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -3601,8 +3669,10 @@
                 origin: "human",
               }),
             })
-          )
-        );
+          );
+        }
+
+        const responses = await Promise.all(promises);
 
         const errors = [];
         for (const res of responses) {
@@ -6402,6 +6472,14 @@
         }
         handleWorkspaceCardTrace(card);
       });
+
+      card.addEventListener("dblclick", (e) => {
+        if (!e.target.closest(".text-content")) return;
+        if (e.target.closest(".promote-btn, .card-delete-btn, .card-hover-menu")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        startWorkspaceCardInlineEdit(card);
+      });
     }
 
     function createWorkspaceCard(node, columnIndex) {
@@ -6714,7 +6792,145 @@
       return { card, parentId };
     }
 
-    async function saveRecursiveSummaryFromExcerptCard(text, { parentId }, selection) {
+    function getWorkspaceCardTextContentElement(card) {
+      return (
+        card.querySelector(".card-content.text-content") ||
+        card.querySelector(".card-title.text-content") ||
+        card.querySelector(".text-content")
+      );
+    }
+
+    function cancelWorkspaceCardInlineEdit(card) {
+      const nodeId = card.dataset.nodeId;
+      const node = workspaceNodeMap.get(nodeId) || getNodeById(nodeId);
+      if (!node) return;
+      applyCardPresentation(card, { ...node, id: nodeId });
+      attachCardDeleteButton(card, nodeId);
+    }
+
+    async function commitWorkspaceCardInlineEdit(card, textarea) {
+      if (textarea.dataset.committing) return;
+      textarea.dataset.committing = "1";
+
+      const nodeId = card.dataset.nodeId;
+      const content = textarea.value.trim();
+      if (!content) {
+        showStatus("Content cannot be empty.", true);
+        textarea.dataset.committing = "";
+        return;
+      }
+
+      const densityLevel = parseInt(card.dataset.densityLevel, 10) || 2;
+      const title = autoExcerptTitle(content);
+
+      try {
+        const putRes = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(nodeId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, content }),
+        });
+        if (!putRes.ok) {
+          const body = await putRes.json().catch(() => ({}));
+          throw new Error(body.detail || "Failed to update node");
+        }
+
+        const existingNode = workspaceNodeMap.get(nodeId) || { id: nodeId, origin: "human" };
+        workspaceNodeMap.set(nodeId, {
+          ...existingNode,
+          id: nodeId,
+          title,
+          content,
+          density_level: densityLevel,
+        });
+
+        applyCardPresentation(card, {
+          id: nodeId,
+          title,
+          content,
+          density_level: densityLevel,
+          origin: existingNode.origin || "human",
+        });
+        attachCardDeleteButton(card, nodeId);
+        card.draggable = true;
+      } catch (err) {
+        showStatus(err.message, true);
+        cancelWorkspaceCardInlineEdit(card);
+      }
+    }
+
+    function startWorkspaceCardInlineEdit(card, { selectAll = false } = {}) {
+      if (card.querySelector(".inline-edit-area")) return;
+
+      const textEl = getWorkspaceCardTextContentElement(card);
+      if (!textEl) return;
+
+      card.draggable = false;
+
+      const textarea = document.createElement("textarea");
+      textarea.className = "inline-edit-area";
+      textarea.value = getWorkspaceCardText(card);
+      textEl.replaceWith(textarea);
+      adjustInlineEditTextareaHeight(textarea);
+
+      textarea.addEventListener("input", () => {
+        adjustInlineEditTextareaHeight(textarea);
+      });
+
+      textarea.addEventListener("blur", () => {
+        if (textarea.dataset.cancelled) return;
+        commitWorkspaceCardInlineEdit(card, textarea);
+      });
+
+      textarea.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          textarea.dataset.cancelled = "1";
+          cancelWorkspaceCardInlineEdit(card);
+          card.draggable = true;
+          return;
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          textarea.blur();
+        }
+      });
+
+      textarea.focus();
+      if (selectAll) {
+        textarea.select();
+      } else {
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      }
+    }
+
+    function focusNewSummaryCardInlineEdit(nodeId) {
+      const newCard = getWorkspaceCard(nodeId);
+      if (!newCard) return;
+
+      scrollElementInPane(newCard, { behavior: "smooth", block: "nearest" });
+
+      window.setTimeout(() => {
+        const textContent = newCard.querySelector(".text-content");
+        if (textContent) {
+          textContent.dispatchEvent(
+            new MouseEvent("dblclick", { bubbles: true, cancelable: true })
+          );
+        } else {
+          startWorkspaceCardInlineEdit(newCard, { selectAll: true });
+        }
+
+        window.setTimeout(() => {
+          const editArea = newCard.querySelector("textarea");
+          if (editArea) {
+            editArea.focus();
+            editArea.select();
+          }
+        }, 50);
+      }, 50);
+    }
+
+    async function saveRecursiveSummaryFromExcerptCard(text, { parentId }, selection, options = {}) {
+      const { enterInlineEdit = false } = options;
       const title = autoExcerptTitle(text);
       const content = text;
       selection?.removeAllRanges();
@@ -6782,11 +6998,16 @@
         });
 
         await refreshWorkspaceAfterGraphMutation();
-        showStatus("Summary saved from excerpt");
-        if (saveRecursiveSummaryFromExcerptCard._timer) {
-          clearTimeout(saveRecursiveSummaryFromExcerptCard._timer);
+
+        if (enterInlineEdit) {
+          focusNewSummaryCardInlineEdit(nodeId);
+        } else {
+          showStatus("Summary saved from excerpt");
+          if (saveRecursiveSummaryFromExcerptCard._timer) {
+            clearTimeout(saveRecursiveSummaryFromExcerptCard._timer);
+          }
+          saveRecursiveSummaryFromExcerptCard._timer = window.setTimeout(clearStatus, 2000);
         }
-        saveRecursiveSummaryFromExcerptCard._timer = window.setTimeout(clearStatus, 2000);
       } catch (err) {
         showStatus(err.message, true);
       }
@@ -7294,38 +7515,144 @@
       return el && docBody.contains(el);
     }
 
-    function hideCustomContextMenu() {
-      customContextMenu.style.display = "none";
+    function getExcerptCardFromEvent(e) {
+      const card = e.target.closest(".workspace-card.excerpt-card, .node-card.excerpt-card");
+      if (!card) return null;
+
+      const parentId = card.dataset.nodeId?.trim();
+      if (!parentId) return null;
+
+      return { card, parentId };
+    }
+
+    function isSelectionInsideNodeCard(selection, range = null) {
+      let anchorNode = selection?.anchorNode;
+      if (!anchorNode && range) {
+        anchorNode = range.startContainer;
+      }
+      if (!anchorNode) return false;
+
+      const anchorEl =
+        anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+      return Boolean(
+        anchorEl?.closest?.(".workspace-card.excerpt-card, .node-card.excerpt-card")
+      );
+    }
+
+    function updateContextMenuActions(selection, range = null) {
+      contextMenuTargetId = null;
+      contextMenuTargetText = null;
+      menuCreateSummarizeNode.style.display = "none";
+
+      const isInsideCard = isSelectionInsideNodeCard(selection, range);
+
+      if (isInsideCard) {
+        menuCreateSummary.style.display = "block";
+        menuCreateExcerpt.style.display = "none";
+      } else {
+        menuCreateExcerpt.style.display = "block";
+        menuCreateSummary.style.display = "none";
+      }
+    }
+
+    function showSummarizeNodeContextMenu(e, cardContext) {
+      e.preventDefault();
       canvasContextMenuRange = null;
+      contextMenuTargetId = cardContext.parentId;
+      contextMenuTargetText =
+        cardContext.card.querySelector(".text-content")?.innerText.trim() ||
+        getWorkspaceCardText(cardContext.card);
+
+      menuCreateExcerpt.style.display = "none";
+      menuCreateSummary.style.display = "none";
+      menuCreateSummarizeNode.style.display = "block";
+
+      customContextMenu.style.left = `${e.pageX}px`;
+      customContextMenu.style.top = `${e.pageY}px`;
+      customContextMenu.classList.remove("hidden");
+    }
+
+    function hideCustomContextMenu() {
+      customContextMenu.classList.add("hidden");
+      canvasContextMenuRange = null;
+      contextMenuTargetId = null;
+      contextMenuTargetText = null;
+    }
+
+    function showCustomContextMenu(e) {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+
+      e.preventDefault();
+      canvasContextMenuRange = selection.getRangeAt(0).cloneRange();
+      updateContextMenuActions(selection, canvasContextMenuRange);
+      customContextMenu.style.left = `${e.pageX}px`;
+      customContextMenu.style.top = `${e.pageY}px`;
+      customContextMenu.classList.remove("hidden");
+    }
+
+    function handleSelectionContextMenu(e) {
+      const selection = window.getSelection();
+      const selectedText = selection.toString().trim();
+
+      if (selectedText) {
+        const excerptContext = getExcerptCardFromSelection(selection);
+        const inDoc = selection.rangeCount && isSelectionInsideDocBody(selection);
+
+        if (!excerptContext && !inDoc) return;
+
+        showCustomContextMenu(e);
+        return;
+      }
+
+      const clickedCard = getExcerptCardFromEvent(e);
+      if (!clickedCard) return;
+      if (e.target.closest(".promote-btn, .card-delete-btn, .card-hover-menu")) return;
+
+      showSummarizeNodeContextMenu(e, clickedCard);
     }
 
     function initDocContextMenuListeners() {
       if (docPane.dataset.contextMenuBound) return;
       docPane.dataset.contextMenuBound = "1";
 
-      docPane.addEventListener("contextmenu", (e) => {
-        const selection = window.getSelection();
-        const text = selection.toString().trim();
-        if (!text || !isSelectionInsideDocBody(selection)) return;
+      docPane.addEventListener("contextmenu", handleSelectionContextMenu);
 
-        e.preventDefault();
-        canvasContextMenuRange = selection.getRangeAt(0).cloneRange();
-        customContextMenu.style.left = `${e.pageX}px`;
-        customContextMenu.style.top = `${e.pageY}px`;
-        customContextMenu.style.display = "block";
-      });
+      if (nodePane && !nodePane.dataset.contextMenuBound) {
+        nodePane.dataset.contextMenuBound = "1";
+        nodePane.addEventListener("contextmenu", handleSelectionContextMenu);
+      }
 
-      menuExtractBtn.addEventListener("click", (e) => {
+      menuCreateExcerpt.addEventListener("click", (e) => {
         e.stopPropagation();
         const range = canvasContextMenuRange;
         hideCustomContextMenu();
         autoSaveExcerptFromSelection(range);
       });
 
-      document.addEventListener("click", (e) => {
-        if (!customContextMenu.contains(e.target)) {
-          hideCustomContextMenu();
-        }
+      menuCreateSummary.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const range = canvasContextMenuRange;
+        hideCustomContextMenu();
+        autoSaveExcerptFromSelection(range);
+      });
+
+      menuCreateSummarizeNode.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const parentId = contextMenuTargetId;
+        const text = contextMenuTargetText?.trim();
+        hideCustomContextMenu();
+        if (!parentId || !text) return;
+        saveRecursiveSummaryFromExcerptCard(
+          text,
+          { parentId },
+          window.getSelection(),
+          { enterInlineEdit: true }
+        );
+      });
+
+      window.addEventListener("click", () => {
+        hideCustomContextMenu();
       });
     }
 
