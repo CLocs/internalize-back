@@ -511,8 +511,9 @@
       min-width: 280px;
       height: 100%;
       min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       padding: 0;
       border-right: 1px solid #334155;
       position: relative;
@@ -538,10 +539,8 @@
       justify-content: space-between;
       gap: 8px;
       padding: 10px 12px;
-      background: #1e293b;
-      border-bottom: 1px solid #334155;
-      position: sticky;
-      top: 0;
+      background: var(--bg-darker);
+      border-bottom: 1px solid var(--border-color);
       z-index: 55;
     }
 
@@ -552,29 +551,83 @@
       letter-spacing: 0.06em;
       font-weight: 600;
       color: #deff9a;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .doc-pane-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    #toggle-search-btn .doc-search-toggle-icon {
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    #doc-search-wrapper {
+      flex-shrink: 0;
+    }
+
+    #doc-search-wrapper.hidden {
+      display: none !important;
     }
 
     #doc-search-bar {
-      background: #1e293b;
-      position: sticky;
-      top: 0;
+      flex-shrink: 0;
       z-index: 50;
-      padding: 10px;
+      background-color: var(--bg-darker);
+      padding: 10px 12px;
       display: flex;
       gap: 10px;
       align-items: center;
-      border-bottom: 1px solid #334155;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .doc-search-input-wrap {
+      position: relative;
+      flex: 1 1 0;
+      min-width: 0;
     }
 
     #doc-search-input {
-      flex-grow: 1;
+      width: 100%;
       background: #0f172a;
       color: white;
       border: 1px solid #334155;
-      padding: 5px 8px;
+      padding: 5px 28px 5px 8px;
       border-radius: 4px;
       font-family: "Segoe UI", system-ui, sans-serif;
       font-size: 0.85rem;
+      box-sizing: border-box;
+    }
+
+    /* Hide the native webkit search clear button (custom #clear-search-text is used) */
+    input[type="search"]::-webkit-search-cancel-button {
+      -webkit-appearance: none;
+      appearance: none;
+      display: none;
+    }
+
+    #clear-search-text {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #94a3b8;
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 3px;
+      user-select: none;
+    }
+
+    #clear-search-text:hover {
+      color: #deff9a;
+      background: rgba(222, 255, 154, 0.08);
     }
 
     #doc-search-input:focus {
@@ -608,6 +661,10 @@
     }
 
     .doc-pane-content {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
       padding: 40px;
     }
 
@@ -687,11 +744,12 @@
     #workspace-columns {
       flex: 1 1 0;
       min-height: 0;
+      width: 100%;
       display: flex;
       flex-direction: row;
       overflow-x: auto;
       overflow-y: hidden;
-      gap: 40px;
+      gap: 20px;
       padding: 20px;
       align-items: stretch;
       align-content: stretch;
@@ -787,20 +845,21 @@
     }
 
     #node-pane.view-tree #workspace-columns {
-      display: grid;
-      grid-auto-flow: column;
-      grid-auto-columns: 350px;
-      grid-template-rows: minmax(0, 1fr);
-      align-items: stretch;
-      align-content: stretch;
+      display: flex;
+      flex-direction: row;
+      width: 100%;
       overflow-x: auto;
       overflow-y: hidden;
+      align-items: stretch;
+      align-content: stretch;
     }
 
     #node-pane.view-tree .workspace-column {
+      flex: 1 1 250px;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
       gap: 15px;
-      min-width: 350px;
-      width: 350px;
       height: 100%;
       min-height: 0;
       align-self: stretch;
@@ -813,10 +872,15 @@
     }
 
     #node-pane.view-tree .workspace-card {
-      width: 350px;
-      max-width: 350px;
-      flex-shrink: 0;
-      transition: margin-left 0.2s ease;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      margin-right: 0;
+      overflow: hidden;
+      flex-shrink: 0 !important;
+      height: auto !important;
+      min-width: 0;
+      transition: margin-left 0.2s ease, width 0.2s ease, max-width 0.2s ease;
     }
 
     #node-pane.view-flow {
@@ -855,11 +919,15 @@
     }
 
     #node-pane.view-flow .workspace-card {
-      width: 100%;
-      max-width: 800px;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
       margin-right: 0;
       margin-bottom: 0;
-      box-sizing: border-box;
+      overflow: hidden;
+      flex-shrink: 0 !important;
+      height: auto !important;
+      min-width: 0;
       transition: margin-left 0.2s ease, width 0.2s ease, max-width 0.2s ease;
     }
 
@@ -926,7 +994,8 @@
 
     #node-pane.view-flow .inline-editor {
       width: 100%;
-      max-width: 800px;
+      max-width: 100%;
+      box-sizing: border-box;
       margin-left: auto;
       margin-right: auto;
     }
@@ -1824,10 +1893,10 @@
       display: flex;
       flex-direction: column;
       gap: 15px;
-      min-width: 350px;
-      width: 350px;
-      flex: 0 0 350px;
-      flex-shrink: 0;
+      flex: 1 1 250px;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
       min-height: 0;
       height: 100%;
       align-self: stretch;
@@ -1836,6 +1905,7 @@
       overflow-anchor: auto;
       position: relative;
       z-index: 1;
+      -webkit-overflow-scrolling: touch;
     }
 
     .hide-labels .node-label {
@@ -1865,9 +1935,16 @@
       pointer-events: none;
     }
 
-    .workspace-card {
-      width: 100%;
-      flex-shrink: 0;
+    .workspace-card,
+    .node-card {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      margin-right: 0;
+      overflow: hidden;
+      min-width: 0;
+      flex-shrink: 0 !important;
+      height: auto !important;
       padding: 12px 14px;
       background: #1e293b;
       border: 1px solid #334155;
@@ -1879,6 +1956,26 @@
       z-index: 10;
       cursor: pointer;
       user-select: none;
+    }
+
+    .workspace-card *,
+    .node-card * {
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .workspace-card p,
+    .workspace-card h3,
+    .workspace-card .card-title,
+    .workspace-card .card-content,
+    .workspace-card .card-label,
+    .workspace-card .text-content,
+    .node-card p,
+    .node-card h3,
+    .node-card .text-content {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
     }
 
     .workspace-card .text-content {
@@ -2018,6 +2115,12 @@
       color: #e2e8f0;
     }
 
+    .workspace-card.summary-card.card-body-only .card-content {
+      font-size: 0.9rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
     .workspace-card.workspace-focus {
       animation: card-pulse 0.6s ease-in-out 3;
       border-color: #deff9a;
@@ -2062,8 +2165,11 @@
       position: sticky;
       bottom: 20px;
       align-self: flex-end;
+      flex: 0 0 auto;
       flex-shrink: 0;
-      width: 350px;
+      max-width: 100%;
+      width: auto;
+      min-width: 200px;
       padding: 10px 16px;
       border: none;
       border-radius: 8px;
@@ -2088,7 +2194,7 @@
     }
 
     .hidden {
-      display: none;
+      display: none !important;
     }
 
     #custom-context-menu {
@@ -2337,20 +2443,34 @@
         <div id="doc-pane">
           <div class="doc-pane-header">
             <span class="doc-pane-title">Source Document</span>
-            <button
-              type="button"
-              id="doc-pane-collapse-btn"
-              class="pane-collapse-btn"
-              aria-label="Collapse source document"
-              title="Collapse source document"
-            ><span class="pane-collapse-chevron" aria-hidden="true">‹</span></button>
+            <div class="doc-pane-header-actions">
+              <button
+                type="button"
+                id="toggle-search-btn"
+                class="pane-collapse-btn"
+                title="Search (Ctrl+F)"
+                aria-label="Search document"
+              ><span class="doc-search-toggle-icon" aria-hidden="true">⌕</span></button>
+              <button
+                type="button"
+                id="doc-pane-collapse-btn"
+                class="pane-collapse-btn"
+                aria-label="Collapse source document"
+                title="Collapse source document"
+              ><span class="pane-collapse-chevron" aria-hidden="true">‹</span></button>
+            </div>
           </div>
-          <div id="doc-search-bar">
-            <input type="text" id="doc-search-input" placeholder="Search document..." />
-            <span id="doc-search-counter">0/0</span>
-            <button type="button" id="doc-search-prev" title="Previous match">▲</button>
-            <button type="button" id="doc-search-next" title="Next match">▼</button>
-            <button type="button" id="doc-search-clear" title="Clear search">✖</button>
+          <div id="doc-search-wrapper" class="hidden">
+            <div id="doc-search-bar">
+              <div class="doc-search-input-wrap">
+                <input type="search" id="doc-search-input" placeholder="Search document..." autocomplete="off" />
+                <span id="clear-search-text" class="hidden" title="Clear search text" aria-hidden="true">&times;</span>
+              </div>
+              <span id="doc-search-counter">0/0</span>
+              <button type="button" id="doc-search-prev" title="Previous match">▲</button>
+              <button type="button" id="doc-search-next" title="Next match">▼</button>
+              <button type="button" id="doc-search-clear" title="Close search">✖</button>
+            </div>
           </div>
           <div class="doc-pane-content">
             <h1 id="doc-title"></h1>
@@ -2495,7 +2615,10 @@
     const workbenchPaneHandle = document.getElementById("workbench-pane-handle");
     const docPaneCollapseBtn = document.getElementById("doc-pane-collapse-btn");
     const sourcePaneHandle = document.getElementById("source-pane-handle");
+    const toggleSearchBtn = document.getElementById("toggle-search-btn");
+    const docSearchWrapper = document.getElementById("doc-search-wrapper");
     const docSearchInput = document.getElementById("doc-search-input");
+    const clearSearchTextBtn = document.getElementById("clear-search-text");
     const docSearchCounter = document.getElementById("doc-search-counter");
     const docSearchPrev = document.getElementById("doc-search-prev");
     const docSearchNext = document.getElementById("doc-search-next");
@@ -2545,7 +2668,9 @@
 
     function getPaneScrollContainer(element) {
       if (!element) return null;
-      if (docPane.contains(element)) return docPane;
+      if (docPane.contains(element)) {
+        return element.closest(".doc-pane-content") || docPane;
+      }
       const column = element.closest(".workspace-column");
       if (column) return column;
       if (
@@ -2638,7 +2763,6 @@
     let nodeColumnMap = new Map();
     const MAX_FLOW_INDENT_CLASS = 12;
     const FLOW_INDENT_STEP = 30;
-    const FLOW_CARD_MAX_WIDTH = 800;
     let flowCollapsedBranches = new Set();
     let workspaceViewMode = "tree";
     let synthesisViewMode = "edit";
@@ -4183,7 +4307,13 @@
     }
 
     function initDocumentCanvasLineListeners() {
-      if (!docPane.dataset.scrollBound) {
+      const docPaneContent = docPane?.querySelector(".doc-pane-content");
+      if (docPaneContent && !docPaneContent.dataset.scrollBound) {
+        docPaneContent.addEventListener("scroll", repositionDocumentCanvasLines);
+        docPaneContent.dataset.scrollBound = "1";
+      }
+
+      if (docPane && !docPane.dataset.scrollBound) {
         docPane.addEventListener("scroll", repositionDocumentCanvasLines);
         docPane.dataset.scrollBound = "1";
       }
@@ -4410,21 +4540,66 @@
       setActiveSearchMatch(nextIndex);
     }
 
+    function syncClearSearchTextButton() {
+      if (!clearSearchTextBtn || !docSearchInput) return;
+      const hasText = docSearchInput.value.length > 0;
+      clearSearchTextBtn.classList.toggle("hidden", !hasText);
+    }
+
     function clearDocSearch() {
       docSearchInput.value = "";
       clearDocSearchMarks();
       updateDocSearchCounter();
+      syncClearSearchTextButton();
+    }
+
+    function clearDocSearchTextOnly() {
+      clearDocSearch();
+      docSearchInput?.focus();
+    }
+
+    function showDocSearchBar({ select = false } = {}) {
+      if (!docSearchWrapper || !docSearchInput) return;
+      docSearchWrapper.classList.remove("hidden");
+      syncClearSearchTextButton();
+      docSearchInput.focus();
+      if (select) docSearchInput.select();
+    }
+
+    function hideDocSearchBar() {
+      docSearchWrapper?.classList.add("hidden");
+    }
+
+    function closeDocSearch() {
+      clearDocSearch();
+      hideDocSearchBar();
     }
 
     function initDocSearchListeners() {
       if (docSearchInput.dataset.bound) return;
       docSearchInput.dataset.bound = "1";
 
+      toggleSearchBtn?.addEventListener("click", () => {
+        showDocSearchBar();
+      });
+
+      clearSearchTextBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearDocSearchTextOnly();
+      });
+
       docSearchInput.addEventListener("input", () => {
+        syncClearSearchTextButton();
         clearTimeout(docSearchDebounceTimer);
         docSearchDebounceTimer = setTimeout(() => {
           performDocSearch(docSearchInput.value);
         }, 300);
+      });
+
+      docSearchInput.addEventListener("search", () => {
+        syncClearSearchTextButton();
+        performDocSearch(docSearchInput.value);
       });
 
       docSearchInput.addEventListener("keydown", (e) => {
@@ -4436,7 +4611,7 @@
 
       docSearchPrev.addEventListener("click", () => goToSearchMatch(-1));
       docSearchNext.addEventListener("click", () => goToSearchMatch(1));
-      docSearchClear.addEventListener("click", clearDocSearch);
+      docSearchClear.addEventListener("click", closeDocSearch);
     }
 
     function buildHighlightedHtml(text, excerpts) {
@@ -5517,10 +5692,12 @@
       clearFlowIndentClasses(card);
       const depth = parseInt(card.dataset.depthLevel, 10) || 0;
       if (workspaceViewMode === "tree") {
-        card.style.marginLeft = `${depth * 20}px`;
-        card.style.width = "";
-        card.style.maxWidth = "";
-        card.style.marginRight = "";
+        const indent = depth * 20;
+        card.style.marginLeft = `${indent}px`;
+        card.style.marginRight = "0";
+        const fitWidth = indent > 0 ? `calc(100% - ${indent}px)` : "100%";
+        card.style.width = fitWidth;
+        card.style.maxWidth = fitWidth;
       } else {
         card.style.marginLeft = "";
         card.style.width = "";
@@ -6122,13 +6299,10 @@
       card.dataset.flowDepth = String(depth);
       const indentPx = depth * FLOW_INDENT_STEP;
       card.style.marginLeft = `${indentPx}px`;
-      if (indentPx > 0) {
-        card.style.width = `calc(100% - ${indentPx}px)`;
-        card.style.maxWidth = `${FLOW_CARD_MAX_WIDTH - indentPx}px`;
-      } else {
-        card.style.width = "100%";
-        card.style.maxWidth = `${FLOW_CARD_MAX_WIDTH}px`;
-      }
+      card.style.marginRight = "0";
+      const fitWidth = indentPx > 0 ? `calc(100% - ${indentPx}px)` : "100%";
+      card.style.width = fitWidth;
+      card.style.maxWidth = fitWidth;
     }
 
     function getFlowScrollAnchor() {
@@ -6404,16 +6578,39 @@
       return maxCol + 1;
     }
 
-    function getSummaryCardHtml(node) {
+    function resolveCardTitleTextVisibility(node) {
       const title = (node.title ?? "").trim();
-      const body = (node.content ?? node.text ?? "").trim();
-      const heading = title || body || "Untitled";
-      const showBody = Boolean(body && body !== title);
+      const text = (node.content ?? node.text ?? "").trim();
+
+      let showTitle = true;
+      let showText = true;
+
+      if (title && text) {
+        const cleanTitle = title.replace("...", "").trim();
+        const isExactMatch = title === text;
+        const isAutoGeneratedSubstring = text.startsWith(cleanTitle);
+
+        if (isExactMatch || isAutoGeneratedSubstring) {
+          showTitle = false;
+        }
+      } else if (title && !text) {
+        showText = false;
+      } else if (!title && text) {
+        showTitle = false;
+      }
+
+      return { title, text, showTitle, showText };
+    }
+
+    function getSummaryCardHtml(node) {
+      const { title, text, showTitle, showText } = resolveCardTitleTextVisibility(node);
+      const fallback = text || title || "Untitled";
 
       return `
         <div class="card-label node-label">Level 1: Summary</div>
-        <div class="card-title text-content">${escapeHtml(heading)}</div>
-        ${showBody ? `<div class="card-content text-content">${escapeHtml(body)}</div>` : ""}
+        ${showTitle ? `<div class="card-title text-content">${escapeHtml(title || fallback)}</div>` : ""}
+        ${showText ? `<div class="card-content text-content">${escapeHtml(text || fallback)}</div>` : ""}
+        ${!showTitle && !showText ? `<div class="card-content text-content">${escapeHtml("Untitled")}</div>` : ""}
       `;
     }
 
@@ -6424,12 +6621,17 @@
       card.dataset.densityLevel = String(node.density_level);
 
       if (isSummary) {
+        const { showTitle, showText } = resolveCardTitleTextVisibility(node);
+        card.classList.toggle("card-body-only", !showTitle && showText);
         card.innerHTML = getSummaryCardHtml(node);
       } else {
+        card.classList.remove("card-body-only");
+        const { title, text, showText } = resolveCardTitleTextVisibility(node);
+        const displayText = showText ? text : title;
         card.dataset.sourceSpan = `excerpt-${node.id}`;
         card.innerHTML = `
           <div class="card-label node-label">Level 2: Excerpt</div>
-          <div class="card-content text-content">${escapeHtml(node.content)}</div>
+          <div class="card-content text-content">${escapeHtml(displayText || "Untitled")}</div>
         `;
       }
     }
@@ -7767,8 +7969,7 @@
         const key = e.key.toLowerCase();
         if (key === "f") {
           e.preventDefault();
-          docSearchInput.focus();
-          docSearchInput.select();
+          showDocSearchBar({ select: true });
           return;
         }
 
