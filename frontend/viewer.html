@@ -734,29 +734,72 @@
     #workspace-stack {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      flex: 1 1 0;
       min-height: 0;
-      flex: 1;
+      min-width: 0;
       width: 100%;
+      overflow: hidden;
       position: relative;
     }
 
     #workspace-columns {
       flex: 1 1 0;
       min-height: 0;
+      min-width: 0;
       width: 100%;
-      display: flex;
-      flex-direction: row;
+      max-width: 100%;
+      position: relative;
       overflow-x: auto;
       overflow-y: hidden;
-      gap: 20px;
       padding: 20px;
+      box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .workspace-columns-track {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
       align-items: stretch;
-      align-content: stretch;
+      gap: 20px;
+      width: max-content;
+      box-sizing: border-box;
+    }
+
+    #node-pane.view-tree .workspace-columns-track {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      width: max-content;
+      max-width: none;
+      gap: 20px;
+      box-sizing: border-box;
+    }
+
+    #node-pane.view-tree .workspace-columns-track::after {
+      content: "";
+      flex: 0 0 20px;
+      width: 20px;
+      align-self: stretch;
+    }
+
+    #node-pane.view-tree .density-column,
+    #node-pane.view-tree .workspace-column {
+      width: 320px !important;
+      min-width: 320px !important;
+      max-width: 320px !important;
+      flex: 0 0 320px !important;
+      box-sizing: border-box;
+      gap: 15px;
+      height: 100%;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
     #graph-container {
-      position: fixed;
+      position: absolute;
       bottom: 20px;
       right: 20px;
       z-index: 100;
@@ -845,26 +888,8 @@
     }
 
     #node-pane.view-tree #workspace-columns {
-      display: flex;
-      flex-direction: row;
-      width: 100%;
       overflow-x: auto;
       overflow-y: hidden;
-      align-items: stretch;
-      align-content: stretch;
-    }
-
-    #node-pane.view-tree .workspace-column {
-      flex: 1 1 250px;
-      min-width: 0;
-      max-width: 100%;
-      box-sizing: border-box;
-      gap: 15px;
-      height: 100%;
-      min-height: 0;
-      align-self: stretch;
-      overflow-y: auto;
-      overflow-x: hidden;
     }
 
     #node-pane.view-tree .flow-column {
@@ -885,16 +910,33 @@
 
     #node-pane.view-flow {
       flex-direction: column;
+      min-height: 0;
+    }
+
+    #node-pane.view-flow #workspace-stack {
+      flex: 1 1 0;
+      min-height: 0;
     }
 
     #node-pane.view-flow #workspace-columns {
-      display: block;
       flex: 1 1 0;
       min-height: 0;
+      display: flex;
+      flex-direction: column;
       overflow-x: hidden;
       overflow-y: auto;
       overflow-anchor: auto;
+    }
+
+    #node-pane.view-flow .workspace-columns-track {
+      flex: 1 0 auto;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-width: 0;
+      min-height: 100%;
       gap: 0;
+      box-sizing: border-box;
     }
 
     #workspace-stack.graph-collapsed #workspace-columns {
@@ -910,9 +952,10 @@
       flex-direction: column;
       width: 100%;
       min-width: 0;
-      height: 100%;
+      height: auto;
       min-height: 100%;
       max-height: none;
+      flex: 1 1 auto;
       overflow-y: visible;
       overflow-x: hidden;
       gap: 12px;
@@ -1893,19 +1936,27 @@
       display: flex;
       flex-direction: column;
       gap: 15px;
-      flex: 1 1 250px;
-      min-width: 0;
-      max-width: 100%;
+      flex-shrink: 0;
       box-sizing: border-box;
       min-height: 0;
-      height: 100%;
-      align-self: stretch;
       overflow-y: auto;
       overflow-x: hidden;
       overflow-anchor: auto;
       position: relative;
       z-index: 1;
       -webkit-overflow-scrolling: touch;
+    }
+
+    #node-pane.view-tree .density-column,
+    #node-pane.view-tree .workspace-column {
+      height: 100%;
+    }
+
+    .workspace-columns-track > .density-column,
+    .workspace-columns-track > .workspace-column {
+      flex: 0 0 auto;
+      min-width: 0;
+      max-width: none;
     }
 
     .hide-labels .node-label {
@@ -2162,14 +2213,12 @@
 
     #group-synthesize-btn {
       display: none;
-      position: sticky;
+      position: absolute;
       bottom: 20px;
-      align-self: flex-end;
-      flex: 0 0 auto;
-      flex-shrink: 0;
-      max-width: 100%;
+      right: 20px;
       width: auto;
       min-width: 200px;
+      max-width: calc(100% - 40px);
       padding: 10px 16px;
       border: none;
       border-radius: 8px;
@@ -2181,7 +2230,6 @@
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
       z-index: 20;
-      flex-shrink: 0;
     }
 
     #group-synthesize-btn:hover {
@@ -2480,6 +2528,7 @@
         <div id="node-pane" class="view-tree">
           <div id="workspace-stack">
             <div id="workspace-columns">
+              <div id="workspace-columns-track" class="workspace-columns-track"></div>
               <button type="button" id="group-synthesize-btn">Synthesize Group (0)</button>
             </div>
           </div>
@@ -2628,6 +2677,7 @@
     const nodePane = document.getElementById("node-pane");
     const workspaceStack = document.getElementById("workspace-stack");
     const workspaceColumns = document.getElementById("workspace-columns");
+    const workspaceColumnsTrack = document.getElementById("workspace-columns-track");
     const graphContainer = document.getElementById("graph-container");
     const cyCollapseBtn = document.getElementById("cy-collapse-btn");
     const cyGraphSizeBtn = document.getElementById("cy-graph-size-btn");
@@ -6417,7 +6467,7 @@
         col.id = "col-flow";
         col.className = "density-column workspace-column flow-column";
         col.dataset.columnIndex = "flow";
-        workspaceColumns.insertBefore(col, groupSynthesizeBtn);
+        workspaceColumnsTrack.insertBefore(col, null);
         if (!col.dataset.scrollBound) {
           col.addEventListener("scroll", repositionDocumentCanvasLines);
           col.dataset.scrollBound = "1";
@@ -6727,18 +6777,18 @@
     }
 
     function insertColumnInOrder(col, columnIndex) {
-      const existing = [...workspaceColumns.querySelectorAll(".workspace-column")];
+      const existing = [...workspaceColumnsTrack.querySelectorAll(".workspace-column")];
       const insertBefore = existing.find(
         (c) => parseInt(c.dataset.columnIndex, 10) > columnIndex
       );
-      workspaceColumns.insertBefore(col, insertBefore || groupSynthesizeBtn);
+      workspaceColumnsTrack.insertBefore(col, insertBefore || null);
     }
 
     function resetWorkspaceColumns() {
-      workspaceColumns.querySelectorAll(".workspace-column").forEach((col) => {
+      workspaceColumnsTrack.querySelectorAll(".workspace-column").forEach((col) => {
         col.remove();
       });
-      workspaceColumns.querySelectorAll(".inline-editor").forEach((el) => {
+      workspaceColumnsTrack.querySelectorAll(".inline-editor").forEach((el) => {
         el.remove();
       });
       WorkspaceDomCache.clearColumnsOnly();
@@ -6985,7 +7035,7 @@
 
       const anchorEl =
         anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
-      const card = anchorEl?.closest?.(".workspace-card.excerpt-card");
+      const card = anchorEl?.closest?.(".workspace-card.excerpt-card, .node-card.excerpt-card");
       if (!card) return null;
 
       const parentId = card.dataset.nodeId?.trim();
@@ -7800,8 +7850,9 @@
       if (selectedText) {
         const excerptContext = getExcerptCardFromSelection(selection);
         const inDoc = selection.rangeCount && isSelectionInsideDocBody(selection);
+        const inExcerptCard = isSelectionInsideNodeCard(selection);
 
-        if (!excerptContext && !inDoc) return;
+        if (!excerptContext && !inDoc && !inExcerptCard) return;
 
         showCustomContextMenu(e);
         return;
@@ -7815,15 +7866,10 @@
     }
 
     function initDocContextMenuListeners() {
-      if (docPane.dataset.contextMenuBound) return;
-      docPane.dataset.contextMenuBound = "1";
+      if (document.body.dataset.contextMenuBound) return;
+      document.body.dataset.contextMenuBound = "1";
 
-      docPane.addEventListener("contextmenu", handleSelectionContextMenu);
-
-      if (nodePane && !nodePane.dataset.contextMenuBound) {
-        nodePane.dataset.contextMenuBound = "1";
-        nodePane.addEventListener("contextmenu", handleSelectionContextMenu);
-      }
+      document.addEventListener("contextmenu", handleSelectionContextMenu);
 
       menuCreateExcerpt.addEventListener("click", (e) => {
         e.stopPropagation();
