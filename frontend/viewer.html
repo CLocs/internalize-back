@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Internalize — Spatial Viewer</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
   <script src="https://unpkg.com/dagre@0.7.4/dist/dagre.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
@@ -39,6 +40,116 @@
       flex-direction: column;
       flex: 1;
       min-height: 0;
+    }
+
+    #app-wrapper {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    #app-wrapper > #app {
+      flex: 1 1 0;
+      width: auto;
+      min-width: 0;
+    }
+
+    .tool-dock {
+      flex-shrink: 0;
+      width: 48px;
+      height: 100vh;
+      background: var(--bg-darker);
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      padding-top: 8px;
+      z-index: 50;
+    }
+
+    #left-dock {
+      border-right: 1px solid var(--border-color);
+    }
+
+    #right-dock {
+      border-left: 1px solid var(--border-color);
+    }
+
+    .dock-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px 0;
+      background: transparent;
+      border: none;
+      border-left: 2px solid transparent;
+      color: #64748b;
+      cursor: pointer;
+      transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .dock-btn:hover {
+      color: #e2e8f0;
+      background: rgba(148, 163, 184, 0.08);
+    }
+
+    .dock-btn.active {
+      color: #f8fafc;
+    }
+
+    #left-dock .dock-btn.active {
+      border-left-color: #38bdf8;
+    }
+
+    #right-dock .dock-btn {
+      border-left: none;
+      border-right: 2px solid transparent;
+    }
+
+    #right-dock .dock-btn.active {
+      border-right-color: #38bdf8;
+    }
+
+    .dock-btn i {
+      font-size: 16px;
+    }
+
+    .dock-btn span {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      margin-top: 12px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    #workbench-sidebar,
+    #doc-pane,
+    #synthesis-pane-shell,
+    #graph-container {
+      transition: width 0.3s ease, flex 0.3s ease, flex-basis 0.3s ease,
+        padding 0.3s ease, margin 0.3s ease, opacity 0.2s ease, border-width 0.3s ease,
+        height 0.3s ease, transform 0.3s ease;
+    }
+
+    .panel-hidden {
+      width: 0 !important;
+      min-width: 0 !important;
+      flex: 0 0 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      margin: 0 !important;
+      opacity: 0;
+      overflow: hidden;
+      border: none !important;
+      pointer-events: none;
+    }
+
+    #workbench-collapse-btn,
+    #doc-pane-collapse-btn,
+    #synthesis-collapse-handle,
+    .pane-handle {
+      display: none !important;
     }
 
     #viewer-header {
@@ -2372,6 +2483,15 @@
 </head>
 <body>
   <div id="line-canvas" aria-hidden="true"></div>
+  <div id="app-wrapper" style="display: flex; height: 100vh; width: 100vw; overflow: hidden;">
+  <div id="left-dock" class="tool-dock">
+    <button class="dock-btn active" data-target="connections-pane" title="Toggle Connections">
+      <i class="fa-solid fa-link"></i><span>Connections</span>
+    </button>
+    <button class="dock-btn active" data-target="doc-pane" title="Toggle Source">
+      <i class="fa-solid fa-book-open"></i><span>Source</span>
+    </button>
+  </div>
   <div id="app">
   <header id="viewer-header">
     <label for="source-selector">Source</label>
@@ -2558,7 +2678,7 @@
         aria-label="Expand source document"
         title="Expand source document"
       ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
-      <div id="synthesis-pane-shell" class="collapsed">
+      <div id="synthesis-pane-shell" class="panel-hidden">
         <button
           type="button"
           id="synthesis-collapse-handle"
@@ -2620,6 +2740,15 @@
         title="Expand synthesis workspace"
       ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
     </div>
+  </div>
+  </div>
+  <div id="right-dock" class="tool-dock">
+    <button class="dock-btn" data-target="synthesis-pane" title="Toggle Synthesis">
+      <i class="fa-solid fa-pen-nib"></i><span>Synthesis</span>
+    </button>
+    <button class="dock-btn active" data-target="graph-minimap-pane" title="Toggle Graph">
+      <i class="fa-solid fa-project-diagram"></i><span>Graph</span>
+    </button>
   </div>
   </div>
 
@@ -3304,10 +3433,46 @@
     }
 
     function updatePaneRecoveryHandles() {
-      synthesisPaneHandle?.classList.toggle("visible", synthesisPaneCollapsed);
-      graphPaneHandle?.classList.toggle("visible", workspaceGraphCollapsed);
-      workbenchPaneHandle?.classList.toggle("visible", workbenchSidebarCollapsed);
-      sourcePaneHandle?.classList.toggle("visible", sourcePaneCollapsed);
+      // Recovery handles/arrows are superseded by the edge docks; nothing to sync.
+    }
+
+    const DOCK_TARGET_PANELS = {
+      "connections-pane": "workbench-sidebar",
+      "doc-pane": "doc-pane",
+      "synthesis-pane": "synthesis-pane-shell",
+      "graph-minimap-pane": "graph-container",
+    };
+
+    function schedulePanelReflow() {
+      requestAnimationFrame(() => {
+        repositionDocumentCanvasLines?.();
+        fitWorkspaceCyGraph?.();
+        scheduleDrawConnections?.();
+      });
+    }
+
+    function setDockPanelVisible(target, visible) {
+      const panel = document.getElementById(DOCK_TARGET_PANELS[target]);
+      const btn = document.querySelector(`.dock-btn[data-target="${target}"]`);
+      if (panel) panel.classList.toggle("panel-hidden", !visible);
+      if (btn) btn.classList.toggle("active", visible);
+
+      switch (target) {
+        case "connections-pane": workbenchSidebarCollapsed = !visible; break;
+        case "doc-pane": sourcePaneCollapsed = !visible; break;
+        case "synthesis-pane": synthesisPaneCollapsed = !visible; break;
+        case "graph-minimap-pane": workspaceGraphCollapsed = !visible; break;
+      }
+
+      schedulePanelReflow();
+    }
+
+    function initDocks() {
+      document.addEventListener("click", (e) => {
+        const btn = e.target.closest(".dock-btn");
+        if (!btn || !btn.dataset.target || !(btn.dataset.target in DOCK_TARGET_PANELS)) return;
+        setDockPanelVisible(btn.dataset.target, !btn.classList.contains("active"));
+      });
     }
 
     function onLeftPaneTransitionEnd(e) {
@@ -3320,14 +3485,7 @@
     }
 
     function setWorkbenchSidebarCollapsed(collapsed) {
-      workbenchSidebarCollapsed = collapsed;
-      workbenchSidebar?.classList.toggle("collapsed-sidebar", collapsed);
-      workbenchCollapseBtn?.setAttribute("aria-expanded", String(!collapsed));
-      workbenchCollapseBtn?.setAttribute(
-        "title",
-        collapsed ? "Expand connections sidebar" : "Collapse connections sidebar"
-      );
-      updatePaneRecoveryHandles();
+      setDockPanelVisible("connections-pane", !collapsed);
     }
 
     function collapseWorkbenchSidebar() {
@@ -3339,14 +3497,7 @@
     }
 
     function setSourcePaneCollapsed(collapsed) {
-      sourcePaneCollapsed = collapsed;
-      docPane?.classList.toggle("collapsed-source", collapsed);
-      docPaneCollapseBtn?.setAttribute("aria-expanded", String(!collapsed));
-      docPaneCollapseBtn?.setAttribute(
-        "title",
-        collapsed ? "Expand source document" : "Collapse source document"
-      );
-      updatePaneRecoveryHandles();
+      setDockPanelVisible("doc-pane", !collapsed);
     }
 
     function collapseSourcePane() {
@@ -3358,54 +3509,16 @@
     }
 
     function initLeftPaneCollapses() {
-      if (workbenchCollapseBtn && !workbenchCollapseBtn.dataset.bound) {
-        workbenchCollapseBtn.dataset.bound = "1";
-        workbenchCollapseBtn.addEventListener("click", () => {
-          if (workbenchSidebarCollapsed) expandWorkbenchSidebar();
-          else collapseWorkbenchSidebar();
-        });
-      }
-
-      if (docPaneCollapseBtn && !docPaneCollapseBtn.dataset.bound) {
-        docPaneCollapseBtn.dataset.bound = "1";
-        docPaneCollapseBtn.addEventListener("click", () => {
-          if (sourcePaneCollapsed) expandSourcePane();
-          else collapseSourcePane();
-        });
-      }
-
       workbenchSidebar?.addEventListener("transitionend", onLeftPaneTransitionEnd);
       docPane?.addEventListener("transitionend", onLeftPaneTransitionEnd);
-
-      if (workbenchPaneHandle && !workbenchPaneHandle.dataset.bound) {
-        workbenchPaneHandle.dataset.bound = "1";
-        workbenchPaneHandle.addEventListener("click", () => expandWorkbenchSidebar());
-      }
-
-      if (sourcePaneHandle && !sourcePaneHandle.dataset.bound) {
-        sourcePaneHandle.dataset.bound = "1";
-        sourcePaneHandle.addEventListener("click", () => expandSourcePane());
-      }
-
-      updatePaneRecoveryHandles();
     }
 
     function collapseSynthesisPane() {
-      synthesisPaneCollapsed = true;
-      synthesisPaneShell.classList.add("collapsed");
-      synthesisCollapseHandle.classList.add("collapsed");
-      synthesisCollapseHandle.setAttribute("aria-expanded", "false");
-      synthesisCollapseHandle.title = "Expand synthesis workspace";
-      updatePaneRecoveryHandles();
+      setDockPanelVisible("synthesis-pane", false);
     }
 
     function expandSynthesisPane() {
-      synthesisPaneCollapsed = false;
-      synthesisPaneShell.classList.remove("collapsed");
-      synthesisCollapseHandle.classList.remove("collapsed");
-      synthesisCollapseHandle.setAttribute("aria-expanded", "true");
-      synthesisCollapseHandle.title = "Collapse synthesis workspace";
-      updatePaneRecoveryHandles();
+      setDockPanelVisible("synthesis-pane", true);
     }
 
     function setWorkspaceGraphSizeExpanded(expanded) {
@@ -3424,12 +3537,8 @@
     }
 
     function setWorkspaceGraphCollapsed(collapsed) {
-      workspaceGraphCollapsed = collapsed;
-      graphContainer.classList.toggle("graph-collapsed", collapsed);
-      cyCollapseBtn.textContent = collapsed ? "Expand Graph" : "Collapse";
-      updatePaneRecoveryHandles();
-      fitWorkspaceCyGraph();
-      scheduleDrawConnections();
+      setDockPanelVisible("graph-minimap-pane", !collapsed);
+      if (cyCollapseBtn) cyCollapseBtn.textContent = collapsed ? "Expand Graph" : "Collapse";
     }
 
     function collapseWorkspaceGraph() {
@@ -6131,28 +6240,15 @@
     }
 
     function initPaneRecoveryHandles() {
-      if (synthesisPaneHandle && !synthesisPaneHandle.dataset.bound) {
-        synthesisPaneHandle.dataset.bound = "1";
-        synthesisPaneHandle.addEventListener("click", () => expandSynthesisPane());
-      }
-      if (graphPaneHandle && !graphPaneHandle.dataset.bound) {
-        graphPaneHandle.dataset.bound = "1";
-        graphPaneHandle.addEventListener("click", () => setWorkspaceGraphCollapsed(false));
-      }
-      updatePaneRecoveryHandles();
+      // Recovery arrow handles are replaced by the edge docks.
     }
 
     function initSynthesisPaneCollapse() {
-      if (synthesisCollapseHandle.dataset.bound) return;
-      synthesisCollapseHandle.dataset.bound = "1";
-
-      synthesisCollapseHandle.addEventListener("click", () => {
-        if (synthesisPaneCollapsed) expandSynthesisPane();
-        else collapseSynthesisPane();
-      });
+      if (synthesisPaneShell?.dataset.transitionBound) return;
+      synthesisPaneShell.dataset.transitionBound = "1";
 
       synthesisPaneShell.addEventListener("transitionend", (e) => {
-        if (e.propertyName !== "width") return;
+        if (e.propertyName !== "width" && e.propertyName !== "flex-basis") return;
         repositionDocumentCanvasLines();
         if (cy) {
           try { cy.resize(); } catch (_) { /* not initialized */ }
@@ -8003,6 +8099,7 @@
       initWorkspaceGraphPane();
       initLeftPaneCollapses();
       initWorkbenchSidebar();
+      initDocks();
       initGlobalDeselectHotkey();
 
       if (!isDocumentLoaded()) {
