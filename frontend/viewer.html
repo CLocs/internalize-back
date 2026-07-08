@@ -249,6 +249,79 @@
       display: flex;
     }
 
+    #workspace-tab-bar {
+      display: flex;
+      align-items: center;
+      background: #0f172a;
+      border-bottom: 1px solid #334155;
+      height: 36px;
+      overflow-x: auto;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .workspace-tab {
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      height: 100%;
+      border-right: 1px solid #334155;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: "Segoe UI", sans-serif;
+      border-bottom: 2px solid transparent;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+
+    .workspace-tab:hover {
+      background: #1e293b;
+      color: #e2e8f0;
+    }
+
+    .workspace-tab.active {
+      background: #1e293b;
+      color: #deff9a;
+      border-bottom-color: #deff9a;
+    }
+
+    #add-workspace-tab {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 0 16px;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    #add-workspace-tab:hover {
+      color: #deff9a;
+    }
+
+    .workspace-view {
+      display: none;
+      width: 100%;
+      min-height: 0;
+      flex: 1 1 0;
+    }
+
+    .workspace-view.active-view {
+      display: flex !important;
+      flex-direction: column;
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
+    .workspace-view.hidden {
+      display: none !important;
+    }
+
+    #view-source-tree #viewer-main {
+      flex: 1 1 0;
+    }
+
     #document-canvas {
       display: flex;
       flex: 1 1 100%;
@@ -2552,6 +2625,16 @@
     </button>
   </div>
   <div id="app">
+  <div id="workspace-tab-bar" style="display: flex; align-items: center; background: #0f172a; border-bottom: 1px solid #334155; height: 36px; overflow-x: auto; flex-shrink: 0; user-select: none;">
+    <div class="workspace-tab active" data-target-view="view-source-tree">
+      <i class="fa-solid fa-book-open" style="color: #94a3b8; font-size: 12px; margin-right: 6px;"></i><span>Source & Tree</span>
+    </div>
+    <div class="workspace-tab" data-target-view="view-whiteboard-1">
+      <i class="fa-solid fa-shapes" style="color: #94a3b8; font-size: 12px; margin-right: 6px;"></i><span>Main Whiteboard</span>
+    </div>
+    <button type="button" id="add-workspace-tab" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0 16px; font-size: 16px;">+</button>
+  </div>
+  <div id="view-source-tree" class="workspace-view active-view" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
   <header id="viewer-header">
     <label for="source-selector">Source</label>
     <select id="source-selector">
@@ -2800,6 +2883,11 @@
         title="Expand synthesis workspace"
       ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
     </div>
+  </div>
+  </div>
+  <div id="view-whiteboard-1" class="workspace-view hidden" style="flex: 1; position: relative; overflow: hidden; background: #0f172a; display: none;">
+    <div id="whiteboard-grid" style="position: absolute; inset: 0; background-image: radial-gradient(#334155 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5; transform-origin: 0 0;"></div>
+    <div id="whiteboard-canvas" style="position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: visible; transform-origin: 0 0;"></div>
   </div>
   </div>
   <div id="right-dock" class="tool-dock">
@@ -3545,6 +3633,147 @@
         if (!btn || !btn.dataset.target || !(btn.dataset.target in DOCK_TARGET_PANELS)) return;
         setDockPanelVisible(btn.dataset.target, !btn.classList.contains("active"));
       });
+    }
+
+    function switchWorkspaceView(targetViewId) {
+      document.querySelectorAll(".workspace-tab").forEach((tab) => {
+        tab.classList.remove("active");
+      });
+      const activeTab = document.querySelector(
+        `.workspace-tab[data-target-view="${targetViewId}"]`
+      );
+      if (activeTab) activeTab.classList.add("active");
+
+      document.querySelectorAll(".workspace-view").forEach((view) => {
+        view.classList.add("hidden");
+        view.classList.remove("active-view");
+      });
+      const targetView = document.getElementById(targetViewId);
+      if (targetView) {
+        targetView.classList.remove("hidden");
+        targetView.classList.add("active-view");
+      }
+
+      if (targetViewId === "view-source-tree") {
+        ConnectionManager.reposition();
+        if (cy) {
+          try {
+            cy.resize();
+          } catch (_) { /* not ready */ }
+        }
+        fitWorkspaceCyGraph();
+        repositionDocumentCanvasLines();
+      }
+    }
+
+    function initWorkspaceTabs() {
+      const tabBar = document.getElementById("workspace-tab-bar");
+      if (!tabBar || tabBar.dataset.bound) return;
+      tabBar.dataset.bound = "1";
+
+      tabBar.addEventListener("click", (e) => {
+        const tab = e.target.closest(".workspace-tab");
+        if (tab?.dataset.targetView) {
+          switchWorkspaceView(tab.dataset.targetView);
+          return;
+        }
+        if (e.target.closest("#add-workspace-tab")) {
+          // Placeholder for future dynamic workspace tabs.
+        }
+      });
+    }
+
+    let wbZoom = 1;
+    let wbPanX = 0;
+    let wbPanY = 0;
+    let isWbPanning = false;
+    let startWbPanX = 0;
+    let startWbPanY = 0;
+    let isSpacebarDown = false;
+
+    function updateWhiteboardTransform() {
+      const canvas = document.getElementById("whiteboard-canvas");
+      const grid = document.getElementById("whiteboard-grid");
+      if (canvas) {
+        canvas.style.transform = `translate(${wbPanX}px, ${wbPanY}px) scale(${wbZoom})`;
+      }
+      if (grid) {
+        grid.style.backgroundPosition = `${wbPanX}px ${wbPanY}px`;
+        grid.style.backgroundSize = `${20 * wbZoom}px ${20 * wbZoom}px`;
+      }
+    }
+
+    function isWhiteboardViewActive() {
+      const view = document.getElementById("view-whiteboard-1");
+      return Boolean(view && view.classList.contains("active-view"));
+    }
+
+    function shouldStartWhiteboardPan(e) {
+      if (e.button === 1) return true;
+      return e.button === 0 && isSpacebarDown;
+    }
+
+    function initWhiteboardPanZoom() {
+      const view = document.getElementById("view-whiteboard-1");
+      if (!view || view.dataset.bound) return;
+      view.dataset.bound = "1";
+
+      document.addEventListener("keydown", (e) => {
+        if (e.code !== "Space" && e.key !== " ") return;
+        if (isTypingTarget(e.target)) return;
+        isSpacebarDown = true;
+        if (isWhiteboardViewActive()) {
+          view.style.cursor = isWbPanning ? "grabbing" : "grab";
+        }
+      });
+
+      document.addEventListener("keyup", (e) => {
+        if (e.code !== "Space" && e.key !== " ") return;
+        isSpacebarDown = false;
+        if (!isWbPanning) view.style.cursor = "";
+      });
+
+      view.addEventListener("mousedown", (e) => {
+        if (!shouldStartWhiteboardPan(e)) return;
+        e.preventDefault();
+        isWbPanning = true;
+        startWbPanX = e.clientX - wbPanX;
+        startWbPanY = e.clientY - wbPanY;
+        view.style.cursor = "grabbing";
+      });
+
+      view.addEventListener("mousemove", (e) => {
+        if (!isWbPanning) return;
+        wbPanX = e.clientX - startWbPanX;
+        wbPanY = e.clientY - startWbPanY;
+        updateWhiteboardTransform();
+      });
+
+      const endPan = () => {
+        if (!isWbPanning) return;
+        isWbPanning = false;
+        view.style.cursor = isSpacebarDown ? "grab" : "";
+      };
+
+      view.addEventListener("mouseup", endPan);
+      view.addEventListener("mouseleave", endPan);
+
+      view.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+          const mouseX = e.clientX - wbPanX;
+          const mouseY = e.clientY - wbPanY;
+          wbZoom = Math.min(Math.max(0.1, wbZoom * zoomDelta), 5);
+          wbPanX = e.clientX - mouseX * zoomDelta;
+          wbPanY = e.clientY - mouseY * zoomDelta;
+          updateWhiteboardTransform();
+        },
+        { passive: false }
+      );
+
+      updateWhiteboardTransform();
     }
 
     function onLeftPaneTransitionEnd(e) {
@@ -8487,6 +8716,7 @@
         }
 
         if (e.key === " " || e.code === "Space") {
+          if (isWhiteboardViewActive()) return;
           const current = getFocusedCard();
           if (current) {
             e.preventDefault();
@@ -8510,6 +8740,8 @@
       initLeftPaneCollapses();
       initWorkbenchSidebar();
       initDocks();
+      initWorkspaceTabs();
+      initWhiteboardPanZoom();
       initTreeKeyboardNav();
       initGlobalDeselectHotkey();
 
