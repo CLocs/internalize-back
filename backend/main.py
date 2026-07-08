@@ -101,6 +101,16 @@ class NodeUpdate(BaseModel):
     blocks: list[dict[str, Any]] | None = None
 
 
+class NodePinUpdate(BaseModel):
+    pinned: bool
+
+
+class NodePinResponse(BaseModel):
+    status: str = "success"
+    id: str
+    pinned: bool
+
+
 class EdgeCreate(BaseModel):
     source_id: str = Field(..., min_length=1)
     target_id: str = Field(..., min_length=1)
@@ -138,6 +148,7 @@ class DocumentNodeResponse(BaseModel):
     origin: str = "human"
     node_type: str = "Concept"
     blocks: list[dict[str, Any]] | None = None
+    pinned: bool = False
 
 
 class DocumentSummaryResponse(DocumentNodeResponse):
@@ -512,6 +523,33 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
         density_level=record["density_level"],
         origin=record["origin"],
     )
+
+
+@app.patch("/api/nodes/{node_id}", response_model=NodePinResponse)
+def patch_node_pinned(node_id: str, update: NodePinUpdate):
+    """Persist a node's pinned flag so the pin state survives reloads."""
+    query = """
+    MATCH (n:Concept {id: $node_id})
+    SET n.pinned = $pinned
+    RETURN n.id AS id, coalesce(n.pinned, false) AS pinned
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            record = session.run(query, node_id=node_id, pinned=update.pinned).single()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Node not found: {node_id}",
+        )
+
+    return NodePinResponse(id=record["id"], pinned=record["pinned"])
 
 
 def _format_neo4j_datetime(value) -> str | None:
@@ -1052,7 +1090,8 @@ def get_document_canvas(source_id: Optional[str] = None):
            excerpt.title AS title,
            excerpt.content AS content,
            excerpt.density_level AS density_level,
-           coalesce(excerpt.origin, 'human') AS origin
+           coalesce(excerpt.origin, 'human') AS origin,
+           coalesce(excerpt.pinned, false) AS pinned
     ORDER BY excerpt.created_at
     """
 
@@ -1070,6 +1109,7 @@ def get_document_canvas(source_id: Optional[str] = None):
            coalesce(s.content, s.title) AS content,
            s.density_level AS density_level,
            coalesce(s.origin, 'human') AS origin,
+           coalesce(s.pinned, false) AS pinned,
            excerpt_id
     ORDER BY s.created_at
     """
@@ -1123,6 +1163,7 @@ def get_document_canvas(source_id: Optional[str] = None):
             content=r["content"],
             density_level=r["density_level"],
             origin=r["origin"],
+            pinned=r["pinned"],
         )
         for r in excerpt_rows
     ]
@@ -1143,6 +1184,7 @@ def get_document_canvas(source_id: Optional[str] = None):
                 content=r["content"],
                 density_level=r["density_level"],
                 origin=r["origin"],
+                pinned=r["pinned"],
                 excerpt_id=r["excerpt_id"],
             )
             for r in summary_rows

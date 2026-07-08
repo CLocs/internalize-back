@@ -878,29 +878,42 @@
     }
 
     #node-pane.view-tree .workspace-columns-track {
+      /* Block-level flex (not inline-flex): an inline-level track wider than the
+         overflow-x:auto parent can settle at a non-zero initial scrollLeft in
+         Chromium, which clips the left columns until the user scrolls. */
       display: flex;
       flex-direction: row;
       flex-wrap: nowrap;
       align-items: stretch;
       width: max-content;
+      min-width: min-content;
       max-width: none;
+      /* Constrain the track to the viewport height so each column is bounded and
+         its own overflow-y:auto can scroll. Without this the track grows to the
+         tallest column's content height and vertical scrolling is lost. */
+      height: 100%;
+      min-height: 0;
       gap: 20px;
+      /* Right buffer is provided by the ::after flex item below, NOT padding,
+         because flex scroll containers swallow trailing padding. */
+      padding: 20px;
       box-sizing: border-box;
     }
 
     #node-pane.view-tree .workspace-columns-track::after {
       content: "";
-      flex: 0 0 20px;
-      width: 20px;
+      flex: 0 0 40px;
       align-self: stretch;
+      pointer-events: none;
     }
 
     #node-pane.view-tree .density-column,
     #node-pane.view-tree .workspace-column {
-      width: 320px !important;
-      min-width: 320px !important;
-      max-width: 320px !important;
-      flex: 0 0 320px !important;
+      width: 320px;
+      flex: 0 0 320px;
+      flex-shrink: 0 !important;
+      display: flex;
+      flex-direction: column;
       box-sizing: border-box;
       gap: 15px;
       height: 100%;
@@ -999,8 +1012,11 @@
     }
 
     #node-pane.view-tree #workspace-columns {
+      width: 100%;
+      height: 100%;
       overflow-x: auto;
       overflow-y: hidden;
+      padding: 0;
     }
 
     #node-pane.view-tree .flow-column {
@@ -2288,6 +2304,49 @@
       border-color: #deff9a;
     }
 
+    .focused-node {
+      outline: 3px solid #11caa0;
+      outline-offset: 2px;
+      transition: outline 0.1s;
+      position: relative;
+      z-index: 6;
+    }
+
+    .pin-icon {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      padding: 4px;
+      font-size: 12px;
+      line-height: 1;
+      opacity: 0.2;
+      color: #94a3b8;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: opacity 0.15s ease, color 0.15s ease;
+      z-index: 20;
+    }
+
+    .pin-icon:hover {
+      opacity: 0.85;
+      color: #11caa0;
+    }
+
+    .pinned-node .pin-icon {
+      opacity: 1;
+      color: #11caa0;
+    }
+
+    .pinned-node {
+      border-color: #11caa0 !important;
+      background: rgba(17, 202, 160, 0.08) !important;
+    }
+
+    .workspace-card:hover .card-hover-menu,
+    .workspace-card:focus-within .card-hover-menu {
+      right: 28px;
+    }
+
     .workspace-card.excerpt-card.workspace-focus {
       border-left-color: #deff9a;
     }
@@ -2498,6 +2557,7 @@
     <select id="source-selector">
       <option value="">Loading sources…</option>
     </select>
+    <button type="button" id="add-source-btn" title="Add New Source" style="margin-right: 15px; padding: 4px 8px; background: transparent; border: 1px solid var(--border-color); border-radius: 4px; color: #deff9a; cursor: pointer;"><i class="fa-solid fa-plus"></i></button>
     <label id="auto-trace-label">
       <input type="checkbox" id="auto-trace-toggle" checked />
       Auto-Trace Backlinks
@@ -2759,6 +2819,18 @@
         <button type="button" id="document-library-close" aria-label="Close library">×</button>
       </div>
       <div id="document-list" role="list"></div>
+    </div>
+  </div>
+
+  <div id="add-source-modal" class="hidden" style="position: fixed; inset: 0; z-index: 500; display: flex; align-items: center; justify-content: center; background: rgba(2, 6, 23, 0.72);">
+    <div style="width: 600px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; display: flex; flex-direction: column; padding: 20px; gap: 15px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; color: #f8fafc;">
+        <h2 style="margin: 0; font-size: 1rem;">Import New Source</h2>
+        <button id="close-add-source" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem;">&times;</button>
+      </div>
+      <input type="text" id="new-source-title" placeholder="Source Title (e.g., Podcast Episode #228)" style="width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white;">
+      <textarea id="new-source-text" placeholder="Paste raw document text or transcript here..." style="width: 100%; height: 300px; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; resize: vertical;"></textarea>
+      <button id="submit-new-source" style="padding: 10px; background: #deff9a; color: #0f172a; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Save & Load Source</button>
     </div>
   </div>
 
@@ -4842,6 +4914,77 @@
       });
     }
 
+    function initAddSourceModal() {
+      const addBtn = document.getElementById("add-source-btn");
+      const modal = document.getElementById("add-source-modal");
+      const closeBtn = document.getElementById("close-add-source");
+      const titleInput = document.getElementById("new-source-title");
+      const textInput = document.getElementById("new-source-text");
+      const submitBtn = document.getElementById("submit-new-source");
+      if (!addBtn || !modal || !submitBtn) return;
+
+      const openModal = () => {
+        modal.classList.remove("hidden");
+        titleInput.focus();
+      };
+      const closeModal = () => modal.classList.add("hidden");
+
+      addBtn.addEventListener("click", openModal);
+      closeBtn.addEventListener("click", closeModal);
+      // Dismiss when clicking the dark backdrop (but not the panel itself).
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      submitBtn.addEventListener("click", async () => {
+        const title = titleInput.value.trim();
+        const text = textInput.value.trim();
+        if (!title || !text) {
+          showStatus("A title and document text are both required.", true);
+          return;
+        }
+
+        submitBtn.disabled = true;
+        const originalLabel = submitBtn.textContent;
+        submitBtn.textContent = "Saving…";
+
+        try {
+          const res = await fetch(`${API_BASE}/api/nodes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: title,
+              content: text,
+              density_level: 3, // Level 3 designates a Source Document
+              node_type: "Document",
+              significance: 1.0,
+              origin: "human",
+            }),
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.detail || `POST /api/nodes returned ${res.status}`);
+          }
+          const data = await res.json();
+          const newId = data.node_id;
+
+          closeModal();
+          titleInput.value = "";
+          textInput.value = "";
+
+          await loadSourceLibrary(newId);
+          await initDocumentCanvas(newId);
+          showStatus("Source imported.");
+        } catch (err) {
+          console.error("[initAddSourceModal] submit failed", err);
+          showStatus(err.message || "Failed to import source", true);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalLabel;
+        }
+      });
+    }
+
     function generateTimestampTitle() {
       const now = new Date();
       const pad = (n) => String(n).padStart(2, "0");
@@ -6780,12 +6923,23 @@
           <div class="card-content text-content">${escapeHtml(displayText || "Untitled")}</div>
         `;
       }
+
+      card.insertAdjacentHTML(
+        "beforeend",
+        '<i class="fa-solid fa-thumbtack pin-icon" aria-hidden="true"></i>'
+      );
     }
 
     function bindWorkspaceCardInteractions(card, nodeId) {
       card.draggable = true;
 
       card.addEventListener("mousedown", (e) => {
+        // Pressing an interactive control must not arm a drag, or the browser can
+        // start dragging and swallow the click (e.g. the pin toggle never fires).
+        if (e.target.closest(".pin-icon, .card-delete-btn, .promote-btn")) {
+          card.draggable = false;
+          return;
+        }
         card.draggable = !e.target.closest(".text-content");
       });
 
@@ -6797,6 +6951,13 @@
       card.addEventListener("dragend", () => card.classList.remove("is-dragging", "dragging"));
 
       card.addEventListener("click", (e) => {
+        if (e.target.closest(".pin-icon")) {
+          e.preventDefault();
+          e.stopPropagation();
+          togglePinNode(nodeId);
+          return;
+        }
+
         if (e.target.closest(".promote-btn, .card-delete-btn")) return;
 
         const selection = window.getSelection?.();
@@ -6812,6 +6973,9 @@
         }
 
         SelectionManager.setActiveNode(nodeId);
+        // A click moves the keyboard-focus (green outline) to this card too, but
+        // without scrolling — the card is already where the user clicked.
+        setFocusedCard(card, { scroll: false });
         if (e.ctrlKey || e.metaKey || e.shiftKey) {
           e.preventDefault();
           e.stopPropagation();
@@ -6843,6 +7007,7 @@
       if (childIds.length) card.dataset.childIds = childIds.join(",");
 
       applyCardPresentation(card, node);
+      card.classList.toggle("pinned-node", !!node.pinned);
       bindWorkspaceCardInteractions(card, node.id);
       attachCardDeleteButton(card, node.id);
       nodeColumnMap.set(node.id, columnIndex);
@@ -6994,6 +7159,55 @@
       ConnectionManager.clearAll();
       reconcileView(workspaceViewMode);
       scheduleDrawConnections();
+
+      // Anchor the tree horizontal scroll to the first column on document load.
+      // Async layout passes (deferred cytoscape graph load + the delayed
+      // connection-line draw) can nudge scrollLeft after the first frame, so we
+      // re-assert the anchor across the settle window. renderWorkspaceCards only
+      // runs on a full (re)load, so forcing column 1 here never fights the user.
+      anchorTreeScrollToStart();
+    }
+
+    let treeScrollUserEngaged = false;
+    let treeScrollEngageBound = false;
+    let treeScrollHoldActive = false;
+    function anchorTreeScrollToStart() {
+      if (!workspaceColumns) return;
+
+      // Bind once: any genuine user interaction (wheel, scrollbar drag, or focus
+      // nav — which sets the flag directly) releases the anchor so the user's own
+      // scrolling sticks.
+      if (!treeScrollEngageBound) {
+        const engage = () => { treeScrollUserEngaged = true; };
+        workspaceColumns.addEventListener("wheel", engage, { passive: true });
+        workspaceColumns.addEventListener("pointerdown", engage, { passive: true });
+        treeScrollEngageBound = true;
+      }
+
+      // The probe proved this is a residual scrollLeft (~17px) left by the
+      // AUTO-TRACE / focus pass that uses behavior:"smooth": its final animation
+      // frame lands AFTER a one-shot reset, so scroll-event snapping loses the
+      // race. A per-frame requestAnimationFrame hold overrides every animation
+      // frame, forcing the container to the first column until the user actually
+      // interacts. It costs one property check per frame and stops on engagement.
+      treeScrollUserEngaged = false;
+      workspaceColumns.scrollLeft = 0;
+
+      if (treeScrollHoldActive) return; // a hold loop is already running
+      treeScrollHoldActive = true;
+      const startedAt = performance.now();
+      const hold = () => {
+        // Release on user interaction, when leaving tree view, or after a safety
+        // window (long enough to outlast the deferred graph/auto-trace settle).
+        if (treeScrollUserEngaged || workspaceViewMode !== "tree"
+            || performance.now() - startedAt > 6000) {
+          treeScrollHoldActive = false;
+          return;
+        }
+        if (workspaceColumns.scrollLeft !== 0) workspaceColumns.scrollLeft = 0;
+        requestAnimationFrame(hold);
+      };
+      requestAnimationFrame(hold);
     }
 
     function mergeSummaryChildren(parentId, childIds) {
@@ -8087,6 +8301,262 @@
       return Boolean(documentCanvasSourceId);
     }
 
+    window.focusedNodeId = null;
+
+    function getTreeColumns() {
+      return [...nodePane.querySelectorAll(".workspace-columns-track > .density-column")]
+        .filter((col) => col.offsetParent !== null);
+    }
+
+    function getColumnCards(column) {
+      if (!column) return [];
+      return [...column.querySelectorAll(":scope > .workspace-card")]
+        .filter((card) => card.offsetParent !== null);
+    }
+
+    function getFocusedCard() {
+      if (!window.focusedNodeId) return null;
+      return nodePane.querySelector(
+        `.workspace-card[data-node-id="${CSS.escape(window.focusedNodeId)}"]`
+      );
+    }
+
+    function setFocusedCard(card, { center = false, scroll = true } = {}) {
+      nodePane
+        .querySelectorAll(".workspace-card.focused-node")
+        .forEach((c) => c.classList.remove("focused-node"));
+      if (!card) {
+        window.focusedNodeId = null;
+        return;
+      }
+      card.classList.add("focused-node");
+      window.focusedNodeId = card.dataset.nodeId || null;
+      if (scroll) {
+        card.scrollIntoView({
+          behavior: "smooth",
+          block: center ? "center" : "nearest",
+          inline: center ? "center" : "nearest",
+        });
+      }
+    }
+
+    function findClosestCardByY(column, referenceY) {
+      const cards = getColumnCards(column);
+      if (!cards.length) return null;
+      let best = null;
+      let bestDist = Infinity;
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect();
+        const dist = Math.abs(rect.top + rect.height / 2 - referenceY);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = card;
+        }
+      }
+      return best;
+    }
+
+    function navigateTreeFocus(key) {
+      if (workspaceViewMode !== "tree") return false;
+
+      const columns = getTreeColumns();
+      if (!columns.length) return false;
+
+      const current = getFocusedCard();
+      if (!current) {
+        for (const column of columns) {
+          const cards = getColumnCards(column);
+          if (cards.length) {
+            setFocusedCard(cards[0]);
+            return true;
+          }
+        }
+        return false;
+      }
+
+      let target = null;
+
+      if (key === "j" || key === "k") {
+        const step = key === "j" ? "nextElementSibling" : "previousElementSibling";
+        let sibling = current[step];
+        while (sibling && !sibling.classList.contains("workspace-card")) {
+          sibling = sibling[step];
+        }
+        target = sibling;
+      } else if (key === "h" || key === "l") {
+        const currentColumn = current.closest(".density-column");
+        const index = columns.indexOf(currentColumn);
+        const nextColumn = key === "h" ? columns[index - 1] : columns[index + 1];
+        if (nextColumn) {
+          const rect = current.getBoundingClientRect();
+          target = findClosestCardByY(nextColumn, rect.top + rect.height / 2);
+        }
+      }
+
+      if (target) {
+        setFocusedCard(target);
+        return true;
+      }
+      return false;
+    }
+
+    function isTypingTarget(target) {
+      if (!target || typeof target.closest !== "function") return false;
+      if (target.isContentEditable) return true;
+      return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+    }
+
+    // TEMP DIAGNOSTIC — capture tree scroll/geometry to compare before vs after a
+    // focus move (which is what "unclips" the columns). Remove once resolved.
+    function captureTreeMetrics() {
+      const round = (n) => (n == null ? null : Math.round(n));
+      const track = workspaceColumns.querySelector(".workspace-columns-track");
+      const firstCard = workspaceColumns.querySelector(".workspace-card");
+      const focused = getFocusedCard();
+      const wc = workspaceColumns.getBoundingClientRect();
+      const tr = track ? track.getBoundingClientRect() : null;
+      const fc = firstCard ? firstCard.getBoundingClientRect() : null;
+      const ff = focused ? focused.getBoundingClientRect() : null;
+      // Walk ancestors for any non-zero scrollLeft.
+      const scrolled = [];
+      let el = focused || firstCard || workspaceColumns;
+      while (el && el !== document.documentElement.parentNode) {
+        if ((el.scrollLeft || 0) !== 0) {
+          const id = el.id ? `#${el.id}` : (typeof el.className === "string" ? "." + el.className.trim().split(/\s+/)[0] : el.tagName);
+          scrolled.push(`${id}=${round(el.scrollLeft)}`);
+        }
+        el = el.parentElement;
+      }
+      return {
+        sL: round(workspaceColumns.scrollLeft),
+        sW: round(workspaceColumns.scrollWidth),
+        cW: round(workspaceColumns.clientWidth),
+        wcLeft: round(wc.left),
+        trackLeft: tr ? round(tr.left) : null,
+        firstCardLeft: fc ? round(fc.left) : null,
+        focusedId: window.focusedNodeId,
+        focusedLeft: ff ? round(ff.left) : null,
+        focusedRight: ff ? round(ff.right) : null,
+        scrolled: scrolled.length ? scrolled.join(", ") : "NONE",
+      };
+    }
+
+    function renderTreeProbe(before, after) {
+      const fmt = (m) =>
+        `sL=${m.sL} sW=${m.sW} cW=${m.cW}\n` +
+        `  wcLeft=${m.wcLeft} trackLeft=${m.trackLeft} 1stCardLeft=${m.firstCardLeft}\n` +
+        `  focused=${m.focusedId ? m.focusedId.slice(0, 8) : "—"} L=${m.focusedLeft} R=${m.focusedRight}\n` +
+        `  scrolled: ${m.scrolled}`;
+      const txt =
+        "BEFORE focus move:\n" + fmt(before) +
+        "\n\nAFTER focus move:\n" + fmt(after) +
+        `\n\nΔ scrollLeft = ${after.sL - before.sL}` +
+        `   Δ 1stCardLeft = ${(after.firstCardLeft ?? 0) - (before.firstCardLeft ?? 0)}`;
+      console.log("TREE FOCUS PROBE\n" + txt);
+      let box = document.getElementById("scroll-probe-overlay");
+      if (!box) {
+        box = document.createElement("pre");
+        box.id = "scroll-probe-overlay";
+        box.style.cssText = "position:fixed;bottom:8px;left:8px;z-index:99999;max-width:70vw;overflow:auto;background:rgba(0,0,0,0.92);color:#11caa0;font:11px/1.45 monospace;padding:10px 14px;border:1px solid #11caa0;border-radius:6px;white-space:pre;pointer-events:auto;";
+        box.addEventListener("click", () => box.remove());
+        document.body.appendChild(box);
+      }
+      box.textContent = txt + "\n\n(click to dismiss)";
+    }
+
+    async function persistNodePinned(nodeId, pinned) {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/nodes/${encodeURIComponent(nodeId)}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pinned }),
+          }
+        );
+        if (!res.ok) throw new Error(`PATCH /api/nodes returned ${res.status}`);
+      } catch (err) {
+        console.error("[persistNodePinned]", err);
+        showStatus("Failed to save pin state", true);
+      }
+    }
+
+    function setNodePinnedState(nodeId, pinned) {
+      nodePane
+        .querySelectorAll(`.workspace-card[data-node-id="${CSS.escape(nodeId)}"]`)
+        .forEach((c) => c.classList.toggle("pinned-node", pinned));
+
+      const cached = workspaceNodeMap.get(nodeId);
+      if (cached) cached.pinned = pinned;
+
+      persistNodePinned(nodeId, pinned);
+    }
+
+    // Toggles the pin on a node and activates it (same focus/selection behavior
+    // as a normal card click), used by both the pin-icon click and the P hotkey.
+    function togglePinNode(nodeId) {
+      if (!nodeId) return;
+      const card =
+        getWorkspaceCard(nodeId) ||
+        nodePane.querySelector(`.workspace-card[data-node-id="${CSS.escape(nodeId)}"]`);
+      if (!card) return;
+
+      const pinned = !card.classList.contains("pinned-node");
+      setNodePinnedState(nodeId, pinned);
+
+      // Activating involves an intentional jump/scroll, so flag user engagement
+      // to keep the tree-scroll anchor from snapping it back to the start.
+      treeScrollUserEngaged = true;
+      setFocusedCard(card, { scroll: false });
+      SelectionManager.setActiveNode(nodeId);
+      jumpToSourceNode(nodeId);
+    }
+
+    function togglePinFocusedNode() {
+      if (!window.focusedNodeId) return;
+      togglePinNode(window.focusedNodeId);
+    }
+
+    function initTreeKeyboardNav() {
+      document.addEventListener("keydown", (e) => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (isTypingTarget(e.target)) return;
+
+        const key = e.key.toLowerCase();
+
+        // Arrow keys mirror HJKL node-focus navigation in the Tree view.
+        const navKeyMap = {
+          arrowleft: "h", arrowdown: "j", arrowup: "k", arrowright: "l",
+          h: "h", j: "j", k: "k", l: "l",
+        };
+        const mappedKey = navKeyMap[key];
+        if (mappedKey) {
+          treeScrollUserEngaged = true;
+          const before = captureTreeMetrics(); // TEMP DIAGNOSTIC
+          if (navigateTreeFocus(mappedKey)) e.preventDefault();
+          // Smooth scrollIntoView settles async; sample after it lands.
+          setTimeout(() => renderTreeProbe(before, captureTreeMetrics()), 450);
+          return;
+        }
+
+        if (key === "p") {
+          if (window.focusedNodeId) {
+            e.preventDefault();
+            togglePinFocusedNode();
+          }
+          return;
+        }
+
+        if (e.key === " " || e.code === "Space") {
+          const current = getFocusedCard();
+          if (current) {
+            e.preventDefault();
+            current.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+          }
+        }
+      });
+    }
+
     async function init() {
       initWorkspaceCyInstance();
       initDocContextMenuListeners();
@@ -8095,12 +8565,20 @@
       initShowNodeLabelsToggle();
       initWorkspaceViewToggle();
       initSourceSelector();
+      initAddSourceModal();
       initConnectionModeSelect();
       initWorkspaceGraphPane();
       initLeftPaneCollapses();
       initWorkbenchSidebar();
       initDocks();
+      initTreeKeyboardNav();
       initGlobalDeselectHotkey();
+
+      // Default to a focused workspace: Connections sidebar (left) and the Graph
+      // minimap (right) start collapsed. Runs after initDocks() so the dock
+      // buttons exist and the .panel-hidden/.active classes apply on load.
+      collapseWorkbenchSidebar();
+      collapseWorkspaceGraph();
 
       if (!isDocumentLoaded()) {
         collapseSynthesisPane();
