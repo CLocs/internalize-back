@@ -8406,64 +8406,6 @@
       return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
     }
 
-    // TEMP DIAGNOSTIC — capture tree scroll/geometry to compare before vs after a
-    // focus move (which is what "unclips" the columns). Remove once resolved.
-    function captureTreeMetrics() {
-      const round = (n) => (n == null ? null : Math.round(n));
-      const track = workspaceColumns.querySelector(".workspace-columns-track");
-      const firstCard = workspaceColumns.querySelector(".workspace-card");
-      const focused = getFocusedCard();
-      const wc = workspaceColumns.getBoundingClientRect();
-      const tr = track ? track.getBoundingClientRect() : null;
-      const fc = firstCard ? firstCard.getBoundingClientRect() : null;
-      const ff = focused ? focused.getBoundingClientRect() : null;
-      // Walk ancestors for any non-zero scrollLeft.
-      const scrolled = [];
-      let el = focused || firstCard || workspaceColumns;
-      while (el && el !== document.documentElement.parentNode) {
-        if ((el.scrollLeft || 0) !== 0) {
-          const id = el.id ? `#${el.id}` : (typeof el.className === "string" ? "." + el.className.trim().split(/\s+/)[0] : el.tagName);
-          scrolled.push(`${id}=${round(el.scrollLeft)}`);
-        }
-        el = el.parentElement;
-      }
-      return {
-        sL: round(workspaceColumns.scrollLeft),
-        sW: round(workspaceColumns.scrollWidth),
-        cW: round(workspaceColumns.clientWidth),
-        wcLeft: round(wc.left),
-        trackLeft: tr ? round(tr.left) : null,
-        firstCardLeft: fc ? round(fc.left) : null,
-        focusedId: window.focusedNodeId,
-        focusedLeft: ff ? round(ff.left) : null,
-        focusedRight: ff ? round(ff.right) : null,
-        scrolled: scrolled.length ? scrolled.join(", ") : "NONE",
-      };
-    }
-
-    function renderTreeProbe(before, after) {
-      const fmt = (m) =>
-        `sL=${m.sL} sW=${m.sW} cW=${m.cW}\n` +
-        `  wcLeft=${m.wcLeft} trackLeft=${m.trackLeft} 1stCardLeft=${m.firstCardLeft}\n` +
-        `  focused=${m.focusedId ? m.focusedId.slice(0, 8) : "—"} L=${m.focusedLeft} R=${m.focusedRight}\n` +
-        `  scrolled: ${m.scrolled}`;
-      const txt =
-        "BEFORE focus move:\n" + fmt(before) +
-        "\n\nAFTER focus move:\n" + fmt(after) +
-        `\n\nΔ scrollLeft = ${after.sL - before.sL}` +
-        `   Δ 1stCardLeft = ${(after.firstCardLeft ?? 0) - (before.firstCardLeft ?? 0)}`;
-      console.log("TREE FOCUS PROBE\n" + txt);
-      let box = document.getElementById("scroll-probe-overlay");
-      if (!box) {
-        box = document.createElement("pre");
-        box.id = "scroll-probe-overlay";
-        box.style.cssText = "position:fixed;bottom:8px;left:8px;z-index:99999;max-width:70vw;overflow:auto;background:rgba(0,0,0,0.92);color:#11caa0;font:11px/1.45 monospace;padding:10px 14px;border:1px solid #11caa0;border-radius:6px;white-space:pre;pointer-events:auto;";
-        box.addEventListener("click", () => box.remove());
-        document.body.appendChild(box);
-      }
-      box.textContent = txt + "\n\n(click to dismiss)";
-    }
-
     async function persistNodePinned(nodeId, pinned) {
       try {
         const res = await fetch(
@@ -8532,10 +8474,7 @@
         const mappedKey = navKeyMap[key];
         if (mappedKey) {
           treeScrollUserEngaged = true;
-          const before = captureTreeMetrics(); // TEMP DIAGNOSTIC
           if (navigateTreeFocus(mappedKey)) e.preventDefault();
-          // Smooth scrollIntoView settles async; sample after it lands.
-          setTimeout(() => renderTreeProbe(before, captureTreeMetrics()), 450);
           return;
         }
 
