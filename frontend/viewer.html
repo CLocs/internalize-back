@@ -33,6 +33,7 @@
     }
 
     #app {
+      position: relative;
       width: 100%;
       height: 100vh;
       overflow: hidden;
@@ -71,10 +72,6 @@
       border-right: 1px solid var(--border-color);
     }
 
-    #right-dock {
-      border-left: 1px solid var(--border-color);
-    }
-
     .dock-btn {
       display: flex;
       flex-direction: column;
@@ -101,15 +98,6 @@
       border-left-color: #38bdf8;
     }
 
-    #right-dock .dock-btn {
-      border-left: none;
-      border-right: 2px solid transparent;
-    }
-
-    #right-dock .dock-btn.active {
-      border-right-color: #38bdf8;
-    }
-
     .dock-btn i {
       font-size: 16px;
     }
@@ -124,9 +112,7 @@
     }
 
     #workbench-sidebar,
-    #doc-pane,
-    #synthesis-pane-shell,
-    #graph-container {
+    #doc-pane {
       transition: width 0.3s ease, flex 0.3s ease, flex-basis 0.3s ease,
         padding 0.3s ease, margin 0.3s ease, opacity 0.2s ease, border-width 0.3s ease,
         height 0.3s ease, transform 0.3s ease;
@@ -147,7 +133,6 @@
 
     #workbench-collapse-btn,
     #doc-pane-collapse-btn,
-    #synthesis-collapse-handle,
     .pane-handle {
       display: none !important;
     }
@@ -286,10 +271,38 @@
       border-bottom-color: #deff9a;
     }
 
+    #add-workspace-tab {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 0 16px;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    #add-workspace-tab:hover {
+      color: #deff9a;
+    }
+
+    #new-synthesis-tab-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 0 16px;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    #new-synthesis-tab-btn:hover {
+      color: #deff9a;
+    }
+
     .workspace-view {
       display: none;
-      width: 100%;
       min-height: 0;
+      min-width: 0;
       flex: 1 1 0;
     }
 
@@ -298,6 +311,7 @@
       flex-direction: column;
       flex: 1 1 0;
       min-height: 0;
+      min-width: 0;
     }
 
     .workspace-view.hidden {
@@ -306,15 +320,48 @@
 
     #workspace-views-container {
       display: flex;
-      flex: 1;
+      flex: 1 1 0%;
       flex-direction: row;
       min-height: 0;
+      min-width: 0;
+      height: 0;
       width: 100%;
       overflow: hidden;
     }
 
     #workspace-views-container > .workspace-view {
       min-width: 0;
+      min-height: 0;
+    }
+
+    #workspace-views-container:not(.split-active) > .workspace-view.active-view:not(.hidden) {
+      flex: 1 1 0%;
+      width: 100%;
+      min-height: 0;
+    }
+
+    #workspace-views-container.split-active > .workspace-view {
+      flex: 1 1 0;
+      width: auto;
+      max-width: none;
+    }
+
+    #view-source-tree {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    #workspace-views-container:not(.split-active) > #view-source-tree.active-view {
+      width: 100%;
+    }
+
+    .workspace-view.board-view.active-view:not(.hidden) {
+      position: relative;
+      min-height: 0;
     }
 
     #view-source-tree #viewer-main {
@@ -530,10 +577,28 @@
       line-height: 1;
     }
 
+    .wb-node-wrapper .wb-remove-btn {
+      display: none;
+      padding: 0;
+      line-height: 1;
+      font-size: 14px;
+    }
+
+    .wb-node-wrapper:hover .wb-remove-btn {
+      display: block;
+    }
+
     .wb-node-wrapper .workspace-card {
       width: 100% !important;
       max-width: 100% !important;
       margin: 0 !important;
+    }
+
+    .wb-draft-node {
+      opacity: 0.6;
+      border: 2px dashed #94a3b8;
+      filter: grayscale(0.5);
+      transition: all 0.2s ease;
     }
 
     .wb-omnibar-result {
@@ -551,6 +616,20 @@
 
     .wb-omnibar-result:last-child {
       border-bottom: none;
+    }
+
+    .focus-column {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 320px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .workspace-view.focus-view.active-view {
+      flex-direction: row;
     }
 
     .wb-omnibar-empty {
@@ -1045,7 +1124,7 @@
       position: absolute;
       bottom: 20px;
       right: 20px;
-      z-index: 100;
+      z-index: 1000;
       width: 350px;
       height: 300px;
       display: flex;
@@ -1060,16 +1139,6 @@
 
     #graph-container.graph-size-expanded {
       height: min(50vh, 600px);
-    }
-
-    #graph-container.graph-collapsed {
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(100%);
-    }
-
-    #graph-container.graph-collapsed #cy {
-      visibility: hidden;
     }
 
     #workspace-graph-header {
@@ -1289,74 +1358,20 @@
       margin-right: auto;
     }
 
-    #synthesis-pane-shell {
-      position: relative;
-      flex: 0 0 300px;
-      width: 300px;
-      min-width: 0;
-      height: 100%;
-      overflow: hidden;
-      transition: width 0.3s ease, flex-basis 0.3s ease;
+    .workspace-view.synthesis-view.active-view {
+      flex-direction: column;
     }
 
-    #synthesis-pane-shell.collapsed {
-      flex-basis: 0;
-      width: 0;
-    }
-
-    #synthesis-collapse-handle {
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 30;
-      width: 22px;
-      height: 56px;
-      padding: 0;
-      border: 1px solid #334155;
-      border-radius: 6px 0 0 6px;
-      background: #1e293b;
-      color: #94a3b8;
-      font-size: 14px;
-      line-height: 1;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.25);
-    }
-
-    #synthesis-collapse-handle:hover {
-      color: #deff9a;
-      border-color: #475569;
-      background: #334155;
-    }
-
-    .synthesis-chevron {
-      display: inline-block;
-      transition: transform 0.3s ease;
-      transform: rotate(0deg);
-    }
-
-    #synthesis-collapse-handle.collapsed .synthesis-chevron {
-      transform: rotate(180deg);
-    }
-
-    #synthesis-pane-shell.collapsed #synthesis-collapse-handle {
-      display: none;
-    }
-
-    #synthesis-pane {
+    .synthesis-pane {
       width: 100%;
       height: 100%;
-      min-width: 300px;
+      flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       overflow-x: hidden;
       overflow-y: auto;
       background: #0f172a;
-      border-left: 1px solid #334155;
-      transition: opacity 0.2s ease;
     }
 
     .synthesis-title-row {
@@ -1418,11 +1433,6 @@
     .synthesis-saved-badge.visible {
       opacity: 1;
       transform: translateY(0);
-    }
-
-    #synthesis-pane-shell.collapsed #synthesis-pane {
-      opacity: 0;
-      pointer-events: none;
     }
 
     .pane-handle {
@@ -1511,7 +1521,7 @@
       transform: rotate(-90deg);
     }
 
-    #synthesis-toolbar {
+    .synthesis-toolbar {
       flex-shrink: 0;
       display: flex;
       align-items: center;
@@ -1523,7 +1533,7 @@
       flex-wrap: wrap;
     }
 
-    #synthesis-toolbar .pane-title {
+    .synthesis-toolbar .pane-title {
       font-family: "Segoe UI", system-ui, sans-serif;
       font-size: 0.7rem;
       text-transform: uppercase;
@@ -1573,7 +1583,7 @@
       color: #deff9a;
     }
 
-    #synthesis-export-btn {
+    .synthesis-export-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1589,13 +1599,13 @@
       cursor: pointer;
     }
 
-    #synthesis-export-btn:hover {
+    .synthesis-export-btn:hover {
       color: #deff9a;
       border-color: #475569;
       background: rgba(222, 255, 154, 0.08);
     }
 
-    #new-note-btn {
+    .synthesis-new-note-btn {
       padding: 0.35rem 0.65rem;
       border: 1px solid #334155;
       border-radius: 6px;
@@ -1607,12 +1617,12 @@
       cursor: pointer;
     }
 
-    #new-note-btn:hover {
+    .synthesis-new-note-btn:hover {
       border-color: #deff9a;
       background: rgba(222, 255, 154, 0.08);
     }
 
-    #load-doc-btn {
+    .synthesis-load-doc-btn {
       padding: 0.35rem 0.65rem;
       border: 1px solid #334155;
       border-radius: 6px;
@@ -1624,7 +1634,7 @@
       cursor: pointer;
     }
 
-    #load-doc-btn:hover {
+    .synthesis-load-doc-btn:hover {
       border-color: #475569;
       color: #f8fafc;
       background: #1e293b;
@@ -1758,7 +1768,7 @@
       -webkit-box-orient: vertical;
     }
 
-    #save-synthesis-btn {
+    .synthesis-save-btn {
       padding: 0.35rem 0.65rem;
       border: none;
       border-radius: 6px;
@@ -1770,17 +1780,17 @@
       cursor: pointer;
     }
 
-    #save-synthesis-btn:hover {
+    .synthesis-save-btn:hover {
       filter: brightness(1.05);
     }
 
-    #synthesis-toolbar-actions {
+    .synthesis-toolbar-actions {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    #synthesis-doc-wrap {
+    .synthesis-doc-wrap {
       flex: 1;
       min-height: 0;
       display: flex;
@@ -1788,7 +1798,7 @@
       overflow: hidden;
     }
 
-    #synthesis-dropzone {
+    .synthesis-dropzone {
       flex: 1 1 auto;
       min-height: 120px;
       overflow-y: auto;
@@ -1798,7 +1808,7 @@
       gap: 10px;
     }
 
-    #synthesis-dropzone:empty::before {
+    .synthesis-dropzone:empty::before {
       content: "Drag excerpts or summaries here to build your outline…";
       display: block;
       padding: 24px 8px;
@@ -1810,7 +1820,7 @@
       pointer-events: none;
     }
 
-    #synthesis-dropzone.drag-over {
+    .synthesis-dropzone.drag-over {
       background: rgba(222, 255, 154, 0.04);
       box-shadow: inset 0 0 0 2px rgba(222, 255, 154, 0.35);
     }
@@ -1896,8 +1906,8 @@
       background: rgba(34, 211, 238, 0.12);
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .remove-synthesis-block,
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item-actions {
+    .synthesis-dropzone.synthesis-reading-mode .remove-synthesis-block,
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item-actions {
       display: none;
     }
 
@@ -1994,24 +2004,24 @@
       margin-bottom: 0;
     }
 
-    #synthesis-doc-wrap.synthesis-reading-mode #synthesis-custom-input {
+    .synthesis-doc-wrap.synthesis-reading-mode .synthesis-custom-input {
       display: none;
     }
 
-    #synthesis-doc-wrap.synthesis-reading-mode .synthesis-reading-notes {
+    .synthesis-doc-wrap.synthesis-reading-mode .synthesis-reading-notes {
       display: block;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode:empty::before {
+    .synthesis-dropzone.synthesis-reading-mode:empty::before {
       content: none;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item .drag-handle,
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item-meta {
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item .drag-handle,
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item-meta {
       display: none;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item {
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item {
       background: transparent;
       border: none;
       border-radius: 0;
@@ -2020,16 +2030,16 @@
       gap: 0;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item-body {
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item-body {
       width: 100%;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item-text {
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item-text {
       margin: 0 0 1.25rem;
       white-space: pre-wrap;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item h3.synthesis-item-text {
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item h3.synthesis-item-text {
       font-family: "Segoe UI", system-ui, sans-serif;
       font-size: 1.05rem;
       font-weight: 700;
@@ -2037,7 +2047,7 @@
       line-height: 1.35;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item blockquote.synthesis-item-text {
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item blockquote.synthesis-item-text {
       margin: 0 0 1.25rem;
       padding: 0.35rem 0 0.35rem 14px;
       border-left: 3px solid #475569;
@@ -2123,7 +2133,7 @@
       border-color: #22d3ee;
     }
 
-    #synthesis-dropzone.synthesis-reading-mode .synthesis-item.custom-thought .custom-thought-text {
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item.custom-thought .custom-thought-text {
       margin: 0 0 1rem;
     }
 
@@ -2672,16 +2682,13 @@
   </div>
   <div id="app">
   <div id="workspace-tab-bar" style="display: flex; align-items: center; background: #0f172a; border-bottom: 1px solid #334155; height: 36px; overflow-x: auto; flex-shrink: 0; user-select: none; width: 100%;">
-    <div class="workspace-tab active" data-target-view="view-source-tree">
-      <i class="fa-solid fa-book-open" style="color: #94a3b8; font-size: 12px; margin-right: 6px;"></i><span>Source & Tree</span>
-    </div>
-    <div class="workspace-tab" data-target-view="view-whiteboard-1">
-      <i class="fa-solid fa-shapes" style="color: #94a3b8; font-size: 12px; margin-right: 6px;"></i><span>Main Whiteboard</span>
-    </div>
-    <button type="button" id="split-view-toggle" title="Toggle Split View" style="margin-left: auto; margin-right: 16px; background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;"><i class="fa-solid fa-columns"></i></button>
+    <button type="button" id="add-workspace-tab" title="Add workspace tab" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0 16px; font-size: 16px; flex-shrink: 0;">+</button>
+    <button type="button" id="new-synthesis-tab-btn" title="New Synthesis Document" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0 16px; font-size: 14px; flex-shrink: 0;"><i class="fa-solid fa-pen-nib"></i></button>
+    <button type="button" id="split-view-toggle" title="Toggle Split View" style="margin-left: auto; background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;"><i class="fa-solid fa-columns"></i></button>
+    <button type="button" id="global-minimap-toggle" title="Toggle Graph Minimap" style="margin-left: 10px; margin-right: 16px; background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;"><i class="fa-solid fa-project-diagram"></i></button>
   </div>
-  <div id="workspace-views-container" style="display: flex; flex: 1; flex-direction: row; min-height: 0; width: 100%; overflow: hidden;">
-  <div id="view-source-tree" class="workspace-view active-view" style="display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%;">
+  <div id="workspace-views-container" style="min-width: 0;">
+  <div id="view-source-tree" class="workspace-view active-view">
   <header id="viewer-header">
     <label for="source-selector">Source</label>
     <select id="source-selector">
@@ -2842,23 +2849,6 @@
               <button type="button" id="group-synthesize-btn">Synthesize Group (0)</button>
             </div>
           </div>
-          <div id="graph-container">
-            <div id="workspace-graph-header">
-              <span class="pane-title">Graph</span>
-              <div id="workspace-graph-header-actions">
-                <button type="button" id="cy-graph-size-btn">Expand Graph</button>
-                <button type="button" id="cy-collapse-btn">Collapse</button>
-              </div>
-            </div>
-            <div id="cy"></div>
-          </div>
-          <button
-            type="button"
-            id="graph-pane-handle"
-            class="pane-handle pane-handle-graph"
-            aria-label="Expand graph"
-            title="Expand graph"
-          ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
         </div>
       </div>
       <button
@@ -2868,99 +2858,100 @@
         aria-label="Expand source document"
         title="Expand source document"
       ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
-      <div id="synthesis-pane-shell" class="panel-hidden">
-        <button
-          type="button"
-          id="synthesis-collapse-handle"
-          class="collapsed"
-          aria-label="Toggle synthesis workspace"
-          aria-expanded="false"
-          title="Expand synthesis workspace"
-        ><span class="synthesis-chevron" aria-hidden="true">›</span></button>
-        <div id="synthesis-pane">
-          <div class="synthesis-title-row">
-            <input
-              type="text"
-              id="synthesis-title"
-              class="synthesis-title-input"
-              placeholder="Untitled synthesis"
-              aria-label="Synthesis document title"
-            />
-            <span id="synthesis-saved-badge" class="synthesis-saved-badge" aria-live="polite">Saved!</span>
-          </div>
-          <div id="synthesis-toolbar">
-            <span class="pane-title">Synthesis Workspace</span>
-            <div class="synthesis-toolbar-center">
-              <div id="synthesis-view-toggle" class="synthesis-view-toggle" role="tablist" aria-label="Synthesis view mode">
-                <button type="button" id="synthesis-edit-btn" class="active" role="tab" aria-selected="true">Edit</button>
-                <button type="button" id="synthesis-read-btn" role="tab" aria-selected="false">Read</button>
-              </div>
-              <button
-                type="button"
-                id="synthesis-export-btn"
-                title="Copy as Markdown"
-                aria-label="Export synthesis as Markdown"
-              >⎘</button>
-            </div>
-            <div id="synthesis-toolbar-actions">
-              <button type="button" id="new-note-btn">New Document</button>
-              <button type="button" id="load-doc-btn">Load</button>
-              <button type="button" id="save-synthesis-btn">Save to Graph</button>
-            </div>
-          </div>
-          <div id="synthesis-doc-wrap">
-            <div id="synthesis-dropzone" class="synthesis-dropzone"></div>
-            <textarea
-              id="synthesis-custom-input"
-              class="synthesis-composer"
-              placeholder="Add a thought… (Enter to add block, Shift+Enter for new line, Ctrl+Enter to save)"
-              spellcheck="true"
-              aria-label="Synthesis notes"
-              rows="3"
-            ></textarea>
-            <div id="synthesis-reading-notes" class="synthesis-reading-notes" aria-live="polite"></div>
-          </div>
+    </div>
+  </div>
+  </div>
+  </div>
+  <div id="graph-container" class="hidden">
+    <div id="workspace-graph-header">
+      <span class="pane-title">Graph</span>
+      <div id="workspace-graph-header-actions">
+        <button type="button" id="cy-graph-size-btn">Expand Graph</button>
+        <button type="button" id="cy-collapse-btn">Collapse</button>
+      </div>
+    </div>
+    <div id="cy"></div>
+  </div>
+  <template id="board-template">
+    <div class="workspace-view board-view hidden" style="flex: 1; min-width: 0; position: relative; overflow: hidden; background: #0f172a;">
+      <div class="whiteboard-grid" style="position: absolute; inset: 0; background-image: radial-gradient(#334155 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5; transform-origin: 0 0;"></div>
+      <div class="whiteboard-canvas" style="position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: visible; transform-origin: 0 0;"></div>
+      <button type="button" class="wb-add-node-btn" style="position: absolute; top: 20px; left: 20px; z-index: 100; width: 40px; height: 40px; border-radius: 50%; background: #deff9a; color: #0f172a; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">+</button>
+      <div class="wb-header" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; gap: 12px; align-items: center; background: #1e293b; padding: 8px 16px; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+        <input type="text" class="wb-title-input" placeholder="Untitled Whiteboard" style="background: transparent; border: none; color: #f8fafc; font-weight: 600; font-family: 'Segoe UI', sans-serif; outline: none; width: 200px;">
+        <span class="wb-saved-badge" style="color: #deff9a; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0; transition: opacity 0.2s;">Saved</span>
+        <div style="width: 1px; height: 16px; background: #334155; margin: 0 4px;"></div>
+        <button type="button" class="wb-new-btn" title="New Whiteboard" style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fa-solid fa-file"></i></button>
+        <button type="button" class="wb-load-btn" title="Load Whiteboard" style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fa-solid fa-folder-open"></i></button>
+      </div>
+      <div class="wb-omnibar hidden" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 110; width: 400px; max-width: calc(100% - 40px); background: #1e293b; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <input type="text" class="wb-omnibar-input" placeholder="Search nodes or type to create..." style="width: 100%; padding: 12px 16px; background: transparent; border: none; color: white; outline: none; border-bottom: 1px solid #334155;">
+        <div class="wb-omnibar-results" style="max-height: 250px; overflow-y: auto; color: #94a3b8; font-size: 13px;"></div>
+        <div class="wb-omnibar-create hidden" style="padding: 10px 16px; background: rgba(222, 255, 154, 0.1); color: #deff9a; font-size: 13px; cursor: pointer;">
+          <i class="fa-solid fa-plus"></i> Create new node
         </div>
       </div>
-      <button
-        type="button"
-        id="synthesis-pane-handle"
-        class="pane-handle pane-handle-synthesis"
-        aria-label="Expand synthesis workspace"
-        title="Expand synthesis workspace"
-      ><span class="pane-handle-chevron" aria-hidden="true">›</span></button>
     </div>
-  </div>
-  </div>
-  <div id="view-whiteboard-1" class="workspace-view hidden" style="flex: 1; position: relative; overflow: hidden; background: #0f172a;">
-    <div id="whiteboard-grid" style="position: absolute; inset: 0; background-image: radial-gradient(#334155 1px, transparent 1px); background-size: 20px 20px; opacity: 0.5; transform-origin: 0 0;"></div>
-    <div id="whiteboard-canvas" style="position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: visible; transform-origin: 0 0;"></div>
-    <button type="button" id="wb-add-node-btn" style="position: absolute; top: 20px; left: 20px; z-index: 100; width: 40px; height: 40px; border-radius: 50%; background: #deff9a; color: #0f172a; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">+</button>
-    <div style="position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; gap: 12px; align-items: center; background: #1e293b; padding: 8px 16px; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-      <input type="text" id="wb-title-input" placeholder="Untitled Whiteboard" style="background: transparent; border: none; color: #f8fafc; font-weight: 600; font-family: 'Segoe UI', sans-serif; outline: none; width: 200px;">
-      <span id="wb-saved-badge" style="color: #deff9a; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0; transition: opacity 0.2s;">Saved</span>
-      <div style="width: 1px; height: 16px; background: #334155; margin: 0 4px;"></div>
-      <button type="button" id="wb-new-btn" title="New Whiteboard" style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fa-solid fa-file"></i></button>
-      <button type="button" id="wb-load-btn" title="Load Whiteboard" style="background: transparent; border: none; color: #94a3b8; cursor: pointer;"><i class="fa-solid fa-folder-open"></i></button>
-    </div>
-    <div id="wb-omnibar" class="hidden" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 110; width: 400px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-      <input type="text" id="wb-omnibar-input" placeholder="Search nodes or type to create..." style="width: 100%; padding: 12px 16px; background: transparent; border: none; color: white; outline: none; border-bottom: 1px solid #334155;">
-      <div id="wb-omnibar-results" style="max-height: 250px; overflow-y: auto; color: #94a3b8; font-size: 13px;"></div>
-      <div id="wb-omnibar-create" class="hidden" style="padding: 10px 16px; background: rgba(222, 255, 154, 0.1); color: #deff9a; font-size: 13px; cursor: pointer;">
-        <i class="fa-solid fa-plus"></i> Create new node
+  </template>
+  <template id="node-focus-template">
+    <div class="workspace-view focus-view hidden" style="flex: 1; display: flex; flex-direction: row; justify-content: center; background: #0f172a; overflow-x: auto; gap: 40px; padding: 40px;">
+      <div class="focus-column parents-col">
+        <div style="color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px;">Parents & Sources</div>
+      </div>
+      <div class="focus-column center-col" style="border-left: 2px dashed #334155; border-right: 2px dashed #334155;">
+        <div style="color: #deff9a; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px;">Active Node</div>
+      </div>
+      <div class="focus-column children-col">
+        <div style="color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px;">Children & Summaries</div>
       </div>
     </div>
-  </div>
-  </div>
-  </div>
-  <div id="right-dock" class="tool-dock">
-    <button class="dock-btn" data-target="synthesis-pane" title="Toggle Synthesis">
-      <i class="fa-solid fa-pen-nib"></i><span>Synthesis</span>
-    </button>
-    <button class="dock-btn active" data-target="graph-minimap-pane" title="Toggle Graph">
-      <i class="fa-solid fa-project-diagram"></i><span>Graph</span>
-    </button>
-  </div>
+  </template>
+  <template id="synthesis-view-template">
+    <div class="workspace-view synthesis-view hidden" style="flex: 1; display: flex; flex-direction: column; background: #0f172a; overflow: hidden; position: relative;">
+      <div class="synthesis-pane">
+        <div class="synthesis-title-row">
+          <input
+            type="text"
+            class="synthesis-title-input"
+            placeholder="Untitled synthesis"
+            aria-label="Synthesis document title"
+          />
+          <span class="synthesis-saved-badge" aria-live="polite">Saved!</span>
+        </div>
+        <div class="synthesis-toolbar">
+          <span class="pane-title">Synthesis Workspace</span>
+          <div class="synthesis-toolbar-center">
+            <div class="synthesis-view-toggle" role="tablist" aria-label="Synthesis view mode">
+              <button type="button" class="synthesis-edit-btn active" role="tab" aria-selected="true">Edit</button>
+              <button type="button" class="synthesis-read-btn" role="tab" aria-selected="false">Read</button>
+            </div>
+            <button
+              type="button"
+              class="synthesis-export-btn"
+              title="Copy as Markdown"
+              aria-label="Export synthesis as Markdown"
+            >⎘</button>
+          </div>
+          <div class="synthesis-toolbar-actions">
+            <button type="button" class="synthesis-new-note-btn">New Document</button>
+            <button type="button" class="synthesis-load-doc-btn">Load</button>
+            <button type="button" class="synthesis-save-btn">Save to Graph</button>
+          </div>
+        </div>
+        <div class="synthesis-doc-wrap">
+          <div class="synthesis-dropzone"></div>
+          <textarea
+            class="synthesis-custom-input synthesis-composer"
+            placeholder="Add a thought… (Enter to add block, Shift+Enter for new line, Ctrl+Enter to save)"
+            spellcheck="true"
+            aria-label="Synthesis notes"
+            rows="3"
+          ></textarea>
+          <div class="synthesis-reading-notes" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </template>
   </div>
 
   <div id="document-library-modal" aria-hidden="true" role="dialog" aria-labelledby="document-library-title">
@@ -3034,18 +3025,14 @@
     const cyCollapseBtn = document.getElementById("cy-collapse-btn");
     const cyGraphSizeBtn = document.getElementById("cy-graph-size-btn");
     const groupSynthesizeBtn = document.getElementById("group-synthesize-btn");
-    const synthesisDropzone = document.getElementById("synthesis-dropzone");
-    const synthesisComposer = document.getElementById("synthesis-custom-input");
-    const synthesisCustomInput = synthesisComposer;
-    const synthesisTitleInput = document.getElementById("synthesis-title");
-    const synthesisSavedBadge = document.getElementById("synthesis-saved-badge");
-    const synthesisPaneShell = document.getElementById("synthesis-pane-shell");
-    const synthesisCollapseHandle = document.getElementById("synthesis-collapse-handle");
-    const synthesisPaneHandle = document.getElementById("synthesis-pane-handle");
-    const graphPaneHandle = document.getElementById("graph-pane-handle");
-    const newNoteBtn = document.getElementById("new-note-btn");
-    const loadDocBtn = document.getElementById("load-doc-btn");
-    const saveSynthesisBtn = document.getElementById("save-synthesis-btn");
+    let synthesisDropzone = null;
+    let synthesisComposer = null;
+    let synthesisCustomInput = null;
+    let synthesisTitleInput = null;
+    let synthesisSavedBadge = null;
+    let newNoteBtn = null;
+    let loadDocBtn = null;
+    let saveSynthesisBtn = null;
     const documentLibraryModal = document.getElementById("document-library-modal");
     const documentLibraryClose = document.getElementById("document-library-close");
     const documentList = document.getElementById("document-list");
@@ -3057,12 +3044,12 @@
     const menuCreateExcerpt = document.getElementById("menu-create-excerpt");
     const menuCreateSummary = document.getElementById("menu-create-summary");
     const menuCreateSummarizeNode = document.getElementById("menu-summarize-node");
-    const synthesisPane = document.getElementById("synthesis-pane");
-    const synthesisDocWrap = document.getElementById("synthesis-doc-wrap");
-    const synthesisEditBtn = document.getElementById("synthesis-edit-btn");
-    const synthesisReadBtn = document.getElementById("synthesis-read-btn");
-    const synthesisExportBtn = document.getElementById("synthesis-export-btn");
-    const synthesisReadingNotes = document.getElementById("synthesis-reading-notes");
+    let synthesisPane = null;
+    let synthesisDocWrap = null;
+    let synthesisEditBtn = null;
+    let synthesisReadBtn = null;
+    let synthesisExportBtn = null;
+    let synthesisReadingNotes = null;
 
     function isScrollableOverflow(value) {
       return value === "auto" || value === "scroll" || value === "overlay";
@@ -3145,7 +3132,6 @@
     let cyTapHandler = null;
     let workspaceGraphCollapsed = false;
     let workspaceGraphSizeExpanded = false;
-    let synthesisPaneCollapsed = true;
     let workbenchSidebarCollapsed = false;
     let sourcePaneCollapsed = false;
     let activeSynthesisDocId = null;
@@ -3169,6 +3155,7 @@
     let workspaceViewMode = "tree";
     let synthesisViewMode = "edit";
     let synthesisSortable = null;
+    const synthesisSortables = new Map();
     let loadSynthesisStatusTimer = null;
     let showNodeLabels = true;
     let flowResizeObserver = null;
@@ -3662,8 +3649,6 @@
     const DOCK_TARGET_PANELS = {
       "connections-pane": "workbench-sidebar",
       "doc-pane": "doc-pane",
-      "synthesis-pane": "synthesis-pane-shell",
-      "graph-minimap-pane": "graph-container",
     };
 
     function schedulePanelReflow() {
@@ -3683,8 +3668,6 @@
       switch (target) {
         case "connections-pane": workbenchSidebarCollapsed = !visible; break;
         case "doc-pane": sourcePaneCollapsed = !visible; break;
-        case "synthesis-pane": synthesisPaneCollapsed = !visible; break;
-        case "graph-minimap-pane": workspaceGraphCollapsed = !visible; break;
       }
 
       schedulePanelReflow();
@@ -3704,6 +3687,7 @@
 
     function resetSplitViewState() {
       isSplitView = false;
+      document.getElementById("workspace-views-container")?.classList.remove("split-active");
       const sourceTree = document.getElementById("view-source-tree");
       if (sourceTree) sourceTree.style.borderRight = "";
       const splitBtn = document.getElementById("split-view-toggle");
@@ -3712,7 +3696,7 @@
 
     function enableSplitView() {
       const sourceTree = document.getElementById("view-source-tree");
-      const whiteboard = document.getElementById("view-whiteboard-1");
+      document.getElementById("workspace-views-container")?.classList.add("split-active");
       document.querySelectorAll(".workspace-view").forEach((view) => {
         view.classList.remove("hidden");
         view.classList.add("active-view");
@@ -3735,52 +3719,163 @@
 
     function disableSplitView() {
       resetSplitViewState();
-      const activeTab = document.querySelector(".workspace-tab.active");
-      activeTab?.click();
+      TabManager.activateTab(TabManager.activeId);
     }
 
-    function switchWorkspaceView(targetViewId) {
-      document.querySelectorAll(".workspace-tab").forEach((tab) => {
-        tab.classList.remove("active");
-      });
-      const activeTab = document.querySelector(
-        `.workspace-tab[data-target-view="${targetViewId}"]`
-      );
-      if (activeTab) activeTab.classList.add("active");
+    const TabManager = {
+      tabs: [
+        { id: "view-source-tree", type: "source", title: "Source & Tree", closable: false },
+      ],
+      activeId: "view-source-tree",
 
-      document.querySelectorAll(".workspace-view").forEach((view) => {
-        view.classList.add("hidden");
-        view.classList.remove("active-view");
-      });
-      const targetView = document.getElementById(targetViewId);
-      if (targetView) {
-        targetView.classList.remove("hidden");
-        targetView.classList.add("active-view");
-      }
+      addTab(tab) {
+        this.tabs.push(tab);
+        this.activateTab(tab.id);
+      },
 
-      const lineCanvas = document.getElementById("line-canvas");
-      if (lineCanvas) {
-        lineCanvas.style.visibility =
-          targetViewId === "view-source-tree" || targetViewId === "view-whiteboard-1"
-            ? "visible"
-            : "hidden";
-      }
+      closeTab(id) {
+        const index = this.tabs.findIndex((t) => t.id === id);
+        if (index === -1 || !this.tabs[index].closable) return;
 
-      if (targetViewId === "view-source-tree") {
-        ConnectionManager.reposition();
-        if (cy) {
-          try {
-            cy.resize();
-          } catch (_) { /* not ready */ }
+        const viewEl = document.getElementById(id);
+        if (viewEl) viewEl.remove();
+        const sortable = synthesisSortables.get(id);
+        if (sortable) {
+          try { sortable.destroy(); } catch (_) { /* already destroyed */ }
+          synthesisSortables.delete(id);
         }
-        fitWorkspaceCyGraph();
-        repositionDocumentCanvasLines();
-      }
 
-      if (targetViewId === "view-whiteboard-1") {
-        ConnectionManager.reposition();
-        ConnectionManager.updateVisibility();
-      }
+        this.tabs.splice(index, 1);
+        if (this.activeId === id) {
+          this.activateTab(this.tabs[Math.max(0, index - 1)].id);
+        } else {
+          this.render();
+        }
+      },
+
+      activateTab(id) {
+        if (!this.tabs.some((t) => t.id === id)) return;
+        if (isSplitView) resetSplitViewState();
+
+        this.activeId = id;
+        this.render();
+
+        document.querySelectorAll(".workspace-view").forEach((view) => {
+          if (view.id === id) {
+            view.classList.remove("hidden");
+            view.classList.add("active-view");
+          } else {
+            view.classList.add("hidden");
+            view.classList.remove("active-view");
+          }
+        });
+
+        const lineCanvas = document.getElementById("line-canvas");
+        const viewEl = document.getElementById(id);
+        const isBoard = viewEl?.classList.contains("board-view");
+        const isFocus = viewEl?.classList.contains("focus-view");
+        const isSynthesis = viewEl?.classList.contains("synthesis-view");
+        if (lineCanvas) {
+          lineCanvas.style.visibility =
+            id === "view-source-tree" || isBoard || isFocus ? "visible" : "hidden";
+        }
+
+        if (isSynthesis) {
+          setSynthesisContext(viewEl);
+        }
+
+        if (id === "view-source-tree") {
+          ConnectionManager.reposition();
+          if (cy) {
+            try {
+              cy.resize();
+            } catch (_) { /* not ready */ }
+          }
+          fitWorkspaceCyGraph?.();
+          repositionDocumentCanvasLines();
+        }
+
+        if (isBoard || isFocus) {
+          ConnectionManager.reposition();
+          ConnectionManager.updateVisibility();
+        }
+
+        ConnectionManager.scheduleDraw();
+      },
+
+      render() {
+        const tabBar = document.getElementById("workspace-tab-bar");
+        if (!tabBar) return;
+
+        const addBtn = document.getElementById("add-workspace-tab");
+        const synthBtn = document.getElementById("new-synthesis-tab-btn");
+        const splitBtn = document.getElementById("split-view-toggle");
+        const minimapBtn = document.getElementById("global-minimap-toggle");
+        tabBar.innerHTML = "";
+
+        this.tabs.forEach((tab) => {
+          const tabEl = document.createElement("div");
+          tabEl.className = `workspace-tab ${this.activeId === tab.id ? "active" : ""}`;
+          tabEl.dataset.targetView = tab.id;
+
+          const icon =
+            tab.type === "source"
+              ? "fa-book-open"
+              : tab.type === "focus"
+                ? "fa-bullseye"
+                : tab.type === "synthesis"
+                  ? "fa-pen-nib"
+                  : "fa-shapes";
+          tabEl.innerHTML = `<i class="fa-solid ${icon}" style="color: #94a3b8; font-size: 12px; margin-right: 6px;"></i><span>${tab.title}</span>`;
+
+          if (tab.closable) {
+            const closeBtn = document.createElement("span");
+            closeBtn.innerHTML = "×";
+            closeBtn.style.cssText =
+              "margin-left: 8px; font-size: 14px; color: #64748b; cursor: pointer; line-height: 1;";
+            closeBtn.onclick = (e) => {
+              e.stopPropagation();
+              this.closeTab(tab.id);
+            };
+            closeBtn.onmouseover = () => {
+              closeBtn.style.color = "#f87171";
+            };
+            closeBtn.onmouseout = () => {
+              closeBtn.style.color = "#64748b";
+            };
+            tabEl.appendChild(closeBtn);
+          }
+
+          tabEl.onclick = () => this.activateTab(tab.id);
+          tabBar.appendChild(tabEl);
+        });
+
+        if (addBtn) tabBar.appendChild(addBtn);
+        if (synthBtn) tabBar.appendChild(synthBtn);
+        if (splitBtn) tabBar.appendChild(splitBtn);
+        if (minimapBtn) tabBar.appendChild(minimapBtn);
+      },
+
+      ensureTabForView(id, tabMeta) {
+        if (this.tabs.some((t) => t.id === id)) return;
+        this.tabs.push(tabMeta);
+        this.render();
+      },
+    };
+
+    function switchWorkspaceView(targetViewId) {
+      const viewEl = document.getElementById(targetViewId);
+      const isBoard = viewEl?.classList.contains("board-view");
+      TabManager.ensureTabForView(targetViewId, {
+        id: targetViewId,
+        type: targetViewId === "view-source-tree" ? "source" : isBoard ? "board" : "whiteboard",
+        title:
+          targetViewId === "view-source-tree"
+            ? "Source & Tree"
+            : viewEl?.querySelector(".wb-title-input")?.value?.trim() || "Board",
+        closable: targetViewId !== "view-source-tree",
+      });
+      TabManager.activateTab(targetViewId);
     }
 
     function initWorkspaceTabs() {
@@ -3788,13 +3883,19 @@
       if (!tabBar || tabBar.dataset.bound) return;
       tabBar.dataset.bound = "1";
 
-      tabBar.addEventListener("click", (e) => {
-        if (e.target.closest("#split-view-toggle")) return;
-        const tab = e.target.closest(".workspace-tab");
-        if (tab?.dataset.targetView) {
-          resetSplitViewState();
-          switchWorkspaceView(tab.dataset.targetView);
-        }
+      if (!document.querySelector(".board-view")) {
+        createNewBoard({ title: "Board", activate: false });
+      }
+
+      TabManager.render();
+      TabManager.activateTab(TabManager.activeId);
+
+      document.getElementById("add-workspace-tab")?.addEventListener("click", () => {
+        createNewBoard();
+      });
+
+      document.getElementById("new-synthesis-tab-btn")?.addEventListener("click", () => {
+        openSynthesisTab();
       });
 
       const splitBtn = document.getElementById("split-view-toggle");
@@ -3849,22 +3950,506 @@
       });
     }
 
-    let wbZoom = 1;
-    let wbPanX = 0;
-    let wbPanY = 0;
     let isWbPanning = false;
+    let panningBoard = null;
     let startWbPanX = 0;
     let startWbPanY = 0;
     let isSpacebarDown = false;
     let draggedWbNode = null;
     let dragWbOffsetX = 0;
     let dragWbOffsetY = 0;
-    let activeWhiteboardId = null;
     let wbSaveTimer = null;
 
-    function serializeWhiteboard() {
+    function getBoardZoom(board) {
+      return parseFloat(board?.dataset.zoom) || 1;
+    }
+
+    function getBoardPanX(board) {
+      return parseFloat(board?.dataset.panX) || 0;
+    }
+
+    function getBoardPanY(board) {
+      return parseFloat(board?.dataset.panY) || 0;
+    }
+
+    function setBoardZoom(board, zoom) {
+      if (board) board.dataset.zoom = String(zoom);
+    }
+
+    function setBoardPan(board, panX, panY) {
+      if (!board) return;
+      board.dataset.panX = String(panX);
+      board.dataset.panY = String(panY);
+    }
+
+    function getActiveBoardElement() {
+      const active = document.getElementById(TabManager.activeId);
+      if (active?.classList.contains("board-view")) return active;
+      return document.querySelector(".board-view.active-view:not(.hidden)");
+    }
+
+    function createNewBoard(options = {}) {
+      const template = document.getElementById("board-template");
+      const container = document.getElementById("workspace-views-container");
+      if (!template?.content?.firstElementChild || !container) return null;
+
+      const boardId = options.id || `board-${Date.now()}`;
+      const boardEl = template.content.firstElementChild.cloneNode(true);
+      boardEl.id = boardId;
+      container.appendChild(boardEl);
+
+      boardEl.dataset.zoom = "1";
+      boardEl.dataset.panX = "0";
+      boardEl.dataset.panY = "0";
+      boardEl.dataset.savedNodeId = options.savedNodeId || "";
+
+      bindBoardUi(boardEl);
+      updateWhiteboardTransform(boardEl);
+
+      const tabMeta = {
+        id: boardId,
+        type: "board",
+        title: options.title || "New Board",
+        closable: options.closable !== false,
+      };
+      if (options.activate === false) {
+        TabManager.tabs.push(tabMeta);
+        TabManager.render();
+      } else {
+        TabManager.addTab(tabMeta);
+      }
+
+      return boardId;
+    }
+
+    function getActiveSynthesisView() {
+      const active = document.getElementById(TabManager.activeId);
+      if (active?.classList.contains("synthesis-view")) return active;
+      return document.querySelector(".synthesis-view.active-view:not(.hidden)");
+    }
+
+    function setSynthesisContext(viewEl) {
+      if (!viewEl) {
+        synthesisPane = null;
+        synthesisDropzone = null;
+        synthesisComposer = null;
+        synthesisCustomInput = null;
+        synthesisTitleInput = null;
+        synthesisSavedBadge = null;
+        synthesisDocWrap = null;
+        synthesisEditBtn = null;
+        synthesisReadBtn = null;
+        synthesisExportBtn = null;
+        synthesisReadingNotes = null;
+        newNoteBtn = null;
+        loadDocBtn = null;
+        saveSynthesisBtn = null;
+        synthesisSortable = null;
+        activeSynthesisDocId = null;
+        return;
+      }
+
+      synthesisPane = viewEl.querySelector(".synthesis-pane");
+      synthesisDropzone = viewEl.querySelector(".synthesis-dropzone");
+      synthesisComposer = viewEl.querySelector(".synthesis-custom-input");
+      synthesisCustomInput = synthesisComposer;
+      synthesisTitleInput = viewEl.querySelector(".synthesis-title-input");
+      synthesisSavedBadge = viewEl.querySelector(".synthesis-saved-badge");
+      synthesisDocWrap = viewEl.querySelector(".synthesis-doc-wrap");
+      synthesisEditBtn = viewEl.querySelector(".synthesis-edit-btn");
+      synthesisReadBtn = viewEl.querySelector(".synthesis-read-btn");
+      synthesisExportBtn = viewEl.querySelector(".synthesis-export-btn");
+      synthesisReadingNotes = viewEl.querySelector(".synthesis-reading-notes");
+      newNoteBtn = viewEl.querySelector(".synthesis-new-note-btn");
+      loadDocBtn = viewEl.querySelector(".synthesis-load-doc-btn");
+      saveSynthesisBtn = viewEl.querySelector(".synthesis-save-btn");
+      synthesisSortable = synthesisSortables.get(viewEl.id) || null;
+      activeSynthesisDocId = viewEl.dataset.synthesisDocId || null;
+    }
+
+    function updateSynthesisTabTitle(viewEl) {
+      const tab = TabManager.tabs.find((t) => t.id === viewEl?.id);
+      if (!tab) return;
+      const title = viewEl.querySelector(".synthesis-title-input")?.value?.trim();
+      if (title) {
+        tab.title = title;
+        TabManager.render();
+      }
+    }
+
+    async function hydrateSynthesisView(viewEl, docId = null, docData = null) {
+      if (!viewEl) return;
+      setSynthesisContext(viewEl);
+
+      if (docData) {
+        activeSynthesisDocId = docData.id || docId || null;
+        viewEl.dataset.synthesisDocId = activeSynthesisDocId || "";
+        if (synthesisTitleInput) {
+          synthesisTitleInput.value = docData.title || generateTimestampTitle();
+        }
+        resetSynthesisWorkspaceContent();
+        const blocks = normalizeDocumentBlocks(docData.blocks);
+        if (blocks.length > 0) {
+          const references = docData.references || [];
+          const referenceNodes = await enrichReferenceNodesForBlocks(blocks, references);
+          rebuildSynthesisDropzoneFromBlocks(blocks, referenceNodes);
+        } else {
+          hydrateSynthesisWorkspace(docData.content || "", docData.references || [], null);
+        }
+        refreshSynthesisWorkspaceLayout();
+        updateSynthesisTabTitle(viewEl);
+        return;
+      }
+
+      if (docId) {
+        const { doc, references } = await fetchSynthesisDocumentState(docId);
+        activeSynthesisDocId = doc.id;
+        viewEl.dataset.synthesisDocId = doc.id;
+        if (synthesisTitleInput) {
+          synthesisTitleInput.value = doc.title || generateTimestampTitle();
+        }
+        resetSynthesisWorkspaceContent();
+        const blocks = normalizeDocumentBlocks(doc.blocks);
+        if (blocks.length > 0) {
+          const referenceNodes = await enrichReferenceNodesForBlocks(blocks, references);
+          rebuildSynthesisDropzoneFromBlocks(blocks, referenceNodes);
+        } else {
+          hydrateSynthesisWorkspace(doc.content || "", references, null);
+        }
+        refreshSynthesisWorkspaceLayout();
+        updateSynthesisTabTitle(viewEl);
+        return;
+      }
+
+      activeSynthesisDocId = null;
+      viewEl.dataset.synthesisDocId = "";
+      clearSynthesisWorkspace();
+    }
+
+    async function openSynthesisTab(docId = null, docData = null) {
+      const synthId = `synth-${docId || Date.now()}`;
+      const existingTab = TabManager.tabs.find((t) => t.id === synthId);
+      if (existingTab) {
+        TabManager.activateTab(synthId);
+        const viewEl = document.getElementById(synthId);
+        await hydrateSynthesisView(viewEl, docId, docData);
+        return synthId;
+      }
+
+      const template = document.getElementById("synthesis-view-template");
+      const container = document.getElementById("workspace-views-container");
+      if (!template?.content?.firstElementChild || !container) return null;
+
+      const viewEl = template.content.firstElementChild.cloneNode(true);
+      viewEl.id = synthId;
+      container.appendChild(viewEl);
+      bindSynthesisView(viewEl);
+
+      TabManager.addTab({
+        id: synthId,
+        type: "synthesis",
+        title: docData?.title || "New Synthesis",
+        closable: true,
+      });
+
+      try {
+        if (docId || docData) {
+          if (docId && !docData) showStatus("Loading synthesis document…");
+          await hydrateSynthesisView(viewEl, docId, docData);
+          clearStatus();
+          if (docId || docData?.title) {
+            const title = synthesisTitleInput?.value?.trim() || "Untitled";
+            showStatus(`Loaded “${title}”`);
+            if (loadSynthesisStatusTimer) clearTimeout(loadSynthesisStatusTimer);
+            loadSynthesisStatusTimer = setTimeout(clearStatus, 2500);
+          }
+        } else {
+          await hydrateSynthesisView(viewEl);
+        }
+      } catch (err) {
+        showStatus(err.message, true);
+      }
+
+      return synthId;
+    }
+
+    function bindSynthesisView(viewEl) {
+      if (!viewEl || viewEl.dataset.synthesisBound) return;
+      viewEl.dataset.synthesisBound = "1";
+      setSynthesisContext(viewEl);
+
+      if (!synthesisTitleInput?.value.trim()) {
+        setSynthesisTitleToTimestamp();
+      }
+
+      synthesisTitleInput?.addEventListener("input", () => updateSynthesisTabTitle(viewEl));
+
+      synthesisEditBtn?.addEventListener("click", () => setSynthesisViewMode("edit"));
+      synthesisReadBtn?.addEventListener("click", () => setSynthesisViewMode("read"));
+      synthesisExportBtn?.addEventListener("click", () => exportSynthesisMarkdown());
+
+      newNoteBtn?.addEventListener("click", () => {
+        setSynthesisContext(viewEl);
+        activeSynthesisDocId = null;
+        viewEl.dataset.synthesisDocId = "";
+        clearSynthesisWorkspace();
+        updateSynthesisTabTitle(viewEl);
+      });
+
+      loadDocBtn?.addEventListener("click", () => {
+        setSynthesisContext(viewEl);
+        openDocumentLibrary();
+      });
+
+      saveSynthesisBtn?.addEventListener("click", async () => {
+        setSynthesisContext(viewEl);
+        const saved = await saveSynthesis();
+        if (saved) {
+          flashSynthesisSavedBadge();
+          viewEl.dataset.synthesisDocId = activeSynthesisDocId || "";
+          updateSynthesisTabTitle(viewEl);
+        }
+      });
+
+      const dropzone = viewEl.querySelector(".synthesis-dropzone");
+      if (dropzone && !dropzone.dataset.sortableBound && typeof Sortable !== "undefined") {
+        dropzone.dataset.sortableBound = "1";
+        synthesisSortables.set(
+          viewEl.id,
+          new Sortable(dropzone, {
+            animation: 150,
+            ghostClass: "synthesis-ghost",
+            handle: ".drag-handle",
+            draggable: ".synthesis-item",
+            onEnd() {
+              /* persist on explicit save */
+            },
+          })
+        );
+        synthesisSortable = synthesisSortables.get(viewEl.id) || null;
+      }
+
+      if (dropzone && !dropzone.dataset.dndBound) {
+        dropzone.dataset.dndBound = "1";
+        dropzone.addEventListener("dragover", (e) => {
+          setSynthesisContext(viewEl);
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          dropzone.classList.add("drag-over");
+        });
+        dropzone.addEventListener("dragleave", (e) => {
+          if (!dropzone.contains(e.relatedTarget)) {
+            dropzone.classList.remove("drag-over");
+          }
+        });
+        dropzone.addEventListener("drop", (e) => {
+          setSynthesisContext(viewEl);
+          e.preventDefault();
+          dropzone.classList.remove("drag-over");
+          const raw = e.dataTransfer.getData("application/x-internalize-node");
+          if (!raw) return;
+          try {
+            const { nodeId, text, depthLevel } = JSON.parse(raw);
+            if (!text) return;
+            appendSynthesisItem(nodeId, text, depthLevel);
+          } catch (_) {
+            showStatus("Could not read dropped card data.", true);
+          }
+        });
+        dropzone.addEventListener("click", (e) => {
+          setSynthesisContext(viewEl);
+          const removeBtn = e.target.closest(".remove-synthesis-block");
+          if (removeBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            removeBtn.closest(".synthesis-item")?.remove();
+            return;
+          }
+          const refLink = e.target.closest(".reference-link");
+          if (refLink) {
+            e.preventDefault();
+            e.stopPropagation();
+            focusGraphNodeFromReference(refLink.dataset.refId);
+            return;
+          }
+          const anchor = e.target.closest(".source-link-anchor");
+          if (!anchor) return;
+          e.preventDefault();
+          focusGraphNodeFromReference(anchor.dataset.nodeId);
+        });
+        dropzone.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          const refLink = e.target.closest(".reference-link");
+          if (!refLink) return;
+          e.preventDefault();
+          focusGraphNodeFromReference(refLink.dataset.refId);
+        });
+        dropzone.addEventListener("dblclick", (e) => {
+          setSynthesisContext(viewEl);
+          const item = e.target.closest('.synthesis-item[data-type="custom-text"]');
+          if (!item || e.target.closest(".inline-edit-area, .drag-handle, .synthesis-item-actions")) {
+            return;
+          }
+          e.preventDefault();
+          startCustomThoughtEdit(item);
+        });
+      }
+
+      const composer = viewEl.querySelector(".synthesis-custom-input");
+      if (composer && !composer.dataset.bound) {
+        composer.dataset.bound = "1";
+        composer.addEventListener("keydown", (e) => {
+          setSynthesisContext(viewEl);
+          if (e.key === "Enter" && !e.shiftKey && !(e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            const text = composer.value.trim();
+            if (!text) return;
+            appendCustomThought(text);
+            composer.value = "";
+            return;
+          }
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            saveSynthesis().then((saved) => {
+              if (saved) flashSynthesisSavedBadge();
+            });
+          }
+        });
+      }
+    }
+
+    function createFocusViewCard(node, focusViewId) {
+      const card = document.createElement("div");
+      card.className = "workspace-card";
+      card.id = `focus-card-${focusViewId}-${node.id}`;
+      card.dataset.nodeId = node.id;
+      applyCardPresentation(card, node);
+      card.classList.toggle("pinned-node", !!node.pinned);
+      bindWorkspaceCardInteractions(card, node.id);
+      return card;
+    }
+
+    async function openNodeFocusTab(nodeId) {
+      if (!nodeId) return;
+
+      const focusId = `focus-${nodeId}`;
+      if (TabManager.tabs.some((t) => t.id === focusId)) {
+        TabManager.activateTab(focusId);
+        return;
+      }
+
+      const nodeData = await fetchWhiteboardNodeData(nodeId);
+      if (!nodeData) {
+        showStatus("Could not load node for focus view", true);
+        return;
+      }
+
+      const template = document.getElementById("node-focus-template");
+      const container = document.getElementById("workspace-views-container");
+      if (!template?.content?.firstElementChild || !container) return;
+
+      const focusEl = template.content.firstElementChild.cloneNode(true);
+      focusEl.id = focusId;
+      focusEl.dataset.focusNodeId = nodeId;
+      container.appendChild(focusEl);
+
+      const centerCol = focusEl.querySelector(".center-col");
+      const parentsCol = focusEl.querySelector(".parents-col");
+      const childrenCol = focusEl.querySelector(".children-col");
+
+      centerCol?.appendChild(createFocusViewCard(nodeData, focusId));
+
+      const parentIds = new Set();
+      const childIds = new Set();
+      for (const edge of ConnectionManager.edges.values()) {
+        if (edge.target_id === nodeId) parentIds.add(edge.source_id);
+        if (edge.source_id === nodeId) childIds.add(edge.target_id);
+      }
+
+      for (const parentId of parentIds) {
+        const parentData = await fetchWhiteboardNodeData(parentId);
+        if (parentData) parentsCol?.appendChild(createFocusViewCard(parentData, focusId));
+      }
+
+      for (const childId of childIds) {
+        const childData = await fetchWhiteboardNodeData(childId);
+        if (childData) childrenCol?.appendChild(createFocusViewCard(childData, focusId));
+      }
+
+      const titleText =
+        (nodeData.content || nodeData.title || "").trim() || "Untitled";
+      TabManager.addTab({
+        id: focusId,
+        type: "focus",
+        title: "Focus: " + excerptTitle(titleText),
+        closable: true,
+      });
+
+      ConnectionManager.scheduleDraw();
+    }
+
+    function bindBoardUi(board) {
+      if (!board || board.dataset.uiBound) return;
+      board.dataset.uiBound = "1";
+
+      board.querySelector(".wb-title-input")?.addEventListener("input", () => {
+        scheduleWhiteboardSave(board);
+      });
+      board.querySelector(".wb-load-btn")?.addEventListener("click", () => {
+        openWhiteboardLibrary(board);
+      });
+      board.querySelector(".wb-new-btn")?.addEventListener("click", () => {
+        clearWhiteboard(board);
+      });
+      board.querySelector(".wb-add-node-btn")?.addEventListener("click", () => {
+        toggleWhiteboardOmnibar(board);
+      });
+
+      const input = board.querySelector(".wb-omnibar-input");
+      input?.addEventListener("input", () => {
+        renderWhiteboardOmnibarResults(board, input.value);
+      });
+      input?.addEventListener("keydown", async (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          hideWhiteboardOmnibar(board);
+          return;
+        }
+        if (e.key === "Enter" && e.shiftKey) {
+          e.preventDefault();
+          const text = input.value.trim();
+          if (!text) return;
+          try {
+            const nodeData = await createWhiteboardSummaryFromOmnibar(text);
+            const center = getWhiteboardScreenCenter(board);
+            await spawnWhiteboardNode(nodeData.id, center.x, center.y, false, false, board);
+            hideWhiteboardOmnibar(board);
+          } catch (err) {
+            console.error("[bindBoardUi] create failed", err);
+            showStatus(err.message || "Failed to create summary", true);
+          }
+        }
+      });
+      board.querySelector(".wb-omnibar-create")?.addEventListener("click", async () => {
+        const text = input?.value.trim();
+        if (!text) return;
+        try {
+          const nodeData = await createWhiteboardSummaryFromOmnibar(text);
+          const center = getWhiteboardScreenCenter(board);
+          await spawnWhiteboardNode(nodeData.id, center.x, center.y, false, false, board);
+          hideWhiteboardOmnibar(board);
+        } catch (err) {
+          console.error("[bindBoardUi] create failed", err);
+          showStatus(err.message || "Failed to create summary", true);
+        }
+      });
+    }
+
+    function serializeWhiteboard(boardEl) {
+      const board = boardEl || getActiveBoardElement();
+      const canvas = board?.querySelector(".whiteboard-canvas");
       const nodes = [];
-      document.querySelectorAll("#whiteboard-canvas .wb-node-wrapper").forEach((el) => {
+      canvas?.querySelectorAll(".wb-node-wrapper").forEach((el) => {
         nodes.push({
           nodeId: el.dataset.nodeId,
           x: parseFloat(el.style.left),
@@ -3872,15 +4457,16 @@
         });
       });
       return {
-        panX: wbPanX,
-        panY: wbPanY,
-        zoom: wbZoom,
+        panX: getBoardPanX(board),
+        panY: getBoardPanY(board),
+        zoom: getBoardZoom(board),
         nodes,
       };
     }
 
-    function showWhiteboardSavedBadge() {
-      const badge = document.getElementById("wb-saved-badge");
+    function showWhiteboardSavedBadge(boardEl) {
+      const board = boardEl || getActiveBoardElement();
+      const badge = board?.querySelector(".wb-saved-badge");
       if (!badge) return;
       badge.style.opacity = "1";
       setTimeout(() => {
@@ -3888,25 +4474,27 @@
       }, 2000);
     }
 
-    function scheduleWhiteboardSave() {
+    function scheduleWhiteboardSave(boardEl) {
       if (wbSaveTimer) clearTimeout(wbSaveTimer);
       wbSaveTimer = setTimeout(() => {
         wbSaveTimer = null;
-        saveWhiteboardState();
+        saveWhiteboardState(boardEl);
       }, 1000);
     }
 
-    async function saveWhiteboardState() {
-      const canvas = document.getElementById("whiteboard-canvas");
+    async function saveWhiteboardState(boardEl) {
+      const board = boardEl || getActiveBoardElement();
+      const canvas = board?.querySelector(".whiteboard-canvas");
       const hasNodes = canvas?.querySelectorAll(".wb-node-wrapper").length > 0;
-      if (!hasNodes && !activeWhiteboardId) return;
+      const savedNodeId = board?.dataset.savedNodeId || "";
+      if (!hasNodes && !savedNodeId) return;
 
-      const titleInput = document.getElementById("wb-title-input");
-      const title = titleInput?.value.trim() || "Untitled Whiteboard";
+      const title =
+        board?.querySelector(".wb-title-input")?.value.trim() || "Untitled Whiteboard";
       const payload = {
         title,
         content: "Whiteboard",
-        blocks: [serializeWhiteboard()],
+        blocks: [serializeWhiteboard(board)],
         node_type: "Whiteboard",
         density_level: 5,
         origin: "human",
@@ -3914,7 +4502,7 @@
       };
 
       try {
-        if (!activeWhiteboardId) {
+        if (!savedNodeId) {
           const res = await fetch(`${API_BASE}/api/nodes`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -3925,10 +4513,10 @@
             throw new Error(body.detail || `POST /api/nodes returned ${res.status}`);
           }
           const data = await res.json();
-          activeWhiteboardId = data.node_id;
+          if (board) board.dataset.savedNodeId = data.node_id;
         } else {
           const res = await fetch(
-            `${API_BASE}/api/nodes/${encodeURIComponent(activeWhiteboardId)}`,
+            `${API_BASE}/api/nodes/${encodeURIComponent(savedNodeId)}`,
             {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -3944,25 +4532,11 @@
             throw new Error(body.detail || `PUT /api/nodes returned ${res.status}`);
           }
         }
-        showWhiteboardSavedBadge();
+        showWhiteboardSavedBadge(board);
       } catch (err) {
         console.error("[saveWhiteboardState] failed", err);
         showStatus(err.message || "Failed to save whiteboard", true);
       }
-    }
-
-    function initWhiteboardHeader() {
-      const titleInput = document.getElementById("wb-title-input");
-      if (!titleInput || titleInput.dataset.bound) return;
-      titleInput.dataset.bound = "1";
-      titleInput.addEventListener("input", () => scheduleWhiteboardSave());
-
-      document.getElementById("wb-load-btn")?.addEventListener("click", () => {
-        openWhiteboardLibrary();
-      });
-      document.getElementById("wb-new-btn")?.addEventListener("click", () => {
-        clearWhiteboard();
-      });
     }
 
     function parseWhiteboardBlocks(blocks) {
@@ -3978,13 +4552,15 @@
       return state;
     }
 
-    function clearWhiteboard() {
-      wbPanX = 0;
-      wbPanY = 0;
-      wbZoom = 1;
-      updateWhiteboardTransform();
+    function clearWhiteboard(boardEl) {
+      const board = boardEl || getActiveBoardElement();
+      if (!board) return;
 
-      const canvas = document.getElementById("whiteboard-canvas");
+      setBoardPan(board, 0, 0);
+      setBoardZoom(board, 1);
+      updateWhiteboardTransform(board);
+
+      const canvas = board.querySelector(".whiteboard-canvas");
       if (canvas) {
         canvas.querySelectorAll(".wb-node-wrapper").forEach((wrapper) => {
           const card = wrapper.querySelector(".workspace-card");
@@ -3994,14 +4570,14 @@
         canvas.replaceChildren();
       }
 
-      activeWhiteboardId = null;
-      const titleInput = document.getElementById("wb-title-input");
+      board.dataset.savedNodeId = "";
+      const titleInput = board.querySelector(".wb-title-input");
       if (titleInput) titleInput.value = "";
 
       ConnectionManager.reposition();
     }
 
-    async function loadWhiteboard(id) {
+    async function loadWhiteboard(id, targetBoard) {
       if (!id) return;
 
       try {
@@ -4013,11 +4589,17 @@
         }
         const node = await res.json();
 
-        activeWhiteboardId = id;
-        const titleInput = document.getElementById("wb-title-input");
-        if (titleInput) titleInput.value = node.title || "";
+        let board = targetBoard || getActiveBoardElement();
+        if (!board) {
+          const boardId = createNewBoard({ title: node.title || "Board", savedNodeId: id });
+          board = document.getElementById(boardId);
+        } else {
+          board.dataset.savedNodeId = id;
+          const titleInput = board.querySelector(".wb-title-input");
+          if (titleInput) titleInput.value = node.title || "";
+        }
 
-        const canvas = document.getElementById("whiteboard-canvas");
+        const canvas = board.querySelector(".whiteboard-canvas");
         if (canvas) {
           canvas.querySelectorAll(".wb-node-wrapper").forEach((wrapper) => {
             const card = wrapper.querySelector(".workspace-card");
@@ -4029,18 +4611,17 @@
 
         const layout = parseWhiteboardBlocks(node.blocks);
         if (layout) {
-          wbPanX = Number(layout.panX) || 0;
-          wbPanY = Number(layout.panY) || 0;
-          wbZoom = Number(layout.zoom) || 1;
-          updateWhiteboardTransform();
+          setBoardPan(board, Number(layout.panX) || 0, Number(layout.panY) || 0);
+          setBoardZoom(board, Number(layout.zoom) || 1);
+          updateWhiteboardTransform(board);
 
           for (const n of layout.nodes) {
             if (!n?.nodeId) continue;
-            await spawnWhiteboardNode(n.nodeId, n.x, n.y, true);
+            await spawnWhiteboardNode(n.nodeId, n.x, n.y, true, false, board);
           }
         }
 
-        switchWorkspaceView("view-whiteboard-1");
+        switchWorkspaceView(board.id);
         ConnectionManager.drawAllConnections();
         clearStatus();
         showStatus(`Loaded “${node.title || "Untitled Whiteboard"}”`);
@@ -4108,14 +4689,17 @@
         button.appendChild(meta);
         button.appendChild(snippet);
         button.addEventListener("click", () => {
-          loadWhiteboard(doc.id);
+          loadWhiteboard(doc.id, whiteboardLibraryTargetBoard);
           closeDocumentLibraryModal();
         });
         documentList.appendChild(button);
       }
     }
 
-    async function openWhiteboardLibrary() {
+    let whiteboardLibraryTargetBoard = null;
+
+    async function openWhiteboardLibrary(boardEl) {
+      whiteboardLibraryTargetBoard = boardEl || getActiveBoardElement();
       if (!documentList) return;
       openWhiteboardLibraryModal();
       documentList.replaceChildren();
@@ -4146,9 +4730,11 @@
 
         e.stopPropagation();
         draggedWbNode = wrapper;
+        const board = wrapper.closest(".board-view");
+        const zoom = getBoardZoom(board);
         const rect = wrapper.getBoundingClientRect();
-        dragWbOffsetX = (e.clientX - rect.left) / wbZoom;
-        dragWbOffsetY = (e.clientY - rect.top) / wbZoom;
+        dragWbOffsetX = (e.clientX - rect.left) / zoom;
+        dragWbOffsetY = (e.clientY - rect.top) / zoom;
         wrapper.style.zIndex = "1000";
         wrapper.style.cursor = "grabbing";
       });
@@ -4160,12 +4746,14 @@
 
       document.addEventListener("mousemove", (e) => {
         if (!draggedWbNode) return;
-        const canvasRect = document.getElementById("view-whiteboard-1")?.getBoundingClientRect();
-        if (!canvasRect) return;
-        const canvasX =
-          (e.clientX - canvasRect.left - wbPanX) / wbZoom - dragWbOffsetX;
-        const canvasY =
-          (e.clientY - canvasRect.top - wbPanY) / wbZoom - dragWbOffsetY;
+        const board = draggedWbNode.closest(".board-view");
+        if (!board) return;
+        const canvasRect = board.getBoundingClientRect();
+        const zoom = getBoardZoom(board);
+        const panX = getBoardPanX(board);
+        const panY = getBoardPanY(board);
+        const canvasX = (e.clientX - canvasRect.left - panX) / zoom - dragWbOffsetX;
+        const canvasY = (e.clientY - canvasRect.top - panY) / zoom - dragWbOffsetY;
         draggedWbNode.style.left = `${canvasX}px`;
         draggedWbNode.style.top = `${canvasY}px`;
         ConnectionManager.reposition();
@@ -4173,22 +4761,27 @@
 
       document.addEventListener("mouseup", () => {
         if (!draggedWbNode) return;
+        const board = draggedWbNode.closest(".board-view");
         draggedWbNode.style.zIndex = "";
         draggedWbNode.style.cursor = "grab";
         draggedWbNode = null;
-        scheduleWhiteboardSave();
+        scheduleWhiteboardSave(board);
       });
     }
 
-    function updateWhiteboardTransform() {
-      const canvas = document.getElementById("whiteboard-canvas");
-      const grid = document.getElementById("whiteboard-grid");
+    function updateWhiteboardTransform(boardElement) {
+      if (!boardElement) return;
+      const zoom = getBoardZoom(boardElement);
+      const panX = getBoardPanX(boardElement);
+      const panY = getBoardPanY(boardElement);
+      const canvas = boardElement.querySelector(".whiteboard-canvas");
+      const grid = boardElement.querySelector(".whiteboard-grid");
       if (canvas) {
-        canvas.style.transform = `translate(${wbPanX}px, ${wbPanY}px) scale(${wbZoom})`;
+        canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
       }
       if (grid) {
-        grid.style.backgroundPosition = `${wbPanX}px ${wbPanY}px`;
-        grid.style.backgroundSize = `${20 * wbZoom}px ${20 * wbZoom}px`;
+        grid.style.backgroundPosition = `${panX}px ${panY}px`;
+        grid.style.backgroundSize = `${20 * zoom}px ${20 * zoom}px`;
       }
       if (isWhiteboardViewVisible()) {
         ConnectionManager.reposition();
@@ -4196,14 +4789,19 @@
     }
 
     function isWhiteboardViewVisible() {
-      const view = document.getElementById("view-whiteboard-1");
-      return Boolean(
-        view && view.classList.contains("active-view") && !view.classList.contains("hidden")
-      );
+      return Boolean(document.querySelector(".board-view.active-view:not(.hidden)"));
     }
 
     function isWhiteboardViewActive() {
       return isWhiteboardViewVisible() && !isSplitView;
+    }
+
+    function isFocusViewVisible() {
+      return Boolean(document.querySelector(".focus-view.active-view:not(.hidden)"));
+    }
+
+    function isFocusViewActive() {
+      return isFocusViewVisible() && !isSplitView;
     }
 
     function shouldStartWhiteboardPan(e) {
@@ -4219,6 +4817,32 @@
         workspaceNodeMap.get(nodeId) ||
         null
       );
+    }
+
+    function createWhiteboardRemoveButton(nodeId, wrapper) {
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "wb-remove-btn";
+      removeBtn.title = "Remove from board";
+      removeBtn.style.cssText =
+        "position: absolute; top: -10px; right: -10px; z-index: 30; width: 20px; height: 20px; border-radius: 50%; background: #f87171; color: white; border: none; cursor: pointer;";
+      removeBtn.textContent = "×";
+      removeBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const treeCard = document.querySelector(
+          `#view-source-tree .workspace-card[data-node-id="${CSS.escape(nodeId)}"]`
+        );
+        wrapper.remove();
+        if (treeCard && !treeCard.closest(".whiteboard-canvas")) {
+          WorkspaceDomCache.registerCard(nodeId, treeCard);
+        } else {
+          WorkspaceDomCache.unregisterCard(nodeId);
+        }
+        ConnectionManager.scheduleDraw();
+        scheduleWhiteboardSave(wrapper.closest(".board-view"));
+      });
+      return removeBtn;
     }
 
     function createWhiteboardSpiderButton(nodeId, wrapper) {
@@ -4245,7 +4869,65 @@
       applyCardPresentation(card, node);
       card.classList.toggle("pinned-node", !!node.pinned);
       WorkspaceDomCache.registerCard(node.id, card);
+      bindWhiteboardCardPin(card, node.id);
       return card;
+    }
+
+    function bindWhiteboardCardPin(card, nodeId) {
+      card.addEventListener("mousedown", (e) => {
+        if (e.target.closest(".pin-icon")) {
+          e.stopPropagation();
+        }
+      });
+      card.addEventListener("click", (e) => {
+        if (!e.target.closest(".pin-icon")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const wrapper = card.closest(".wb-node-wrapper");
+        if (!wrapper?.classList.contains("wb-draft-node")) return;
+        wrapper.classList.remove("wb-draft-node");
+        scheduleWhiteboardSave(card.closest(".board-view"));
+      });
+    }
+
+    function clearWhiteboardDrafts() {
+      const drafts = document.querySelectorAll(".wb-draft-node");
+      if (drafts.length === 0) return false;
+      drafts.forEach((wrapper) => {
+        const nodeId = wrapper.dataset.nodeId;
+        wrapper.remove();
+        const treeCard = document.querySelector(
+          `#view-source-tree .workspace-card[data-node-id="${CSS.escape(nodeId)}"]`
+        );
+        if (treeCard && !treeCard.closest(".whiteboard-canvas")) {
+          WorkspaceDomCache.registerCard(nodeId, treeCard);
+        } else {
+          WorkspaceDomCache.unregisterCard(nodeId);
+        }
+      });
+      ConnectionManager.scheduleDraw();
+      return true;
+    }
+
+    function initWhiteboardDraftEscape() {
+      if (document.body.dataset.wbDraftEscapeBound) return;
+      document.body.dataset.wbDraftEscapeBound = "1";
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape" && e.code !== "Escape") return;
+        if (!isWhiteboardViewVisible()) return;
+        const openOmnibar = document.querySelector(
+          ".board-view.active-view:not(.hidden) .wb-omnibar:not(.hidden)"
+        );
+        if (openOmnibar) {
+          hideWhiteboardOmnibar(openOmnibar.closest(".board-view"));
+          return;
+        }
+        if (isTypingTarget(e.target)) return;
+        if (clearWhiteboardDrafts()) {
+          e.preventDefault();
+        }
+      });
     }
 
     async function fetchWhiteboardNodeData(nodeId) {
@@ -4272,14 +4954,25 @@
       }
     }
 
-    async function spawnWhiteboardNode(nodeId, x, y, isCanvasCoord = false) {
+    async function spawnWhiteboardNode(
+      nodeId,
+      x,
+      y,
+      isCanvasCoord = false,
+      isDraft = false,
+      boardEl = null
+    ) {
       if (!nodeId) return;
       const nodeData = await fetchWhiteboardNodeData(nodeId);
       if (!nodeData) return;
 
-      const view = document.getElementById("view-whiteboard-1");
-      const canvas = document.getElementById("whiteboard-canvas");
-      if (!view || !canvas) return;
+      const board = boardEl || getActiveBoardElement();
+      const canvas = board?.querySelector(".whiteboard-canvas");
+      if (!board || !canvas) return;
+
+      const zoom = getBoardZoom(board);
+      const panX = getBoardPanX(board);
+      const panY = getBoardPanY(board);
 
       let canvasX;
       let canvasY;
@@ -4287,9 +4980,9 @@
         canvasX = x;
         canvasY = y;
       } else {
-        const rect = view.getBoundingClientRect();
-        canvasX = (x - rect.left - wbPanX) / wbZoom;
-        canvasY = (y - rect.top - wbPanY) / wbZoom;
+        const rect = board.getBoundingClientRect();
+        canvasX = (x - rect.left - panX) / zoom;
+        canvasY = (y - rect.top - panY) / zoom;
       }
 
       let wrapper = canvas.querySelector(
@@ -4304,19 +4997,26 @@
         wrapper.style.cursor = "grab";
         wrapper.appendChild(createWhiteboardCard(nodeData));
         wrapper.appendChild(createWhiteboardSpiderButton(nodeData.id, wrapper));
+        wrapper.appendChild(createWhiteboardRemoveButton(nodeData.id, wrapper));
         canvas.appendChild(wrapper);
       } else {
         const card = wrapper.querySelector(".workspace-card");
         if (card) WorkspaceDomCache.registerCard(nodeData.id, card);
       }
 
+      wrapper.classList.toggle("wb-draft-node", isDraft);
+
       wrapper.style.left = `${canvasX}px`;
       wrapper.style.top = `${canvasY}px`;
       bindWhiteboardNodeDrag(wrapper);
-      scheduleWhiteboardSave();
+      if (!isDraft) {
+        scheduleWhiteboardSave(board);
+      }
     }
 
     async function spiderWhiteboardNode(parentId, parentWrapper) {
+      const board = parentWrapper.closest(".board-view");
+      const canvas = parentWrapper.closest(".whiteboard-canvas");
       const connectedIds = new Set();
       for (const edge of ConnectionManager.edges.values()) {
         if (edge.source_id === parentId) connectedIds.add(edge.target_id);
@@ -4324,7 +5024,10 @@
       }
 
       const newIds = [...connectedIds].filter(
-        (id) => !document.querySelector(`.wb-node-wrapper[data-node-id="${CSS.escape(id)}"]`)
+        (id) =>
+          !canvas?.querySelector(
+            `.wb-node-wrapper[data-node-id="${CSS.escape(id)}"]`
+          )
       );
 
       if (newIds.length === 0) {
@@ -4341,19 +5044,19 @@
         const angle = (i / count) * 2 * Math.PI;
         const childX = parentX + radius * Math.cos(angle);
         const childY = parentY + radius * Math.sin(angle);
-        await spawnWhiteboardNode(newIds[i], childX, childY, true);
+        await spawnWhiteboardNode(newIds[i], childX, childY, true, true, board);
       }
 
       setTimeout(() => ConnectionManager.drawAllConnections(), 100);
-      scheduleWhiteboardSave();
     }
 
     function initWhiteboardDrop() {
-      const view = document.getElementById("view-whiteboard-1");
-      if (!view || view.dataset.dropBound) return;
-      view.dataset.dropBound = "1";
+      if (document.body.dataset.wbDropBound) return;
+      document.body.dataset.wbDropBound = "1";
 
-      view.addEventListener("dragover", (e) => {
+      document.addEventListener("dragover", (e) => {
+        const board = e.target.closest(".board-view");
+        if (!board || board.classList.contains("hidden")) return;
         const hasNode =
           e.dataTransfer.types.includes("application/x-wb-node") ||
           e.dataTransfer.types.includes("application/x-internalize-node");
@@ -4362,7 +5065,9 @@
         e.dataTransfer.dropEffect = "copy";
       });
 
-      view.addEventListener("drop", (e) => {
+      document.addEventListener("drop", (e) => {
+        const board = e.target.closest(".board-view");
+        if (!board || board.classList.contains("hidden")) return;
         e.preventDefault();
         const treeDataRaw = e.dataTransfer.getData("application/x-internalize-node");
         const sidebarData = e.dataTransfer.getData("application/x-wb-node");
@@ -4377,18 +5082,22 @@
         }
 
         if (nodeIdToSpawn) {
-          spawnWhiteboardNode(nodeIdToSpawn, e.clientX, e.clientY).then(() => {
-            scheduleWhiteboardSave();
-          });
+          spawnWhiteboardNode(nodeIdToSpawn, e.clientX, e.clientY, false, false, board).then(
+            () => {
+              scheduleWhiteboardSave(board);
+            }
+          );
         }
       });
     }
 
-    function getWhiteboardScreenCenter() {
-      return {
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-      };
+    function getWhiteboardScreenCenter(boardEl) {
+      const board = boardEl || getActiveBoardElement();
+      if (board) {
+        const rect = board.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      }
+      return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     }
 
     function filterWhiteboardNodes(query) {
@@ -4404,38 +5113,42 @@
         .slice(0, 20);
     }
 
-    function hideWhiteboardOmnibar() {
-      const omnibar = document.getElementById("wb-omnibar");
-      const input = document.getElementById("wb-omnibar-input");
-      const createRow = document.getElementById("wb-omnibar-create");
+    function hideWhiteboardOmnibar(boardEl) {
+      const board = boardEl || getActiveBoardElement();
+      const omnibar = board?.querySelector(".wb-omnibar");
+      const input = board?.querySelector(".wb-omnibar-input");
+      const createRow = board?.querySelector(".wb-omnibar-create");
       if (omnibar) omnibar.classList.add("hidden");
       if (input) input.value = "";
       if (createRow) createRow.classList.add("hidden");
-      document.getElementById("wb-omnibar-results")?.replaceChildren();
+      board?.querySelector(".wb-omnibar-results")?.replaceChildren();
     }
 
-    function showWhiteboardOmnibar() {
-      const omnibar = document.getElementById("wb-omnibar");
-      const input = document.getElementById("wb-omnibar-input");
+    function showWhiteboardOmnibar(boardEl) {
+      const board = boardEl || getActiveBoardElement();
+      const omnibar = board?.querySelector(".wb-omnibar");
+      const input = board?.querySelector(".wb-omnibar-input");
       if (!omnibar || !input) return;
       omnibar.classList.remove("hidden");
       input.focus();
-      renderWhiteboardOmnibarResults("");
+      renderWhiteboardOmnibarResults(board, "");
     }
 
-    function toggleWhiteboardOmnibar() {
-      const omnibar = document.getElementById("wb-omnibar");
+    function toggleWhiteboardOmnibar(boardEl) {
+      const board = boardEl || getActiveBoardElement();
+      const omnibar = board?.querySelector(".wb-omnibar");
       if (!omnibar) return;
       if (omnibar.classList.contains("hidden")) {
-        showWhiteboardOmnibar();
+        showWhiteboardOmnibar(board);
       } else {
-        hideWhiteboardOmnibar();
+        hideWhiteboardOmnibar(board);
       }
     }
 
-    function renderWhiteboardOmnibarResults(query) {
-      const resultsEl = document.getElementById("wb-omnibar-results");
-      const createRow = document.getElementById("wb-omnibar-create");
+    function renderWhiteboardOmnibarResults(boardEl, query) {
+      const board = boardEl || getActiveBoardElement();
+      const resultsEl = board?.querySelector(".wb-omnibar-results");
+      const createRow = board?.querySelector(".wb-omnibar-create");
       if (!resultsEl || !createRow) return;
 
       const trimmed = query.trim();
@@ -4454,9 +5167,9 @@
           row.textContent = SelectionManager.getNodeLabel(node);
           row.title = SelectionManager.getNodeLabel(node);
           row.addEventListener("click", () => {
-            const center = getWhiteboardScreenCenter();
-            spawnWhiteboardNode(node.id, center.x, center.y);
-            hideWhiteboardOmnibar();
+            const center = getWhiteboardScreenCenter(board);
+            spawnWhiteboardNode(node.id, center.x, center.y, false, false, board);
+            hideWhiteboardOmnibar(board);
           });
           resultsEl.appendChild(row);
         }
@@ -4496,104 +5209,55 @@
       return nodeData;
     }
 
-    function initWhiteboardOmnibar() {
-      const addBtn = document.getElementById("wb-add-node-btn");
-      const omnibar = document.getElementById("wb-omnibar");
-      const input = document.getElementById("wb-omnibar-input");
-      const createRow = document.getElementById("wb-omnibar-create");
-      if (!addBtn || !omnibar || !input || !createRow || omnibar.dataset.bound) return;
-      omnibar.dataset.bound = "1";
-
-      addBtn.addEventListener("click", () => toggleWhiteboardOmnibar());
-
-      input.addEventListener("input", () => {
-        renderWhiteboardOmnibarResults(input.value);
-      });
-
-      input.addEventListener("keydown", async (e) => {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          hideWhiteboardOmnibar();
-          return;
-        }
-        if (e.key === "Enter" && e.shiftKey) {
-          e.preventDefault();
-          const text = input.value.trim();
-          if (!text) return;
-          try {
-            const nodeData = await createWhiteboardSummaryFromOmnibar(text);
-            const center = getWhiteboardScreenCenter();
-            spawnWhiteboardNode(nodeData.id, center.x, center.y);
-            hideWhiteboardOmnibar();
-          } catch (err) {
-            console.error("[initWhiteboardOmnibar] create failed", err);
-            showStatus(err.message || "Failed to create summary", true);
-          }
-        }
-      });
-
-      createRow.addEventListener("click", async () => {
-        const text = input.value.trim();
-        if (!text) return;
-        try {
-          const nodeData = await createWhiteboardSummaryFromOmnibar(text);
-          const center = getWhiteboardScreenCenter();
-          spawnWhiteboardNode(nodeData.id, center.x, center.y);
-          hideWhiteboardOmnibar();
-        } catch (err) {
-          console.error("[initWhiteboardOmnibar] create failed", err);
-          showStatus(err.message || "Failed to create summary", true);
-        }
-      });
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key !== "Escape" && e.code !== "Escape") return;
-        if (!isWhiteboardViewVisible()) return;
-        if (omnibar.classList.contains("hidden")) return;
-        if (isTypingTarget(e.target) && e.target !== input) return;
-        hideWhiteboardOmnibar();
-      });
-    }
-
     function initWhiteboardPanZoom() {
-      const view = document.getElementById("view-whiteboard-1");
-      if (!view || view.dataset.bound) return;
-      view.dataset.bound = "1";
+      if (document.body.dataset.wbPanZoomBound) return;
+      document.body.dataset.wbPanZoomBound = "1";
 
       document.addEventListener("keydown", (e) => {
         if (e.code !== "Space" && e.key !== " ") return;
         if (isTypingTarget(e.target)) return;
         isSpacebarDown = true;
-        if (isWhiteboardViewVisible()) {
-          view.style.cursor = isWbPanning ? "grabbing" : "grab";
+        if (isWhiteboardViewVisible() && panningBoard) {
+          panningBoard.style.cursor = isWbPanning ? "grabbing" : "grab";
         }
       });
 
       document.addEventListener("keyup", (e) => {
         if (e.code !== "Space" && e.key !== " ") return;
         isSpacebarDown = false;
-        if (!isWbPanning) view.style.cursor = "";
+        if (!isWbPanning && panningBoard) panningBoard.style.cursor = "";
       });
 
-      view.addEventListener("mousedown", (e) => {
+      document.addEventListener("mousedown", (e) => {
+        const activeBoard = e.target.closest(".board-view");
+        if (!activeBoard || activeBoard.classList.contains("hidden")) return;
         if (!shouldStartWhiteboardPan(e)) return;
         e.preventDefault();
         isWbPanning = true;
-        startWbPanX = e.clientX - wbPanX;
-        startWbPanY = e.clientY - wbPanY;
-        view.style.cursor = "grabbing";
+        panningBoard = activeBoard;
+        const panX = getBoardPanX(activeBoard);
+        const panY = getBoardPanY(activeBoard);
+        startWbPanX = e.clientX - panX;
+        startWbPanY = e.clientY - panY;
+        activeBoard.style.cursor = "grabbing";
 
         const onPanMove = (moveEvent) => {
-          if (!isWbPanning) return;
-          wbPanX = moveEvent.clientX - startWbPanX;
-          wbPanY = moveEvent.clientY - startWbPanY;
-          updateWhiteboardTransform();
+          if (!isWbPanning || panningBoard !== activeBoard) return;
+          setBoardPan(
+            activeBoard,
+            moveEvent.clientX - startWbPanX,
+            moveEvent.clientY - startWbPanY
+          );
+          updateWhiteboardTransform(activeBoard);
         };
 
         const onPanEnd = () => {
           if (!isWbPanning) return;
           isWbPanning = false;
-          view.style.cursor = isSpacebarDown ? "grab" : "";
+          if (panningBoard) {
+            panningBoard.style.cursor = isSpacebarDown ? "grab" : "";
+          }
+          panningBoard = null;
           document.removeEventListener("mousemove", onPanMove);
           document.removeEventListener("mouseup", onPanEnd);
         };
@@ -4602,27 +5266,33 @@
         document.addEventListener("mouseup", onPanEnd);
       });
 
-      view.addEventListener(
+      document.addEventListener(
         "wheel",
         (e) => {
-          if (e.target.closest("#wb-omnibar")) return; // Allow native scrolling
+          if (e.target.closest(".wb-omnibar")) return;
+          const activeBoard = e.target.closest(".board-view");
+          if (!activeBoard || activeBoard.classList.contains("hidden")) return;
           e.preventDefault();
-          const rect = view.getBoundingClientRect();
+          const rect = activeBoard.getBoundingClientRect();
           const mouseViewX = e.clientX - rect.left;
           const mouseViewY = e.clientY - rect.top;
+          const zoom = getBoardZoom(activeBoard);
+          const panX = getBoardPanX(activeBoard);
+          const panY = getBoardPanY(activeBoard);
           const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
-          const newZoom = Math.min(Math.max(0.1, wbZoom * zoomDelta), 5);
-          const worldX = (mouseViewX - wbPanX) / wbZoom;
-          const worldY = (mouseViewY - wbPanY) / wbZoom;
-          wbZoom = newZoom;
-          wbPanX = mouseViewX - worldX * wbZoom;
-          wbPanY = mouseViewY - worldY * wbZoom;
-          updateWhiteboardTransform();
+          const newZoom = Math.min(Math.max(0.1, zoom * zoomDelta), 5);
+          const worldX = (mouseViewX - panX) / zoom;
+          const worldY = (mouseViewY - panY) / zoom;
+          setBoardZoom(activeBoard, newZoom);
+          setBoardPan(
+            activeBoard,
+            mouseViewX - worldX * newZoom,
+            mouseViewY - worldY * newZoom
+          );
+          updateWhiteboardTransform(activeBoard);
         },
         { passive: false }
       );
-
-      updateWhiteboardTransform();
     }
 
     function onLeftPaneTransitionEnd(e) {
@@ -4664,11 +5334,11 @@
     }
 
     function collapseSynthesisPane() {
-      setDockPanelVisible("synthesis-pane", false);
+      /* synthesis is a top-level tab now */
     }
 
     function expandSynthesisPane() {
-      setDockPanelVisible("synthesis-pane", true);
+      /* synthesis is a top-level tab now */
     }
 
     function setWorkspaceGraphSizeExpanded(expanded) {
@@ -4686,9 +5356,39 @@
       setWorkspaceGraphSizeExpanded(!workspaceGraphSizeExpanded);
     }
 
+    function updateGlobalMinimapToggleState() {
+      const btn = document.getElementById("global-minimap-toggle");
+      if (!btn || !graphContainer) return;
+      btn.style.color = graphContainer.classList.contains("hidden") ? "#94a3b8" : "#deff9a";
+    }
+
+    function showGlobalMinimap() {
+      if (!graphContainer) return;
+      graphContainer.classList.remove("hidden");
+      workspaceGraphCollapsed = false;
+      updateGlobalMinimapToggleState();
+      if (cyCollapseBtn) cyCollapseBtn.textContent = "Collapse";
+      try {
+        cy?.resize();
+        cy?.fit();
+      } catch (_) { /* not ready */ }
+    }
+
     function setWorkspaceGraphCollapsed(collapsed) {
-      setDockPanelVisible("graph-minimap-pane", !collapsed);
+      workspaceGraphCollapsed = collapsed;
+      graphContainer?.classList.toggle("hidden", collapsed);
       if (cyCollapseBtn) cyCollapseBtn.textContent = collapsed ? "Expand Graph" : "Collapse";
+      updateGlobalMinimapToggleState();
+    }
+
+    function toggleGlobalMinimap() {
+      if (!graphContainer) return;
+      const willShow = graphContainer.classList.contains("hidden");
+      if (willShow) {
+        showGlobalMinimap();
+      } else {
+        setWorkspaceGraphCollapsed(true);
+      }
     }
 
     function collapseWorkspaceGraph() {
@@ -4701,6 +5401,12 @@
 
       cyCollapseBtn.addEventListener("click", () => {
         setWorkspaceGraphCollapsed(!workspaceGraphCollapsed);
+        if (!workspaceGraphCollapsed) {
+          try {
+            cy?.resize();
+            cy?.fit();
+          } catch (_) { /* not ready */ }
+        }
       });
 
       if (cyGraphSizeBtn && !cyGraphSizeBtn.dataset.bound) {
@@ -4716,6 +5422,13 @@
         scheduleDrawConnections();
       });
 
+      const minimapBtn = document.getElementById("global-minimap-toggle");
+      if (minimapBtn && !minimapBtn.dataset.bound) {
+        minimapBtn.dataset.bound = "1";
+        minimapBtn.addEventListener("click", () => toggleGlobalMinimap());
+      }
+
+      updateGlobalMinimapToggleState();
       updatePaneRecoveryHandles();
     }
 
@@ -4741,6 +5454,15 @@
       path: "fluid",
       startSocket: "right",
       endSocket: "left",
+      size: 2,
+      dash: { len: 6, gap: 4 },
+    };
+
+    const BOARD_LINK_LINE = {
+      color: "#4ade80",
+      path: "fluid",
+      startSocket: "auto",
+      endSocket: "auto",
       size: 2,
       dash: { len: 6, gap: 4 },
     };
@@ -5245,6 +5967,68 @@
       return Boolean(excerptId && activeLineageNodes.has(excerptId));
     }
 
+    function isInWhiteboardCanvas(el) {
+      return Boolean(el?.closest(".whiteboard-canvas"));
+    }
+
+    function isInFocusView(el) {
+      return Boolean(el?.closest(".focus-view"));
+    }
+
+    function getFocusViewForElement(el) {
+      return el?.closest(".focus-view") || null;
+    }
+
+    function isInSourceTreeWorkspace(el) {
+      return (
+        Boolean(el?.closest("#view-source-tree")) &&
+        !isInWhiteboardCanvas(el) &&
+        !isInFocusView(el)
+      );
+    }
+
+    function endpointsShareWorkspace(start, end) {
+      if (!start || !end) return false;
+      const startFocus = getFocusViewForElement(start);
+      const endFocus = getFocusViewForElement(end);
+      if (startFocus || endFocus) return startFocus && endFocus && startFocus === endFocus;
+
+      const startOnBoard = isInWhiteboardCanvas(start);
+      const endOnBoard = isInWhiteboardCanvas(end);
+      if (startOnBoard || endOnBoard) return startOnBoard && endOnBoard;
+      return isInSourceTreeWorkspace(start) && isInSourceTreeWorkspace(end);
+    }
+
+    function getFocusViewCardPair(sourceId, targetId) {
+      for (const view of document.querySelectorAll(".focus-view")) {
+        const child = view.querySelector(
+          `.workspace-card[data-node-id="${CSS.escape(targetId)}"]`
+        );
+        const parent = view.querySelector(
+          `.workspace-card[data-node-id="${CSS.escape(sourceId)}"]`
+        );
+        if (child && parent) return { child, parent };
+      }
+      return null;
+    }
+
+    function getWhiteboardWorkspaceCard(nodeId) {
+      const wrapper = document.querySelector(
+        `.whiteboard-canvas .wb-node-wrapper[data-node-id="${CSS.escape(nodeId)}"]`
+      );
+      return wrapper?.querySelector(".workspace-card") || null;
+    }
+
+    function getSourceTreeWorkspaceCard(nodeId) {
+      const sourceTree = document.getElementById("view-source-tree");
+      if (!sourceTree) return null;
+      const card = sourceTree.querySelector(
+        `.workspace-card[data-node-id="${CSS.escape(nodeId)}"]`
+      );
+      if (!card || isInWhiteboardCanvas(card)) return null;
+      return card;
+    }
+
     const ConnectionManager = {
       lines: new Map(),
       edges: new Map(),
@@ -5355,16 +6139,45 @@
       resolveEndpoints(edge) {
         if (edge.relationship_type === "CONTAINS") {
           const start = document.getElementById(`excerpt-${edge.target_id}`);
-          const end = getWorkspaceCard(edge.target_id);
-          if (!start || !end) return null;
-          return { start, end, style: DOC_TO_EXCERPT_LINE };
+          const treeCard = getSourceTreeWorkspaceCard(edge.target_id);
+          if (!start || !treeCard) return null;
+          if (!isInSourceTreeWorkspace(start) || !isInSourceTreeWorkspace(treeCard)) {
+            return null;
+          }
+          return { start, end: treeCard, style: DOC_TO_EXCERPT_LINE };
         }
 
         if (edge.relationship_type === "SUMMARIZES") {
-          const start = getWorkspaceCard(edge.target_id);
-          const end = getWorkspaceCard(edge.source_id);
-          if (!start || !end) return null;
-          return { start, end, style: COLUMN_LINK_LINE };
+          const focusPair = getFocusViewCardPair(edge.source_id, edge.target_id);
+          if (focusPair) {
+            return {
+              start: focusPair.child,
+              end: focusPair.parent,
+              style: COLUMN_LINK_LINE,
+            };
+          }
+
+          const wbChild = getWhiteboardWorkspaceCard(edge.target_id);
+          const wbParent = getWhiteboardWorkspaceCard(edge.source_id);
+          if (wbChild && wbParent) {
+            const start = wbChild;
+            const end = wbParent;
+            const isBoardLine =
+              start.closest(".board-view") && end.closest(".board-view");
+            return {
+              start,
+              end,
+              style: isBoardLine ? BOARD_LINK_LINE : COLUMN_LINK_LINE,
+            };
+          }
+
+          const treeChild = getSourceTreeWorkspaceCard(edge.target_id);
+          const treeParent = getSourceTreeWorkspaceCard(edge.source_id);
+          if (treeChild && treeParent) {
+            return { start: treeChild, end: treeParent, style: COLUMN_LINK_LINE };
+          }
+
+          return null;
         }
 
         return null;
@@ -5396,7 +6209,7 @@
           container: lineContainer,
           start,
           end,
-          path: "fluid",
+          path: style.path ?? "fluid",
           size: style.size ?? 2,
           color: leaderColorWithAlpha(style.color ?? "#deff9a", 1),
           hide: true,
@@ -5444,6 +6257,11 @@
           }
 
           const { start, end, style } = resolved;
+          if (!endpointsShareWorkspace(start, end)) {
+            const stale = this.lines.get(edge.id);
+            if (stale) this.destroyLine(edge.id);
+            continue;
+          }
           if (!this.isEndpointValid(start) || !this.isEndpointValid(end)) {
             const stale = this.lines.get(edge.id);
             if (stale) this.destroyLine(edge.id);
@@ -5530,9 +6348,14 @@
                 continue;
               }
 
+              if (!endpointsShareWorkspace(startEl, targetEl)) {
+                try { line.hide("none"); } catch (_) { /* element gone */ }
+                continue;
+              }
+
               const onWhiteboard =
-                startEl.closest("#whiteboard-canvas") &&
-                targetEl.closest("#whiteboard-canvas");
+                startEl.closest(".whiteboard-canvas") &&
+                targetEl.closest(".whiteboard-canvas");
               if (onWhiteboard) {
                 this.applyLineAppearance(line, true);
                 continue;
@@ -5566,7 +6389,7 @@
           return;
         }
 
-        if (isWhiteboardViewActive()) {
+        if (isWhiteboardViewActive() || isFocusViewActive()) {
           for (const [edgeId, line] of this.lines.entries()) {
             try {
               const startEl = line.start;
@@ -5577,10 +6400,17 @@
                 continue;
               }
 
+              if (!endpointsShareWorkspace(startEl, targetEl)) {
+                try { line.hide("none"); } catch (_) { /* element gone */ }
+                continue;
+              }
+
               const onWhiteboard =
-                startEl.closest("#whiteboard-canvas") &&
-                targetEl.closest("#whiteboard-canvas");
-              this.applyLineAppearance(line, onWhiteboard);
+                startEl.closest(".whiteboard-canvas") &&
+                targetEl.closest(".whiteboard-canvas");
+              const inFocusView =
+                startEl.closest(".focus-view") && targetEl.closest(".focus-view");
+              this.applyLineAppearance(line, onWhiteboard || inFocusView);
             } catch (_) {
               this.destroyLine(edgeId);
             }
@@ -5600,6 +6430,11 @@
 
               if (!this.isEndpointValid(startEl) || !this.isEndpointValid(targetEl)) {
                 this.destroyLine(edgeId);
+                continue;
+              }
+
+              if (!endpointsShareWorkspace(startEl, targetEl)) {
+                try { line.hide("none"); } catch (_) { /* element gone */ }
                 continue;
               }
 
@@ -5627,6 +6462,11 @@
 
             if (!this.isEndpointValid(startEl) || !this.isEndpointValid(targetEl)) {
               this.destroyLine(edgeId);
+              continue;
+            }
+
+            if (!endpointsShareWorkspace(startEl, targetEl)) {
+              try { line.hide("none"); } catch (_) { /* element gone */ }
               continue;
             }
 
@@ -6047,7 +6887,6 @@
         const sources = await res.json();
         if (sources.length === 0) {
           sourceSelector.innerHTML = '<option value="">No sources yet</option>';
-          collapseSynthesisPane();
           return sources;
         }
         sourceSelector.innerHTML = sources
@@ -6585,43 +7424,13 @@
 
     async function loadSynthesisDocument(docId) {
       if (!docId) return;
-
-      try {
-        showStatus("Loading synthesis document…");
-        const { doc, references } = await fetchSynthesisDocumentState(docId);
-
-        activeSynthesisDocId = doc.id;
-        if (synthesisTitleInput) {
-          synthesisTitleInput.value = doc.title || generateTimestampTitle();
-        }
-
-        resetSynthesisWorkspaceContent();
-
-        const blocks = normalizeDocumentBlocks(doc.blocks);
-        if (blocks.length > 0) {
-          const referenceNodes = await enrichReferenceNodesForBlocks(blocks, references);
-          rebuildSynthesisDropzoneFromBlocks(blocks, referenceNodes);
-        } else {
-          hydrateSynthesisWorkspace(doc.content || "", references, null);
-        }
-
-        refreshSynthesisWorkspaceLayout();
-        expandSynthesisPane();
-
-        clearStatus();
-        showStatus(`Loaded “${doc.title || "Untitled"}”`);
-        if (loadSynthesisStatusTimer) clearTimeout(loadSynthesisStatusTimer);
-        loadSynthesisStatusTimer = setTimeout(clearStatus, 2500);
-      } catch (err) {
-        showStatus(err.message, true);
-      }
+      await openSynthesisTab(docId);
     }
 
     function initDocumentLibraryModal() {
-      if (loadDocBtn?.dataset.bound) return;
-      if (loadDocBtn) loadDocBtn.dataset.bound = "1";
+      if (documentLibraryModal?.dataset.bound) return;
+      if (documentLibraryModal) documentLibraryModal.dataset.bound = "1";
 
-      loadDocBtn?.addEventListener("click", () => openDocumentLibrary());
       documentLibraryClose?.addEventListener("click", () => closeDocumentLibraryModal());
 
       documentLibraryModal?.addEventListener("click", (e) => {
@@ -6966,6 +7775,8 @@
           const result = await res.json();
           docId = result.node_id;
           activeSynthesisDocId = docId;
+          const synthView = getActiveSynthesisView();
+          if (synthView) synthView.dataset.synthesisDocId = docId;
         } else {
           const res = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(docId)}`, {
             method: "PUT",
@@ -7385,38 +8196,6 @@
       return item;
     }
 
-    function initSynthesisCustomInput() {
-      if (synthesisCustomInput?.dataset.bound) return;
-      if (synthesisCustomInput) synthesisCustomInput.dataset.bound = "1";
-
-      synthesisCustomInput?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey && !(e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          const text = synthesisCustomInput.value.trim();
-          if (!text) return;
-          appendCustomThought(text);
-          synthesisCustomInput.value = "";
-          return;
-        }
-
-        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-          e.preventDefault();
-          saveSynthesis().then((saved) => {
-            if (saved) flashSynthesisSavedBadge();
-          });
-        }
-      });
-
-      synthesisDropzone?.addEventListener("dblclick", (e) => {
-        const item = e.target.closest('.synthesis-item[data-type="custom-text"]');
-        if (!item || e.target.closest(".inline-edit-area, .drag-handle, .synthesis-item-actions")) {
-          return;
-        }
-        e.preventDefault();
-        startCustomThoughtEdit(item);
-      });
-    }
-
     function appendSynthesisItem(nodeId, text, depthLevel) {
       if (!synthesisDropzone) return null;
 
@@ -7521,142 +8300,6 @@
       e.dataTransfer.setData("text/plain", nodeId);
       e.dataTransfer.effectAllowed = "copy";
       card.classList.add("is-dragging", "dragging");
-    }
-
-    function initSynthesisDropzoneSortable() {
-      if (!synthesisDropzone || synthesisDropzone.dataset.sortableBound) return;
-      if (typeof Sortable === "undefined") return;
-      synthesisDropzone.dataset.sortableBound = "1";
-
-      synthesisSortable = new Sortable(synthesisDropzone, {
-        animation: 150,
-        ghostClass: "synthesis-ghost",
-        handle: ".drag-handle",
-        draggable: ".synthesis-item",
-        onEnd() {
-          // DOM order updated; persist on explicit save via saveSynthesis()
-        },
-      });
-    }
-
-    function initSynthesisViewToggle() {
-      if (synthesisEditBtn?.dataset.bound) return;
-      if (synthesisEditBtn) synthesisEditBtn.dataset.bound = "1";
-
-      synthesisEditBtn?.addEventListener("click", () => setSynthesisViewMode("edit"));
-      synthesisReadBtn?.addEventListener("click", () => setSynthesisViewMode("read"));
-      synthesisExportBtn?.addEventListener("click", () => exportSynthesisMarkdown());
-    }
-
-    function initPaneRecoveryHandles() {
-      // Recovery arrow handles are replaced by the edge docks.
-    }
-
-    function initSynthesisPaneCollapse() {
-      if (synthesisPaneShell?.dataset.transitionBound) return;
-      synthesisPaneShell.dataset.transitionBound = "1";
-
-      synthesisPaneShell.addEventListener("transitionend", (e) => {
-        if (e.propertyName !== "width" && e.propertyName !== "flex-basis") return;
-        repositionDocumentCanvasLines();
-        if (cy) {
-          try { cy.resize(); } catch (_) { /* not initialized */ }
-        }
-      });
-    }
-
-    function initSynthesisTitleAndSave() {
-      if (document.getElementById("synthesis-pane")?.dataset.titleSaveBound) return;
-      document.getElementById("synthesis-pane").dataset.titleSaveBound = "1";
-
-      if (!synthesisTitleInput?.value.trim()) {
-        setSynthesisTitleToTimestamp();
-      }
-
-      newNoteBtn?.addEventListener("click", () => {
-        activeSynthesisDocId = null;
-        clearSynthesisWorkspace();
-      });
-
-      saveSynthesisBtn?.addEventListener("click", async () => {
-        const saved = await saveSynthesis();
-        if (saved) flashSynthesisSavedBadge();
-      });
-    }
-
-    function bindSynthesisDropzoneDnD() {
-      if (!synthesisDropzone || synthesisDropzone.dataset.dndBound) return;
-      synthesisDropzone.dataset.dndBound = "1";
-
-      synthesisDropzone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
-        synthesisDropzone.classList.add("drag-over");
-      });
-
-      synthesisDropzone.addEventListener("dragleave", (e) => {
-        if (!synthesisDropzone.contains(e.relatedTarget)) {
-          synthesisDropzone.classList.remove("drag-over");
-        }
-      });
-
-      synthesisDropzone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        synthesisDropzone.classList.remove("drag-over");
-
-        const raw = e.dataTransfer.getData("application/x-internalize-node");
-        if (!raw) return;
-
-        try {
-          const { nodeId, text, depthLevel } = JSON.parse(raw);
-          if (!text) return;
-          appendSynthesisItem(nodeId, text, depthLevel);
-        } catch (_) {
-          showStatus("Could not read dropped card data.", true);
-        }
-      });
-
-      synthesisDropzone.addEventListener("click", (e) => {
-        const removeBtn = e.target.closest(".remove-synthesis-block");
-        if (removeBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          removeBtn.closest(".synthesis-item")?.remove();
-          return;
-        }
-
-        const refLink = e.target.closest(".reference-link");
-        if (refLink) {
-          e.preventDefault();
-          e.stopPropagation();
-          focusGraphNodeFromReference(refLink.dataset.refId);
-          return;
-        }
-
-        const anchor = e.target.closest(".source-link-anchor");
-        if (!anchor) return;
-        e.preventDefault();
-        focusGraphNodeFromReference(anchor.dataset.nodeId);
-      });
-
-      synthesisDropzone.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        const refLink = e.target.closest(".reference-link");
-        if (!refLink) return;
-        e.preventDefault();
-        focusGraphNodeFromReference(refLink.dataset.refId);
-      });
-    }
-
-    function initSynthesisPane() {
-      initSynthesisPaneCollapse();
-      initPaneRecoveryHandles();
-      initSynthesisDropzoneSortable();
-      initSynthesisViewToggle();
-      initDocumentLibraryModal();
-      initSynthesisCustomInput();
-      initSynthesisTitleAndSave();
-      bindSynthesisDropzoneDnD();
     }
 
     function initWorkspaceViewToggle() {
@@ -8156,6 +8799,10 @@
         if (e.target.closest(".promote-btn, .card-delete-btn, .card-hover-menu")) return;
         e.preventDefault();
         e.stopPropagation();
+        if (e.altKey || e.ctrlKey || e.metaKey) {
+          openNodeFocusTab(nodeId);
+          return;
+        }
         startWorkspaceCardInlineEdit(card);
       });
     }
@@ -9454,12 +10101,10 @@
 
         initDocSearchListeners();
         initGroupSynthesisListeners();
-        initSynthesisPane();
         initWorkspaceViewToggle();
         applyWorkspaceViewMode(workspaceViewMode);
       } catch (err) {
         showStatus(err.message, true);
-        collapseSynthesisPane();
       }
     }
 
@@ -9667,7 +10312,7 @@
       initWorkspaceCyInstance();
       initDocContextMenuListeners();
       initGroupSynthesisListeners();
-      initSynthesisPane();
+      initDocumentLibraryModal();
       initShowNodeLabelsToggle();
       initWorkspaceViewToggle();
       initSourceSelector();
@@ -9681,20 +10326,14 @@
       initWhiteboardPanZoom();
       initWhiteboardNodeDrag();
       initWhiteboardDrop();
-      initWhiteboardOmnibar();
-      initWhiteboardHeader();
+      initWhiteboardDraftEscape();
       initTreeKeyboardNav();
       initGlobalDeselectHotkey();
 
       // Default to a focused workspace: Connections sidebar (left) and the Graph
-      // minimap (right) start collapsed. Runs after initDocks() so the dock
-      // buttons exist and the .panel-hidden/.active classes apply on load.
+      // minimap start collapsed. Runs after initDocks() so panel-hidden applies on load.
       collapseWorkbenchSidebar();
       collapseWorkspaceGraph();
-
-      if (!isDocumentLoaded()) {
-        collapseSynthesisPane();
-      }
 
       document.addEventListener("keydown", (e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
@@ -9722,9 +10361,6 @@
       } catch (err) {
         showStatus(err.message, true);
         await loadSourceLibrary().catch(() => {});
-        if (!isDocumentLoaded()) {
-          collapseSynthesisPane();
-        }
       }
     }
 

@@ -24,7 +24,7 @@ def test_sidebars_collapsed_on_init(page: Page, require_live_server: str) -> Non
         "el => el.classList.contains('panel-hidden')"
     )
     graph_hidden = page.locator("#graph-container").evaluate(
-        "el => el.classList.contains('panel-hidden')"
+        "el => el.classList.contains('hidden')"
     )
     assert workbench_hidden, "Connections sidebar should start collapsed"
     assert graph_hidden, "Graph minimap should start collapsed"
