@@ -51,8 +51,8 @@ RELATIONSHIP_AXES: dict[str, list[RelationshipType]] = {
 
 ALLOWED_RELATIONSHIP_TYPES: frozenset[str] = frozenset(t.value for t in RelationshipType)
 
-DensityLevel = Literal[1, 2, 3, 4]
-NodeType = Literal["Concept", "Document"]
+DensityLevel = Literal[1, 2, 3, 4, 5]
+NodeType = Literal["Concept", "Document", "Whiteboard"]
 
 SOURCE_NODE_PREDICATE = (
     "n.density_level IN [3, 4] OR coalesce(n.node_type, 'Concept') = 'Document'"
