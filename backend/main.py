@@ -52,10 +52,21 @@ RELATIONSHIP_AXES: dict[str, list[RelationshipType]] = {
 ALLOWED_RELATIONSHIP_TYPES: frozenset[str] = frozenset(t.value for t in RelationshipType)
 
 DensityLevel = Literal[1, 2, 3, 4, 5]
-NodeType = Literal["Concept", "Document", "Whiteboard"]
+NodeType = Literal[
+    "Concept",
+    "Document",
+    "Book",
+    "Article",
+    "Transcript",
+    "Synthesis",
+    "Whiteboard",
+    "WorkspaceSession",
+]
 
 SOURCE_NODE_PREDICATE = (
-    "n.density_level IN [3, 4] OR coalesce(n.node_type, 'Concept') = 'Document'"
+    "n.density_level IN [3, 4] OR "
+    "coalesce(n.node_type, 'Concept') IN "
+    "['Document', 'Book', 'Article', 'Transcript', 'Synthesis']"
 )
 
 
@@ -99,6 +110,7 @@ class NodeUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1)
     content: Optional[str] = Field(default=None, min_length=1)
     blocks: list[dict[str, Any]] | None = None
+    node_type: Optional[str] = None
 
 
 class NodePinUpdate(BaseModel):
@@ -483,11 +495,14 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
     if update.blocks is not None:
         set_clauses.append("n.blocks = $blocks")
         params["blocks"] = _serialize_blocks(update.blocks)
+    if update.node_type is not None:
+        set_clauses.append("n.node_type = $node_type")
+        params["node_type"] = update.node_type
 
     if not set_clauses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one of density_level, title, content, or blocks is required",
+            detail="At least one of density_level, title, content, blocks, or node_type is required",
         )
 
     query = f"""
@@ -496,7 +511,8 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
     RETURN n.id AS id,
            n.title AS title,
            n.density_level AS density_level,
-           coalesce(n.origin, 'human') AS origin
+           coalesce(n.origin, 'human') AS origin,
+           coalesce(n.node_type, 'Concept') AS node_type
     """
     driver = _require_neo4j()
     try:
@@ -522,6 +538,7 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
         title=record["title"],
         density_level=record["density_level"],
         origin=record["origin"],
+        node_type=record["node_type"],
     )
 
 

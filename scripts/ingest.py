@@ -24,6 +24,7 @@ def ingest(book_path: Path, api_base: str) -> None:
         "title": BOOK_TITLE,
         "content": full_text,
         "density_level": 3,
+        "node_type": "Book",
         "origin": "ingest",
     }
 

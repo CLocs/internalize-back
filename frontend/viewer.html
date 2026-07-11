@@ -285,20 +285,6 @@
       color: #deff9a;
     }
 
-    #new-synthesis-tab-btn {
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      cursor: pointer;
-      padding: 0 16px;
-      font-size: 14px;
-      flex-shrink: 0;
-    }
-
-    #new-synthesis-tab-btn:hover {
-      color: #deff9a;
-    }
-
     .workspace-view {
       display: none;
       min-height: 0;
@@ -1768,22 +1754,6 @@
       -webkit-box-orient: vertical;
     }
 
-    .synthesis-save-btn {
-      padding: 0.35rem 0.65rem;
-      border: none;
-      border-radius: 6px;
-      background: #deff9a;
-      color: #0f172a;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      font-size: 0.75rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .synthesis-save-btn:hover {
-      filter: brightness(1.05);
-    }
-
     .synthesis-toolbar-actions {
       display: flex;
       align-items: center;
@@ -2544,6 +2514,14 @@
       display: none !important;
     }
 
+    .ctx-menu-item:hover {
+      background: #334155;
+    }
+
+    .tab-menu-item:hover {
+      background: #334155;
+    }
+
     #custom-context-menu {
       position: absolute;
       z-index: 9999;
@@ -2670,6 +2648,13 @@
   </style>
 </head>
 <body>
+  <div id="board-context-menu" class="hidden" style="position: fixed; z-index: 9999; background: #1e293b; border: 1px solid #334155; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); padding: 6px; display: flex; flex-direction: column; min-width: 180px; font-size: 13px; color: #f8fafc; font-family: 'Segoe UI', sans-serif;">
+    <div style="padding: 4px 12px 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; pointer-events: none; border-bottom: 1px solid #334155; margin-bottom: 4px; font-weight: bold;">Create Connection</div>
+    <div class="ctx-menu-item" id="ctx-add-list-a" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-list"></i> Add to List A</div>
+    <div class="ctx-menu-item" id="ctx-add-list-b" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-list-check"></i> Add to List B</div>
+    <div style="height: 1px; background: #334155; margin: 4px 0;"></div>
+    <div class="ctx-menu-item" id="ctx-remove-board" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; color: #f87171; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-trash-can"></i> Remove from Board</div>
+  </div>
   <div id="line-canvas" aria-hidden="true"></div>
   <div id="app-wrapper" style="display: flex; height: 100vh; width: 100vw; overflow: hidden;">
   <div id="left-dock" class="tool-dock">
@@ -2683,9 +2668,16 @@
   <div id="app">
   <div id="workspace-tab-bar" style="display: flex; align-items: center; background: #0f172a; border-bottom: 1px solid #334155; height: 36px; overflow-x: auto; flex-shrink: 0; user-select: none; width: 100%;">
     <button type="button" id="add-workspace-tab" title="Add workspace tab" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0 16px; font-size: 16px; flex-shrink: 0;">+</button>
-    <button type="button" id="new-synthesis-tab-btn" title="New Synthesis Document" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0 16px; font-size: 14px; flex-shrink: 0;"><i class="fa-solid fa-pen-nib"></i></button>
+    <div id="new-tab-menu" class="hidden" style="position: fixed; z-index: 1000; background: #1e293b; border: 1px solid #334155; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column; min-width: 150px; font-size: 13px; color: #f8fafc;">
+      <div class="tab-menu-item" id="menu-new-source" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-book-open" style="color: #94a3b8;"></i> Focus Source Reader</div>
+      <div class="tab-menu-item" id="menu-new-board" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-shapes" style="color: #4ade80;"></i> New Board</div>
+      <div class="tab-menu-item" id="menu-new-synth" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-pen-nib" style="color: #22d3ee;"></i> New Synthesis</div>
+    </div>
     <button type="button" id="sync-workspace-toggle" title="Unlink Pane Focus" style="margin-left: auto; background: transparent; border: none; color: #deff9a; cursor: pointer; font-size: 14px; padding: 0 8px;"><i class="fa-solid fa-link"></i></button>
     <button type="button" id="split-view-toggle" title="Cycle Layout Mode" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;"><i class="fa-solid fa-square"></i></button>
+    <div id="workspace-session-divider" style="width: 1px; height: 16px; background: #334155; margin: 0 8px; flex-shrink: 0;"></div>
+    <button type="button" id="save-workspace-btn" title="Save Workspace Session" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 0 8px;"><i class="fa-solid fa-floppy-disk"></i></button>
+    <button type="button" id="load-workspace-btn" title="Load Workspace Session" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; padding: 0 8px;"><i class="fa-solid fa-folder-tree"></i></button>
     <button type="button" id="global-minimap-toggle" title="Toggle Graph Minimap" style="margin-left: 10px; margin-right: 16px; background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;"><i class="fa-solid fa-project-diagram"></i></button>
   </div>
   <div id="workspace-views-container" style="min-width: 0;">
@@ -2695,6 +2687,7 @@
     <select id="source-selector">
       <option value="">Loading sources…</option>
     </select>
+    <button type="button" id="edit-source-props-btn" title="Edit Source Properties" style="background: transparent; border: none; color: #64748b; cursor: pointer; padding: 4px;"><i class="fa-solid fa-gear"></i></button>
     <button type="button" id="add-source-btn" title="Add New Source" style="margin-right: 15px; padding: 4px 8px; background: transparent; border: 1px solid var(--border-color); border-radius: 4px; color: #deff9a; cursor: pointer;"><i class="fa-solid fa-plus"></i></button>
     <label id="auto-trace-label">
       <input type="checkbox" id="auto-trace-toggle" checked />
@@ -2919,7 +2912,7 @@
             placeholder="Untitled synthesis"
             aria-label="Synthesis document title"
           />
-          <span class="synthesis-saved-badge" aria-live="polite">Saved!</span>
+          <span id="synth-saved-badge" class="synthesis-saved-badge" aria-live="polite">Saved!</span>
         </div>
         <div class="synthesis-toolbar">
           <span class="pane-title">Synthesis Workspace</span>
@@ -2938,7 +2931,6 @@
           <div class="synthesis-toolbar-actions">
             <button type="button" class="synthesis-new-note-btn">New Document</button>
             <button type="button" class="synthesis-load-doc-btn">Load</button>
-            <button type="button" class="synthesis-save-btn">Save to Graph</button>
           </div>
         </div>
         <div class="synthesis-doc-wrap">
@@ -2976,6 +2968,36 @@
       <input type="text" id="new-source-title" placeholder="Source Title (e.g., Podcast Episode #228)" style="width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white;">
       <textarea id="new-source-text" placeholder="Paste raw document text or transcript here..." style="width: 100%; height: 300px; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: white; resize: vertical;"></textarea>
       <button id="submit-new-source" style="padding: 10px; background: #deff9a; color: #0f172a; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Save & Load Source</button>
+      <div style="margin: 16px 0; border-top: 1px dashed #334155; padding-top: 16px; text-align: center;">
+        <div style="color: #64748b; font-size: 11px; text-transform: uppercase; margin-bottom: 12px;">Or Upload a File</div>
+        <input type="file" id="source-file-upload" accept=".txt,.md,.csv" style="display: none;">
+        <button id="upload-source-btn" type="button" style="background: #1e293b; border: 1px solid #4ade80; color: #4ade80; cursor: pointer; padding: 8px 16px; border-radius: 4px; font-size: 13px; width: 100%;">
+          <i class="fa-solid fa-file-arrow-up"></i> Select Text File
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="edit-source-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+    <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; width: 350px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+      <h3 style="color: #f8fafc; margin-top: 0; font-size: 16px;">Edit Source Properties</h3>
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; color: #94a3b8; font-size: 11px; margin-bottom: 4px;">Title</label>
+        <input type="text" id="edit-source-title" style="width: 100%; padding: 8px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 4px; outline: none;">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; color: #94a3b8; font-size: 11px; margin-bottom: 4px;">Type</label>
+        <select id="edit-source-type" style="width: 100%; padding: 8px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 4px; outline: none;">
+          <option value="Book">Book</option>
+          <option value="Article">Article</option>
+          <option value="Transcript">Transcript</option>
+          <option value="Synthesis">Synthesis</option>
+        </select>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" id="cancel-edit-source-btn" style="background: transparent; border: 1px solid #334155; color: #94a3b8; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Cancel</button>
+        <button type="button" id="save-edit-source-btn" style="background: #deff9a; border: none; color: #0f172a; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer;">Save</button>
+      </div>
     </div>
   </div>
 
@@ -3035,7 +3057,6 @@
     let synthesisSavedBadge = null;
     let newNoteBtn = null;
     let loadDocBtn = null;
-    let saveSynthesisBtn = null;
     const documentLibraryModal = document.getElementById("document-library-modal");
     const documentLibraryClose = document.getElementById("document-library-close");
     const documentList = document.getElementById("document-list");
@@ -3138,6 +3159,8 @@
     let workbenchSidebarCollapsed = false;
     let sourcePaneCollapsed = false;
     let activeSynthesisDocId = null;
+    let activeWorkspaceSessionId = null;
+    let activeWorkspaceSessionName = "My Workspace";
     let docSearchMatches = [];
     let currentSearchIndex = -1;
     let docSearchDebounceTimer = null;
@@ -3160,6 +3183,7 @@
     let synthesisSortable = null;
     const synthesisSortables = new Map();
     let loadSynthesisStatusTimer = null;
+    let synthesisSaveTimer = null;
     let showNodeLabels = true;
     let flowResizeObserver = null;
     let pendingFlowScrollAnchor = null;
@@ -3331,9 +3355,12 @@
     const DENSITY_LABELS = { 1: "Summary", 2: "Excerpt", 3: "Source" };
 
     function escapeHtml(str) {
-      const d = document.createElement("div");
-      d.textContent = str;
-      return d.innerHTML;
+      if (!str) return "";
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
     function excerptTitle(text) {
@@ -3846,9 +3873,12 @@
         if (!tabBar) return;
 
         const addBtn = document.getElementById("add-workspace-tab");
-        const synthBtn = document.getElementById("new-synthesis-tab-btn");
+        const newTabMenu = document.getElementById("new-tab-menu");
         const syncBtn = document.getElementById("sync-workspace-toggle");
         const splitBtn = document.getElementById("split-view-toggle");
+        const workspaceDivider = document.getElementById("workspace-session-divider");
+        const saveWorkspaceBtn = document.getElementById("save-workspace-btn");
+        const loadWorkspaceBtn = document.getElementById("load-workspace-btn");
         const minimapBtn = document.getElementById("global-minimap-toggle");
         tabBar.innerHTML = "";
 
@@ -3893,9 +3923,12 @@
         });
 
         if (addBtn) tabBar.appendChild(addBtn);
-        if (synthBtn) tabBar.appendChild(synthBtn);
+        if (newTabMenu) tabBar.appendChild(newTabMenu);
         if (syncBtn) tabBar.appendChild(syncBtn);
         if (splitBtn) tabBar.appendChild(splitBtn);
+        if (workspaceDivider) tabBar.appendChild(workspaceDivider);
+        if (saveWorkspaceBtn) tabBar.appendChild(saveWorkspaceBtn);
+        if (loadWorkspaceBtn) tabBar.appendChild(loadWorkspaceBtn);
         if (minimapBtn) tabBar.appendChild(minimapBtn);
       },
 
@@ -3933,12 +3966,40 @@
       TabManager.render();
       TabManager.activateTab(TabManager.activeId);
 
-      document.getElementById("add-workspace-tab")?.addEventListener("click", () => {
-        createNewBoard();
+      document.getElementById("add-workspace-tab")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById("new-tab-menu");
+        const btn = e.currentTarget;
+        if (!menu || !btn) return;
+        const rect = btn.getBoundingClientRect();
+        menu.style.left = `${rect.left}px`;
+        menu.style.top = `${rect.bottom}px`;
+        menu.classList.toggle("hidden");
       });
 
-      document.getElementById("new-synthesis-tab-btn")?.addEventListener("click", () => {
+      document.addEventListener("click", (e) => {
+        const menu = document.getElementById("new-tab-menu");
+        if (!menu || menu.classList.contains("hidden")) return;
+        if (e.target.closest("#new-tab-menu") || e.target.closest("#add-workspace-tab")) return;
+        menu.classList.add("hidden");
+      });
+
+      document.getElementById("menu-new-source")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        TabManager.activateTab("view-source-tree");
+        document.getElementById("new-tab-menu")?.classList.add("hidden");
+      });
+
+      document.getElementById("menu-new-board")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        createNewBoard();
+        document.getElementById("new-tab-menu")?.classList.add("hidden");
+      });
+
+      document.getElementById("menu-new-synth")?.addEventListener("click", (e) => {
+        e.stopPropagation();
         openSynthesisTab();
+        document.getElementById("new-tab-menu")?.classList.add("hidden");
       });
 
       document.getElementById("sync-workspace-toggle")?.addEventListener("click", () => {
@@ -3956,6 +4017,14 @@
       splitBtn?.addEventListener("click", () => {
         layoutMode = (layoutMode + 1) % 3;
         applyLayoutMode();
+      });
+
+      document.getElementById("save-workspace-btn")?.addEventListener("click", () => {
+        saveWorkspaceSession();
+      });
+
+      document.getElementById("load-workspace-btn")?.addEventListener("click", () => {
+        openWorkspaceLibrary();
       });
 
       tabBar.addEventListener("dragover", (e) => {
@@ -4008,6 +4077,9 @@
     let dragWbOffsetX = 0;
     let dragWbOffsetY = 0;
     let wbSaveTimer = null;
+    let wbZoom = 1;
+    let wbPanX = 0;
+    let wbPanY = 0;
 
     function getBoardZoom(board) {
       return parseFloat(board?.dataset.zoom) || 1;
@@ -4092,7 +4164,6 @@
         synthesisReadingNotes = null;
         newNoteBtn = null;
         loadDocBtn = null;
-        saveSynthesisBtn = null;
         synthesisSortable = null;
         activeSynthesisDocId = null;
         return;
@@ -4111,7 +4182,6 @@
       synthesisReadingNotes = viewEl.querySelector(".synthesis-reading-notes");
       newNoteBtn = viewEl.querySelector(".synthesis-new-note-btn");
       loadDocBtn = viewEl.querySelector(".synthesis-load-doc-btn");
-      saveSynthesisBtn = viewEl.querySelector(".synthesis-save-btn");
       synthesisSortable = synthesisSortables.get(viewEl.id) || null;
       activeSynthesisDocId = viewEl.dataset.synthesisDocId || null;
     }
@@ -4231,7 +4301,10 @@
         setSynthesisTitleToTimestamp();
       }
 
-      synthesisTitleInput?.addEventListener("input", () => updateSynthesisTabTitle(viewEl));
+      synthesisTitleInput?.addEventListener("input", () => {
+        updateSynthesisTabTitle(viewEl);
+        scheduleSynthesisSave();
+      });
 
       synthesisEditBtn?.addEventListener("click", () => setSynthesisViewMode("edit"));
       synthesisReadBtn?.addEventListener("click", () => setSynthesisViewMode("read"));
@@ -4250,16 +4323,6 @@
         openDocumentLibrary();
       });
 
-      saveSynthesisBtn?.addEventListener("click", async () => {
-        setSynthesisContext(viewEl);
-        const saved = await saveSynthesis();
-        if (saved) {
-          flashSynthesisSavedBadge();
-          viewEl.dataset.synthesisDocId = activeSynthesisDocId || "";
-          updateSynthesisTabTitle(viewEl);
-        }
-      });
-
       const dropzone = viewEl.querySelector(".synthesis-dropzone");
       if (dropzone && !dropzone.dataset.sortableBound && typeof Sortable !== "undefined") {
         dropzone.dataset.sortableBound = "1";
@@ -4271,7 +4334,8 @@
             handle: ".drag-handle",
             draggable: ".synthesis-item",
             onEnd() {
-              /* persist on explicit save */
+              setSynthesisContext(viewEl);
+              scheduleSynthesisSave();
             },
           })
         );
@@ -4301,6 +4365,7 @@
             const { nodeId, text, depthLevel } = JSON.parse(raw);
             if (!text) return;
             appendSynthesisItem(nodeId, text, depthLevel);
+            scheduleSynthesisSave();
           } catch (_) {
             showStatus("Could not read dropped card data.", true);
           }
@@ -4312,6 +4377,20 @@
             e.preventDefault();
             e.stopPropagation();
             removeBtn.closest(".synthesis-item")?.remove();
+            scheduleSynthesisSave();
+            return;
+          }
+          const synthItem = e.target.closest(".synthesis-item[data-node-id]");
+          if (
+            synthItem &&
+            !e.target.closest(
+              ".remove-synthesis-block, .edit-synthesis-block, .drag-handle, .source-link-anchor, .reference-link, .inline-edit-area, .synthesis-item-actions"
+            )
+          ) {
+            const nodeId = synthItem.dataset.nodeId;
+            if (nodeId) {
+              syncWorkspaceFocusFromSynthesis(nodeId);
+            }
             return;
           }
           const refLink = e.target.closest(".reference-link");
@@ -4326,7 +4405,15 @@
           e.preventDefault();
           focusGraphNodeFromReference(anchor.dataset.nodeId);
         });
+        dropzone.addEventListener("focusin", (e) => {
+          setSynthesisContext(viewEl);
+          const synthItem = e.target.closest(".synthesis-item[data-node-id]");
+          if (!synthItem) return;
+          const nodeId = synthItem.dataset.nodeId;
+          if (nodeId) syncWorkspaceFocusFromSynthesis(nodeId);
+        });
         dropzone.addEventListener("keydown", (e) => {
+          if (handleSynthesisBlockTabIndent(e)) return;
           if (e.key !== "Enter" && e.key !== " ") return;
           const refLink = e.target.closest(".reference-link");
           if (!refLink) return;
@@ -4347,16 +4434,27 @@
       const composer = viewEl.querySelector(".synthesis-custom-input");
       if (composer && !composer.dataset.bound) {
         composer.dataset.bound = "1";
+        composer.addEventListener("input", () => {
+          setSynthesisContext(viewEl);
+          scheduleSynthesisSave();
+        });
+        composer.addEventListener("keyup", () => {
+          setSynthesisContext(viewEl);
+          scheduleSynthesisSave();
+        });
         composer.addEventListener("keydown", (e) => {
           setSynthesisContext(viewEl);
+          if (handleSynthesisBlockTabIndent(e)) return;
           if (e.key === "Enter" && !e.shiftKey && !(e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             const text = composer.value.trim();
             if (!text) return;
             appendCustomThought(text);
             composer.value = "";
+            scheduleSynthesisSave();
             return;
           }
+          scheduleSynthesisSave();
           if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
             saveSynthesis().then((saved) => {
@@ -4799,6 +4897,8 @@
         if (e.target.closest(".text-content, button, .card-hover-menu")) return;
 
         e.stopPropagation();
+        wrapper.dataset.origLeft = wrapper.style.left;
+        wrapper.dataset.origTop = wrapper.style.top;
         draggedWbNode = wrapper;
         const board = wrapper.closest(".board-view");
         const zoom = getBoardZoom(board);
@@ -5097,6 +5197,42 @@
       wrapper.style.left = `${canvasX}px`;
       wrapper.style.top = `${canvasY}px`;
       bindWhiteboardNodeDrag(wrapper);
+
+      if (!wrapper.dataset.ctxMenuBound) {
+        wrapper.dataset.ctxMenuBound = "1";
+        if (!wrapper.id) wrapper.id = `wb-wrapper-${nodeData.id}`;
+        wrapper.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          contextMenuTargetId = nodeData.id;
+          const menu = document.getElementById("board-context-menu");
+          if (!menu) return;
+          menu.style.left = `${e.clientX}px`;
+          menu.style.top = `${e.clientY}px`;
+          menu.classList.remove("hidden");
+          menu.dataset.wrapperId = wrapper.id || "";
+          window.activeContextWrapper = wrapper;
+        });
+      }
+
+      const card = wrapper.querySelector(".workspace-card");
+      if (card && !card.dataset.wbDragSnapBound) {
+        card.dataset.wbDragSnapBound = "1";
+        card.addEventListener(
+          "dragstart",
+          () => {
+            // If the spatial drag was accidentally active during a native drag, abort it and snap back
+            if (typeof draggedWbNode !== "undefined" && draggedWbNode === wrapper) {
+              wrapper.style.left = wrapper.dataset.origLeft;
+              wrapper.style.top = wrapper.dataset.origTop;
+              wrapper.style.zIndex = "";
+              draggedWbNode = null;
+            }
+          },
+          true
+        );
+      }
+
       if (!isDraft) {
         scheduleWhiteboardSave(board);
       }
@@ -5136,6 +5272,49 @@
       }
 
       setTimeout(() => ConnectionManager.drawAllConnections(), 100);
+    }
+
+    function hideBoardContextMenu() {
+      document.getElementById("board-context-menu")?.classList.add("hidden");
+    }
+
+    function initBoardContextMenu() {
+      if (document.body.dataset.boardCtxMenuBound) return;
+      document.body.dataset.boardCtxMenuBound = "1";
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest("#board-context-menu")) {
+          hideBoardContextMenu();
+        }
+      });
+
+      document.getElementById("ctx-add-list-a")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (contextMenuTargetId) {
+          SelectionManager.addNodeToList(contextMenuTargetId, "A");
+        }
+        hideBoardContextMenu();
+      });
+
+      document.getElementById("ctx-add-list-b")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (contextMenuTargetId) {
+          SelectionManager.addNodeToList(contextMenuTargetId, "B");
+        }
+        hideBoardContextMenu();
+      });
+
+      document.getElementById("ctx-remove-board")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const wrapper = window.activeContextWrapper;
+        if (wrapper) {
+          const board = wrapper.closest(".board-view");
+          wrapper.remove();
+          ConnectionManager.scheduleDraw();
+          scheduleWhiteboardSave(board);
+        }
+        hideBoardContextMenu();
+      });
     }
 
     function initWhiteboardDrop() {
@@ -5357,27 +5536,52 @@
       document.addEventListener(
         "wheel",
         (e) => {
-          if (e.target.closest(".wb-omnibar")) return;
+          // Allow native scroll inside the Omnibar or Context Menu
+          if (e.target.closest(".wb-omnibar") || e.target.closest("#board-context-menu")) {
+            return;
+          }
+
           const activeBoard = e.target.closest(".board-view");
           if (!activeBoard || activeBoard.classList.contains("hidden")) return;
+
           e.preventDefault();
-          const rect = activeBoard.getBoundingClientRect();
-          const mouseViewX = e.clientX - rect.left;
-          const mouseViewY = e.clientY - rect.top;
-          const zoom = getBoardZoom(activeBoard);
-          const panX = getBoardPanX(activeBoard);
-          const panY = getBoardPanY(activeBoard);
-          const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
-          const newZoom = Math.min(Math.max(0.1, zoom * zoomDelta), 5);
-          const worldX = (mouseViewX - panX) / zoom;
-          const worldY = (mouseViewY - panY) / zoom;
-          setBoardZoom(activeBoard, newZoom);
-          setBoardPan(
-            activeBoard,
-            mouseViewX - worldX * newZoom,
-            mouseViewY - worldY * newZoom
-          );
+
+          let currentZoom = parseFloat(activeBoard.dataset.zoom) || wbZoom;
+          let currentPanX = parseFloat(activeBoard.dataset.panX) || wbPanX;
+          let currentPanY = parseFloat(activeBoard.dataset.panY) || wbPanY;
+
+          if (e.ctrlKey || e.metaKey) {
+            const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+            const rect = activeBoard.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - currentPanX;
+            const mouseY = e.clientY - rect.top - currentPanY;
+
+            const newZoom = Math.min(Math.max(0.1, currentZoom * zoomDelta), 5);
+
+            currentPanX = e.clientX - rect.left - mouseX * (newZoom / currentZoom);
+            currentPanY = e.clientY - rect.top - mouseY * (newZoom / currentZoom);
+            currentZoom = newZoom;
+          } else {
+            // PAN LOGIC (Regular Scroll & Shift-Scroll)
+            if (e.shiftKey) {
+              // Shift + Scroll = Horizontal Pan
+              currentPanX -= e.deltaY;
+            } else {
+              // Regular Scroll = Vertical Pan (and horizontal if using a trackpad)
+              currentPanX -= e.deltaX;
+              currentPanY -= e.deltaY;
+            }
+          }
+
+          activeBoard.dataset.zoom = currentZoom;
+          activeBoard.dataset.panX = currentPanX;
+          activeBoard.dataset.panY = currentPanY;
+          wbZoom = currentZoom;
+          wbPanX = currentPanX;
+          wbPanY = currentPanY;
+
           updateWhiteboardTransform(activeBoard);
+          ConnectionManager.reposition();
         },
         { passive: false }
       );
@@ -5668,6 +5872,24 @@
           return false;
         }
         this.addNode({ ...node });
+        return true;
+      },
+
+      addNodeToList(nodeId, target) {
+        if (target !== "A" && target !== "B") return false;
+        const node = workspaceNodeMap.get(nodeId);
+        if (!node) {
+          showStatus(`Node ${nodeId} not found in workspace.`, true);
+          return false;
+        }
+        const nodeCopy = { ...node };
+        if (target === "A") {
+          this.listA.set(nodeId, nodeCopy);
+          this.renderSidebarList(document.getElementById("list-a"), this.listA, "listA");
+        } else {
+          this.listB.set(nodeId, nodeCopy);
+          this.renderSidebarList(document.getElementById("list-b"), this.listB, "listB");
+        }
         return true;
       },
 
@@ -6959,13 +7181,31 @@
       return WorkspaceDomCache.getCard(nodeId);
     }
 
+    function normalizeSourceDisplayType(source) {
+      const nodeType = source?.node_type || "Concept";
+      if (
+        nodeType === "Book" ||
+        nodeType === "Article" ||
+        nodeType === "Transcript" ||
+        nodeType === "Synthesis"
+      ) {
+        return nodeType;
+      }
+      if (source?.density_level === 4) return "Synthesis";
+      if (source?.density_level === 3) return "Book";
+      return nodeType === "Document" ? "Book" : nodeType;
+    }
+
+    function densityLevelForSourceType(nodeType) {
+      return nodeType === "Synthesis" ? 4 : 3;
+    }
+
     function sourceDocumentLabel(source) {
-      const isSynthesis = source.density_level === 4 || source.node_type === "Document";
-      const kind = isSynthesis ? "Synthesis" : "Book";
-      return `${source.title} (${kind})`;
+      return `${source.title} (${normalizeSourceDisplayType(source)})`;
     }
 
     async function loadSourceLibrary(selectedId = null) {
+      if (!sourceSelector) return [];
       try {
         const res = await fetch(`${API_BASE}/api/sources`);
         if (!res.ok) {
@@ -7047,7 +7287,7 @@
               title: title,
               content: text,
               density_level: 3, // Level 3 designates a Source Document
-              node_type: "Document",
+              node_type: "Book",
               significance: 1.0,
               origin: "human",
             }),
@@ -7072,6 +7312,160 @@
         } finally {
           submitBtn.disabled = false;
           submitBtn.textContent = originalLabel;
+        }
+      });
+    }
+
+    function initSourceFileUpload() {
+      const uploadBtn = document.getElementById("upload-source-btn");
+      const fileInput = document.getElementById("source-file-upload");
+      if (!uploadBtn || !fileInput || fileInput.dataset.bound) return;
+      fileInput.dataset.bound = "1";
+
+      uploadBtn.addEventListener("click", () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const text = event.target.result;
+          const filename = file.name.replace(/\.[^/.]+$/, "");
+
+          try {
+            const response = await fetch(`${API_BASE}/api/nodes`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: filename,
+                content: text,
+                node_type: "Book",
+                density_level: 3,
+                significance: 1.0,
+                origin: "human",
+              }),
+            });
+
+            if (!response.ok) {
+              const body = await response.json().catch(() => ({}));
+              throw new Error(body.detail || `POST /api/nodes returned ${response.status}`);
+            }
+
+            const newNode = await response.json();
+            const newId = newNode.node_id;
+
+            await loadSourceLibrary(newId);
+            suppressSourceChange = true;
+            sourceSelector.value = newId;
+            suppressSourceChange = false;
+            await initDocumentCanvas(newId);
+            document.getElementById("add-source-modal")?.classList.add("hidden");
+            showStatus("Source imported.");
+          } catch (err) {
+            console.error("Error uploading file:", err);
+            showStatus(err.message || "Failed to upload file", true);
+          }
+        };
+        reader.readAsText(file);
+
+        e.target.value = "";
+      });
+    }
+
+    function ensureEditSourceTypeOption(nodeType) {
+      const typeSelect = document.getElementById("edit-source-type");
+      if (!typeSelect || !nodeType) return;
+      const exists = [...typeSelect.options].some((opt) => opt.value === nodeType);
+      if (!exists) {
+        const option = document.createElement("option");
+        option.value = nodeType;
+        option.textContent = nodeType;
+        typeSelect.appendChild(option);
+      }
+      typeSelect.value = nodeType;
+    }
+
+    async function openEditSourcePropertiesModal() {
+      const activeId = sourceSelector?.value || documentCanvasSourceId;
+      if (!activeId) {
+        showStatus("Select a source to edit.", true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(activeId)}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail || `GET /api/nodes/${activeId} returned ${res.status}`);
+        }
+        const node = await res.json();
+        const titleInput = document.getElementById("edit-source-title");
+        if (titleInput) titleInput.value = node.title || "";
+        ensureEditSourceTypeOption(normalizeSourceDisplayType(node));
+        document.getElementById("edit-source-modal")?.classList.remove("hidden");
+      } catch (err) {
+        console.error("[openEditSourcePropertiesModal] failed", err);
+        showStatus(err.message || "Failed to load source properties", true);
+      }
+    }
+
+    async function saveSourceProperties() {
+      const activeId = sourceSelector?.value || documentCanvasSourceId;
+      const newTitle = document.getElementById("edit-source-title")?.value.trim();
+      const rawType = document.getElementById("edit-source-type")?.value;
+      const newType = rawType === "Document" ? "Book" : rawType;
+
+      if (!activeId || !newTitle) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(activeId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: newTitle,
+            node_type: newType,
+            density_level: densityLevelForSourceType(newType),
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail || `PUT /api/nodes/${activeId} returned ${res.status}`);
+        }
+
+        document.getElementById("edit-source-modal")?.classList.add("hidden");
+        await loadSourceLibrary(activeId);
+        suppressSourceChange = true;
+        if (sourceSelector) sourceSelector.value = activeId;
+        suppressSourceChange = false;
+        showStatus("Source properties updated.");
+      } catch (err) {
+        console.error("Error updating source:", err);
+        showStatus(err.message || "Failed to update source properties", true);
+      }
+    }
+
+    function initEditSourcePropertiesModal() {
+      if (document.body.dataset.editSourcePropsBound) return;
+      document.body.dataset.editSourcePropsBound = "1";
+
+      document.getElementById("edit-source-props-btn")?.addEventListener("click", () => {
+        openEditSourcePropertiesModal();
+      });
+
+      document.getElementById("cancel-edit-source-btn")?.addEventListener("click", () => {
+        document.getElementById("edit-source-modal")?.classList.add("hidden");
+      });
+
+      document.getElementById("save-edit-source-btn")?.addEventListener("click", () => {
+        saveSourceProperties();
+      });
+
+      document.getElementById("edit-source-modal")?.addEventListener("click", (e) => {
+        if (e.target.id === "edit-source-modal") {
+          document.getElementById("edit-source-modal")?.classList.add("hidden");
         }
       });
     }
@@ -7187,6 +7581,7 @@
             type: "reference",
             nodeId,
             order: index,
+            indentLevel: parseInt(item.dataset.indentLevel || "0", 10) || 0,
           });
           return;
         }
@@ -7198,6 +7593,7 @@
             type: "text",
             content: text,
             order: index,
+            indentLevel: parseInt(item.dataset.indentLevel || "0", 10) || 0,
           });
         }
       });
@@ -7296,7 +7692,12 @@
           const text = synthesisNodeDisplayText(block.nodeId, "", nodeData);
           if (!text) return;
 
-          appendSynthesisItem(block.nodeId, text, getCardDepthLevel(block.nodeId));
+          appendSynthesisItem(
+            block.nodeId,
+            text,
+            getCardDepthLevel(block.nodeId),
+            block.indentLevel ?? 0
+          );
           return;
         }
 
@@ -7304,7 +7705,7 @@
           if (block.source === "composer") {
             if (synthesisComposer) synthesisComposer.value = block.content;
           } else {
-            appendCustomThought(block.content);
+            appendCustomThought(block.content, block.indentLevel ?? 0);
           }
         }
       });
@@ -7417,6 +7818,234 @@
       if (!flat) return "No content yet";
       if (flat.length <= maxLen) return flat;
       return `${flat.slice(0, maxLen - 1)}…`;
+    }
+
+    function parseWorkspaceSessionBlocks(rawBlocks) {
+      if (rawBlocks == null) return null;
+      let blocks = rawBlocks;
+      if (typeof blocks === "string") {
+        try {
+          blocks = JSON.parse(blocks);
+        } catch (_) {
+          return null;
+        }
+      }
+      if (Array.isArray(blocks)) {
+        const session =
+          blocks.find((block) => block?.type === "workspace-session") || blocks[0];
+        return session && typeof session === "object" ? session : null;
+      }
+      if (typeof blocks === "object") return blocks;
+      return null;
+    }
+
+    function getActiveBoardSavedId() {
+      return getActiveBoardElement()?.dataset.savedNodeId || null;
+    }
+
+    async function saveWorkspaceSession() {
+      const isUpdate = !!activeWorkspaceSessionId;
+      const promptMsg = isUpdate
+        ? "Update existing session or Save As new?\n\nLeave name exactly as is to overwrite, or type a new name to clone:"
+        : "Enter a name for this new Workspace Session:";
+
+      const sessionName = prompt(promptMsg, activeWorkspaceSessionName);
+      if (!sessionName) return;
+
+      const isClone = sessionName !== activeWorkspaceSessionName;
+
+      const sessionBlock = {
+        type: "workspace-session",
+        sourceId: sourceSelector?.value || documentCanvasSourceId || null,
+        boardId: getActiveBoardSavedId(),
+        synthesisId: activeSynthesisDocId || null,
+        layoutMode,
+      };
+
+      const payload = {
+        title: sessionName,
+        node_type: "WorkspaceSession",
+        content: "Saved Layout State",
+        density_level: 1,
+        significance: 1.0,
+        origin: "system",
+        blocks: [sessionBlock],
+      };
+
+      try {
+        let res;
+        if (isUpdate && !isClone) {
+          res = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(activeWorkspaceSessionId)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: payload.title,
+              content: payload.content,
+              blocks: payload.blocks,
+            }),
+          });
+        } else {
+          res = await fetch(`${API_BASE}/api/nodes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+        }
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail || `Save workspace session failed (${res.status})`);
+        }
+
+        if (!isUpdate || isClone) {
+          const newNode = await res.json();
+          activeWorkspaceSessionId = newNode.node_id || newNode.id || null;
+        }
+
+        activeWorkspaceSessionName = sessionName;
+        showStatus(`Workspace session “${sessionName}” saved.`);
+      } catch (err) {
+        console.error("[saveWorkspaceSession] failed", err);
+        showStatus(err.message || "Failed to save workspace session", true);
+      }
+    }
+
+    async function loadWorkspaceSession(node) {
+      activeWorkspaceSessionId = node.id;
+      activeWorkspaceSessionName = node.title || "My Workspace";
+
+      const data = parseWorkspaceSessionBlocks(node?.blocks);
+      if (!data) {
+        showStatus("Workspace session data is missing or invalid.", true);
+        return;
+      }
+
+      try {
+        if (data.sourceId) {
+          await loadSourceLibrary(data.sourceId);
+          suppressSourceChange = true;
+          if (sourceSelector) sourceSelector.value = data.sourceId;
+          suppressSourceChange = false;
+          await initDocumentCanvas(data.sourceId);
+        }
+
+        if (data.boardId) {
+          await loadWhiteboard(data.boardId);
+        }
+
+        if (data.synthesisId) {
+          await loadSynthesisDocument(data.synthesisId);
+        }
+
+        if (typeof data.layoutMode !== "undefined") {
+          layoutMode = data.layoutMode;
+          applyLayoutMode();
+        }
+
+        showStatus(`Loaded workspace session “${node.title || "Untitled"}”.`);
+      } catch (err) {
+        console.error("[loadWorkspaceSession] failed", err);
+        showStatus(err.message || "Failed to load workspace session", true);
+      }
+    }
+
+    function openWorkspaceLibraryModal() {
+      const titleEl = document.getElementById("document-library-title");
+      if (titleEl) titleEl.textContent = "Saved Workspace Sessions";
+      documentLibraryModal?.classList.add("open");
+      documentLibraryModal?.setAttribute("aria-hidden", "false");
+    }
+
+    function renderWorkspaceLibraryList(sessions) {
+      if (!documentList) return;
+      documentList.replaceChildren();
+
+      if (!sessions.length) {
+        const empty = document.createElement("div");
+        empty.className = "document-list-empty";
+        empty.textContent = "No saved workspace sessions yet.";
+        documentList.appendChild(empty);
+        return;
+      }
+
+      for (const doc of sessions) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "document-list-item";
+        button.dataset.docId = doc.id;
+        button.setAttribute("role", "listitem");
+
+        const title = document.createElement("span");
+        title.className = "document-list-item-title";
+        title.textContent = doc.title || "Untitled workspace";
+
+        const meta = document.createElement("span");
+        meta.className = "document-list-item-meta";
+        const dateLabel = formatDocumentLibraryDate(doc.created_at);
+        meta.textContent = dateLabel || doc.id;
+
+        const snippet = document.createElement("span");
+        snippet.className = "document-list-item-snippet";
+        snippet.textContent = documentLibrarySnippet(doc.content);
+
+        button.appendChild(title);
+        button.appendChild(meta);
+        button.appendChild(snippet);
+        button.addEventListener("click", async () => {
+          closeDocumentLibraryModal();
+          try {
+            showStatus("Loading workspace session…");
+            const res = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(doc.id)}`);
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(body.detail || `GET /api/nodes/${doc.id} returned ${res.status}`);
+            }
+            const node = await res.json();
+            await loadWorkspaceSession(node);
+            clearStatus();
+          } catch (err) {
+            console.error("[openWorkspaceLibraryModal] load failed", err);
+            showStatus(err.message || "Failed to load workspace session", true);
+          }
+        });
+        documentList.appendChild(button);
+      }
+    }
+
+    async function fetchWorkspaceSessionLibrary() {
+      const res = await fetch(`${API_BASE}/api/nodes?type=WorkspaceSession`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || "Failed to load workspace sessions");
+      }
+      const sessions = await res.json();
+      sessions.sort((a, b) => {
+        const aTime = a.created_at ? Date.parse(a.created_at) : 0;
+        const bTime = b.created_at ? Date.parse(b.created_at) : 0;
+        return bTime - aTime;
+      });
+      return sessions;
+    }
+
+    async function openWorkspaceLibrary() {
+      if (!documentList) return;
+      openWorkspaceLibraryModal();
+      documentList.replaceChildren();
+      const loading = document.createElement("div");
+      loading.className = "document-list-empty";
+      loading.textContent = "Loading workspace sessions…";
+      documentList.appendChild(loading);
+
+      try {
+        const sessions = await fetchWorkspaceSessionLibrary();
+        renderWorkspaceLibraryList(sessions);
+      } catch (err) {
+        documentList.replaceChildren();
+        const error = document.createElement("div");
+        error.className = "document-list-empty";
+        error.textContent = err.message;
+        documentList.appendChild(error);
+      }
     }
 
     function closeDocumentLibraryModal() {
@@ -7839,7 +8468,6 @@
 
       const isCreate = !activeSynthesisDocId;
 
-      saveSynthesisBtn.disabled = true;
       try {
         let docId = activeSynthesisDocId;
 
@@ -7897,8 +8525,6 @@
       } catch (err) {
         showStatus(err.message, true);
         return false;
-      } finally {
-        saveSynthesisBtn.disabled = false;
       }
     }
 
@@ -8083,12 +8709,55 @@
     }
 
     function applySynthesisItemIndent(item) {
-      const depth = parseInt(item.dataset.depthLevel, 10) || 0;
-      if (workspaceViewMode === "tree") {
-        item.style.marginLeft = `${depth * 20}px`;
+      const indentLevel = parseInt(item.dataset.indentLevel || "0", 10) || 0;
+      item.style.marginLeft = `${indentLevel * 30}px`;
+    }
+
+    function handleSynthesisBlockTabIndent(e) {
+      if (e.key !== "Tab") return false;
+
+      const blockEl =
+        e.target.closest(".synthesis-item") ||
+        e.target.closest(".synthesis-block") ||
+        e.target.closest(".workspace-card");
+      if (!blockEl) return false;
+
+      e.preventDefault();
+
+      let currentIndent = parseInt(blockEl.dataset.indentLevel || "0", 10) || 0;
+      if (e.shiftKey) {
+        currentIndent = Math.max(0, currentIndent - 1);
       } else {
-        item.style.marginLeft = "";
+        currentIndent = Math.min(5, currentIndent + 1);
       }
+
+      blockEl.dataset.indentLevel = String(currentIndent);
+      applySynthesisItemIndent(blockEl);
+      scheduleSynthesisSave();
+      return true;
+    }
+
+    function scheduleSynthesisSave() {
+      if (!activeSynthesisDocId) return;
+
+      clearTimeout(synthesisSaveTimer);
+      synthesisSaveTimer = setTimeout(async () => {
+        synthesisSaveTimer = null;
+        const saved = await saveSynthesis();
+        if (!saved) return;
+
+        const badge =
+          synthesisSavedBadge ||
+          document.getElementById("synth-saved-badge");
+        if (badge) {
+          badge.classList.add("visible");
+          badge.style.opacity = "1";
+          setTimeout(() => {
+            badge.classList.remove("visible");
+            badge.style.opacity = "0";
+          }, 2000);
+        }
+      }, 1500);
     }
 
     function getWorkspaceCardText(card) {
@@ -8099,7 +8768,21 @@
       return card.textContent.trim();
     }
 
-    function syncWorkspaceFocus(nodeId) {
+    function syncWorkspaceFocusFromSynthesis(nodeId) {
+      const activeInput = document.activeElement;
+      syncWorkspaceFocus(nodeId, { skipSynthesisScroll: true });
+      if (
+        activeInput &&
+        (activeInput.hasAttribute("contenteditable") ||
+          activeInput.matches(".inline-edit-area, .synthesis-custom-input, textarea, input"))
+      ) {
+        setTimeout(() => {
+          activeInput.focus();
+        }, 0);
+      }
+    }
+
+    function syncWorkspaceFocus(nodeId, options = {}) {
       if (!isWorkspaceSynced || !nodeId) return;
 
       const treeCard = document.querySelector(
@@ -8132,6 +8815,17 @@
           const targetY = rect.height / 2 - cardTop * zoom;
           setBoardPan(activeBoard, targetX, targetY);
           updateWhiteboardTransform(activeBoard);
+        }
+      }
+
+      if (!options.skipSynthesisScroll) {
+        const synthCard = document.querySelector(
+          `.synthesis-view .synthesis-item[data-node-id="${CSS.escape(nodeId)}"]`
+        );
+        if (synthCard && !synthCard.contains(document.activeElement)) {
+          synthCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          synthCard.classList.add("workspace-focus");
+          setTimeout(() => synthCard.classList.remove("workspace-focus"), 2000);
         }
       }
     }
@@ -8214,8 +8908,8 @@
         item.remove();
       }
 
-      const saved = await saveSynthesis();
-      if (saved) flashSynthesisSavedBadge();
+      scheduleSynthesisSave();
+      delete textarea.dataset.committing;
     }
 
     function startCustomThoughtEdit(item) {
@@ -8237,6 +8931,7 @@
 
       textarea.addEventListener("input", () => {
         adjustInlineEditTextareaHeight(textarea);
+        scheduleSynthesisSave();
       });
 
       textarea.addEventListener("blur", () => {
@@ -8244,6 +8939,8 @@
       });
 
       textarea.addEventListener("keydown", (e) => {
+        if (handleSynthesisBlockTabIndent(e)) return;
+        scheduleSynthesisSave();
         if (e.key === "Escape") {
           e.preventDefault();
           textarea.blur();
@@ -8294,12 +8991,14 @@
       return button;
     }
 
-    function appendCustomThought(text) {
+    function appendCustomThought(text, indentLevel = 0) {
       if (!synthesisDropzone) return null;
 
       const item = document.createElement("div");
       item.className = "synthesis-item custom-thought draggable";
       item.dataset.type = "custom-text";
+      item.dataset.indentLevel = String(indentLevel ?? 0);
+      item.tabIndex = 0;
 
       const handle = document.createElement("button");
       handle.type = "button";
@@ -8322,7 +9021,7 @@
       return item;
     }
 
-    function appendSynthesisItem(nodeId, text, depthLevel) {
+    function appendSynthesisItem(nodeId, text, depthLevel, indentLevel = 0) {
       if (!synthesisDropzone) return null;
 
       const item = document.createElement("div");
@@ -8330,7 +9029,9 @@
       item.dataset.sourceNode = nodeId;
       item.dataset.nodeId = nodeId;
       item.dataset.depthLevel = String(depthLevel ?? 0);
+      item.dataset.indentLevel = String(indentLevel ?? 0);
       item.dataset.itemType = getSynthesisItemType(nodeId);
+      item.tabIndex = 0;
 
       const handle = document.createElement("button");
       handle.type = "button";
@@ -10202,6 +10903,7 @@
       WorkspaceDomCache.clearColumnsOnly();
 
       try {
+        showStatus("Loading source…");
         const canvasUrl = sourceId
           ? `${API_BASE}/api/document-canvas?source_id=${encodeURIComponent(sourceId)}`
           : `${API_BASE}/api/document-canvas`;
@@ -10236,6 +10938,7 @@
         initGroupSynthesisListeners();
         initWorkspaceViewToggle();
         applyWorkspaceViewMode(workspaceViewMode);
+        clearStatus();
       } catch (err) {
         showStatus(err.message, true);
       }
@@ -10451,6 +11154,8 @@
       initWorkspaceViewToggle();
       initSourceSelector();
       initAddSourceModal();
+      initSourceFileUpload();
+      initEditSourcePropertiesModal();
       initConnectionModeSelect();
       initWorkspaceGraphPane();
       initLeftPaneCollapses();
@@ -10462,6 +11167,7 @@
       initWhiteboardAltExtractCue();
       initWhiteboardDrop();
       initWhiteboardDraftEscape();
+      initBoardContextMenu();
       initTreeKeyboardNav();
       initGlobalDeselectHotkey();
 
