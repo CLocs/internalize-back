@@ -975,8 +975,21 @@
       font-size: 1rem;
       line-height: 1.75;
       color: #e2e8f0;
-      white-space: pre-wrap;
+      white-space: normal;
       word-break: break-word;
+    }
+
+    .source-paragraph {
+      position: relative;
+      padding-left: 12px;
+      margin-bottom: 16px;
+      border-left: 3px solid transparent;
+      transition: border-color 0.1s ease, background-color 0.1s ease;
+    }
+
+    .source-paragraph.active-reader-focus {
+      border-left: 3px solid #3b82f6;
+      background-color: rgba(59, 130, 246, 0.05);
     }
 
     .excerpt-highlight {
@@ -2157,6 +2170,46 @@
       color: #e2e8f0;
     }
 
+    #compressed-view-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 12px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #94a3b8;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    #toggle-compressed-view {
+      accent-color: #deff9a;
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+    }
+
+    #view-source-tree.compressed-mode .workspace-card.excerpt-card,
+    #view-source-tree.compressed-mode .workspace-card[data-node-type="Excerpt"] {
+      display: none !important;
+    }
+
+    .workspace-card[data-node-type="Chapter"] { border-top: 3px solid #c084fc !important; }
+    .workspace-card[data-node-type="Part"] { border-top: 3px solid #a855f7 !important; }
+    .workspace-card[data-node-type="Concept"] { border-top: 3px solid #fbbf24 !important; }
+
+    /* Hide the first column (Excerpts) entirely when compressed */
+    .compressed-mode .tree-column:first-child {
+      display: none !important;
+    }
+
+    /* Darken/thicken the source highlights when compressed so they act as anchors */
+    .source-compressed .excerpt-highlight {
+      background-color: rgba(222, 255, 154, 0.6) !important;
+      border-bottom: 2px solid #deff9a;
+    }
+
     .density-column,
     .workspace-column {
       display: flex;
@@ -2333,6 +2386,7 @@
       opacity: 1;
     }
 
+    .card-action-btn,
     .card-delete-btn {
       width: 22px;
       height: 22px;
@@ -2340,11 +2394,28 @@
       border: 1px solid #334155;
       border-radius: 4px;
       background: #0f172a;
-      color: #f87171;
-      font-size: 14px;
+      font-size: 12px;
       line-height: 1;
       cursor: pointer;
       font-family: "Segoe UI", system-ui, sans-serif;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .summarize-card-btn {
+      color: #94a3b8;
+    }
+
+    .summarize-card-btn:hover {
+      border-color: #64748b;
+      color: #deff9a;
+      background: rgba(222, 255, 154, 0.08);
+    }
+
+    .card-delete-btn {
+      color: #f87171;
+      font-size: 14px;
     }
 
     .card-delete-btn:hover {
@@ -2429,6 +2500,33 @@
     .pin-icon:hover {
       opacity: 0.85;
       color: #11caa0;
+    }
+
+    .connection-badge {
+      position: absolute;
+      top: 4px;
+      right: 28px;
+      z-index: 20;
+      background: #334155;
+      color: #deff9a;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      line-height: 1.2;
+    }
+
+    .connection-badge .fa-link {
+      font-size: 9px;
+    }
+
+    .connection-badge:hover {
+      background: #475569;
     }
 
     .pinned-node .pin-icon {
@@ -2655,6 +2753,15 @@
     <div style="height: 1px; background: #334155; margin: 4px 0;"></div>
     <div class="ctx-menu-item" id="ctx-remove-board" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; color: #f87171; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-trash-can"></i> Remove from Board</div>
   </div>
+  <div id="card-context-menu" class="hidden" style="position: fixed; z-index: 9999; background: #1e293b; border: 1px solid #334155; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); padding: 6px; display: flex; flex-direction: column; min-width: 200px; font-size: 13px; color: #f8fafc; font-family: 'Segoe UI', sans-serif;">
+    <div class="ctx-menu-item" id="ctx-card-summarize" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+      <span><i class="fa-solid fa-compress" style="margin-right: 8px;"></i> Summarize Node</span>
+      <span style="color: #64748b; font-size: 11px;">Ctrl+S</span>
+    </div>
+    <div class="ctx-menu-item" id="ctx-card-change-type" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center;">
+      <i class="fa-solid fa-tags" style="margin-right: 8px;"></i> Change Node Type
+    </div>
+  </div>
   <div id="line-canvas" aria-hidden="true"></div>
   <div id="app-wrapper" style="display: flex; height: 100vh; width: 100vw; overflow: hidden;">
   <div id="left-dock" class="tool-dock">
@@ -2687,6 +2794,9 @@
     <select id="source-selector">
       <option value="">Loading sources…</option>
     </select>
+    <div id="source-drag-handle" draggable="true" title="Drag Source to Board" style="cursor: grab; color: #4ade80; padding: 4px 8px; margin-left: 8px; border: 1px dashed #4ade80; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+      <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+    </div>
     <button type="button" id="edit-source-props-btn" title="Edit Source Properties" style="background: transparent; border: none; color: #64748b; cursor: pointer; padding: 4px;"><i class="fa-solid fa-gear"></i></button>
     <button type="button" id="add-source-btn" title="Add New Source" style="margin-right: 15px; padding: 4px 8px; background: transparent; border: 1px solid var(--border-color); border-radius: 4px; color: #deff9a; cursor: pointer;"><i class="fa-solid fa-plus"></i></button>
     <label id="auto-trace-label">
@@ -2698,6 +2808,10 @@
       <button type="button" id="view-tree-btn" class="active" data-view="tree">Tree</button>
       <button type="button" id="view-flow-btn" data-view="flow">Flow</button>
     </div>
+    <label id="compressed-view-label" for="toggle-compressed-view">
+      <input type="checkbox" id="toggle-compressed-view" />
+      Compress
+    </label>
     <label id="show-labels-label">
       <input type="checkbox" id="show-labels-toggle" checked />
       Show Node Labels
@@ -2831,7 +2945,7 @@
               <button type="button" id="doc-search-clear" title="Close search">✖</button>
             </div>
           </div>
-          <div class="doc-pane-content">
+          <div id="source-content" class="doc-pane-content source-document-container">
             <h1 id="doc-title"></h1>
             <div id="doc-body" class="doc-body"></div>
           </div>
@@ -4476,6 +4590,69 @@
       return card;
     }
 
+    function getLateralEdgesForNode(nodeId) {
+      const lateral = [];
+      const seen = new Set();
+      const addEdge = (edge) => {
+        if (!edge) return;
+        if (HIERARCHY_EDGE_TYPES.has(edge.relationship_type)) return;
+        if (edge.source_id !== nodeId && edge.target_id !== nodeId) return;
+        const key =
+          edge.id ||
+          ConnectionManager.edgeKey(edge.relationship_type, edge.source_id, edge.target_id);
+        if (seen.has(key)) return;
+        seen.add(key);
+        lateral.push(edge);
+      };
+
+      for (const edge of ConnectionManager.edges.values()) addEdge(edge);
+      for (const edge of ConnectionManager.crossEdges.values()) addEdge(edge);
+      return lateral;
+    }
+
+    async function appendLateralConnectionsToFocusColumn(nodeId, childrenCol, focusId, shownIds) {
+      const lateralEdges = getLateralEdgesForNode(nodeId);
+      if (!lateralEdges.length || !childrenCol) return;
+
+      const separator = document.createElement("div");
+      separator.innerHTML =
+        '<div style="margin: 20px 0 10px 0; border-top: 1px dashed #334155; padding-top: 10px; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Related Connections</div>';
+      childrenCol.appendChild(separator);
+
+      const linkedNodeIds = [];
+      for (const edge of lateralEdges) {
+        const linkedNodeId = edge.source_id === nodeId ? edge.target_id : edge.source_id;
+        if (!linkedNodeId || linkedNodeId === nodeId || shownIds.has(linkedNodeId)) continue;
+        if (linkedNodeIds.includes(linkedNodeId)) continue;
+        linkedNodeIds.push(linkedNodeId);
+      }
+
+      await Promise.all(
+        linkedNodeIds.map(async (linkedNodeId) => {
+          const linkedNodeData = await fetchWhiteboardNodeData(linkedNodeId);
+          if (!linkedNodeData) return;
+
+          const wrapper = document.createElement("div");
+          wrapper.style.position = "relative";
+          wrapper.style.marginBottom = "12px";
+
+          const card = createFocusViewCard(linkedNodeData, focusId);
+          card.style.borderLeft = "3px solid #22d3ee";
+          card.title = lateralEdges
+            .filter(
+              (edge) =>
+                edge.source_id === linkedNodeId || edge.target_id === linkedNodeId
+            )
+            .map((edge) => edge.relationship_type)
+            .join(", ");
+
+          wrapper.appendChild(card);
+          childrenCol.appendChild(wrapper);
+          shownIds.add(linkedNodeId);
+        })
+      );
+    }
+
     async function openNodeFocusTab(nodeId) {
       if (!nodeId) return;
 
@@ -4509,19 +4686,30 @@
       const parentIds = new Set();
       const childIds = new Set();
       for (const edge of ConnectionManager.edges.values()) {
+        if (!HIERARCHY_EDGE_TYPES.has(edge.relationship_type)) continue;
         if (edge.target_id === nodeId) parentIds.add(edge.source_id);
         if (edge.source_id === nodeId) childIds.add(edge.target_id);
       }
 
+      const shownIds = new Set([nodeId]);
+
       for (const parentId of parentIds) {
         const parentData = await fetchWhiteboardNodeData(parentId);
-        if (parentData) parentsCol?.appendChild(createFocusViewCard(parentData, focusId));
+        if (parentData) {
+          parentsCol?.appendChild(createFocusViewCard(parentData, focusId));
+          shownIds.add(parentId);
+        }
       }
 
       for (const childId of childIds) {
         const childData = await fetchWhiteboardNodeData(childId);
-        if (childData) childrenCol?.appendChild(createFocusViewCard(childData, focusId));
+        if (childData) {
+          childrenCol?.appendChild(createFocusViewCard(childData, focusId));
+          shownIds.add(childId);
+        }
       }
+
+      await appendLateralConnectionsToFocusColumn(nodeId, childrenCol, focusId, shownIds);
 
       const titleText =
         (nodeData.content || nodeData.title || "").trim() || "Untitled";
@@ -5278,6 +5466,10 @@
       document.getElementById("board-context-menu")?.classList.add("hidden");
     }
 
+    function hideCardContextMenu() {
+      document.getElementById("card-context-menu")?.classList.add("hidden");
+    }
+
     function initBoardContextMenu() {
       if (document.body.dataset.boardCtxMenuBound) return;
       document.body.dataset.boardCtxMenuBound = "1";
@@ -5285,6 +5477,9 @@
       document.addEventListener("click", (e) => {
         if (!e.target.closest("#board-context-menu")) {
           hideBoardContextMenu();
+        }
+        if (!e.target.closest("#card-context-menu")) {
+          hideCardContextMenu();
         }
       });
 
@@ -5314,6 +5509,69 @@
           scheduleWhiteboardSave(board);
         }
         hideBoardContextMenu();
+      });
+    }
+
+    function initCardContextMenu() {
+      if (document.body.dataset.cardCtxMenuBound) return;
+      document.body.dataset.cardCtxMenuBound = "1";
+
+      document.getElementById("ctx-card-summarize")?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById("card-context-menu");
+        const targetId = menu?.dataset.targetNodeId;
+        hideCardContextMenu();
+        if (targetId) await promptSummarizeNode(targetId);
+      });
+
+      document.getElementById("ctx-card-change-type")?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById("card-context-menu");
+        const targetId = menu?.dataset.targetNodeId;
+        hideCardContextMenu();
+        if (!targetId) return;
+
+        let currentType = "Excerpt";
+        const activeCard = getWorkspaceCard(targetId);
+        if (activeCard) {
+          currentType = activeCard.dataset.nodeType || "Excerpt";
+        }
+
+        const newType = window.prompt(
+          "Enter node type (e.g., Chapter, Part, Concept, Summary, Excerpt):",
+          currentType
+        );
+        if (!newType) return;
+        const trimmedType = newType.trim();
+        if (!trimmedType || trimmedType === currentType) return;
+
+        try {
+          const response = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(targetId)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node_type: trimmedType }),
+          });
+
+          if (response.ok) {
+            const existingNode = workspaceNodeMap.get(targetId) || { id: targetId, origin: "human" };
+            const updatedNode = { ...existingNode, id: targetId, node_type: trimmedType };
+            workspaceNodeMap.set(targetId, updatedNode);
+
+            const card = getWorkspaceCard(targetId);
+            if (card) {
+              applyCardPresentation(card, updatedNode);
+              ensureCardHoverMenu(card, targetId);
+            }
+            ConnectionManager.scheduleDraw();
+            showStatus(`Node type updated to ${trimmedType}.`);
+          } else {
+            const body = await response.json().catch(() => ({}));
+            showStatus(body.detail || "Failed to update node type.", true);
+          }
+        } catch (err) {
+          console.error("Error updating node type:", err);
+          showStatus("Failed to update node type.", true);
+        }
       });
     }
 
@@ -5768,6 +6026,7 @@
     }
 
     const CONNECTION_DRAW_DELAY_MS = 100;
+    const HIERARCHY_EDGE_TYPES = new Set(["SUMMARIZES", "CONTAINS"]);
 
     const SelectionManager = {
       activeNode: null,
@@ -6342,6 +6601,7 @@
     const ConnectionManager = {
       lines: new Map(),
       edges: new Map(),
+      crossEdges: new Map(),
       _drawScheduled: false,
       _drawRaf: null,
       _drawTimeout: null,
@@ -6367,6 +6627,29 @@
       clear() {
         this.clearAll();
         this.edges.clear();
+        this.crossEdges.clear();
+      },
+
+      clearCrossEdges() {
+        this.crossEdges.clear();
+      },
+
+      registerCrossEdge(edge) {
+        if (!edge?.id) return;
+        this.crossEdges.set(edge.id, edge);
+      },
+
+      getCrossConnectionCount(nodeId) {
+        if (!nodeId) return 0;
+        let count = 0;
+        for (const edge of this.edges.values()) {
+          if (HIERARCHY_EDGE_TYPES.has(edge.relationship_type)) continue;
+          if (edge.source_id === nodeId || edge.target_id === nodeId) count++;
+        }
+        for (const edge of this.crossEdges.values()) {
+          if (edge.source_id === nodeId || edge.target_id === nodeId) count++;
+        }
+        return count;
       },
 
       clearAll() {
@@ -6413,6 +6696,9 @@
 
       addEdge(edge) {
         this.registerEdge(edge);
+        if (!HIERARCHY_EDGE_TYPES.has(edge.relationship_type)) {
+          refreshAllConnectionBadges();
+        }
         this.scheduleDraw();
       },
 
@@ -6444,17 +6730,53 @@
             this.lines.delete(id);
           }
         }
+        for (const [id, edge] of this.crossEdges.entries()) {
+          if (edge.source_id !== nodeId && edge.target_id !== nodeId) continue;
+          this.crossEdges.delete(id);
+        }
+        refreshAllConnectionBadges();
+      },
+
+      isCompressedView() {
+        return document.getElementById("view-source-tree")?.classList.contains("compressed-mode");
+      },
+
+      getVisibleEndpoint(nodeId, direction, visited = new Set()) {
+        if (!nodeId || visited.has(nodeId)) return null;
+        visited.add(nodeId);
+
+        const el = getSourceTreeWorkspaceCard(nodeId);
+        if (el && el.offsetParent !== null) return el;
+
+        const span = document.getElementById(`excerpt-${nodeId}`);
+        if (span && span.offsetParent !== null) return span;
+
+        const connectedEdges = Array.from(this.edges.values()).filter((e) =>
+          direction === "child" ? e.source_id === nodeId : e.target_id === nodeId
+        );
+
+        for (const conn of connectedEdges) {
+          const nextNodeId = direction === "child" ? conn.target_id : conn.source_id;
+          const nextVisible = this.getVisibleEndpoint(nextNodeId, direction, visited);
+          if (nextVisible) return nextVisible;
+        }
+        return null;
       },
 
       resolveEndpoints(edge) {
+        const compressed = this.isCompressedView();
+
         if (edge.relationship_type === "CONTAINS") {
           const start = document.getElementById(`excerpt-${edge.target_id}`);
-          const treeCard = getSourceTreeWorkspaceCard(edge.target_id);
-          if (!start || !treeCard) return null;
-          if (!isInSourceTreeWorkspace(start) || !isInSourceTreeWorkspace(treeCard)) {
+          let end = getSourceTreeWorkspaceCard(edge.target_id);
+          if (compressed && end && end.offsetParent === null) {
+            end = this.getVisibleEndpoint(edge.target_id, "parent");
+          }
+          if (!start || !end) return null;
+          if (!isInSourceTreeWorkspace(start) || !isInSourceTreeWorkspace(end)) {
             return null;
           }
-          return { start, end: treeCard, style: DOC_TO_EXCERPT_LINE };
+          return { start, end, style: DOC_TO_EXCERPT_LINE };
         }
 
         if (edge.relationship_type === "SUMMARIZES") {
@@ -6484,6 +6806,15 @@
           const treeChild = getSourceTreeWorkspaceCard(edge.target_id);
           const treeParent = getSourceTreeWorkspaceCard(edge.source_id);
           if (treeChild && treeParent) {
+            if (compressed) {
+              let start = this.getVisibleEndpoint(edge.target_id, "child");
+              if (!start) start = this.getVisibleEndpoint(edge.target_id, "parent");
+              let end = this.getVisibleEndpoint(edge.source_id, "parent");
+              if (!end) end = this.getVisibleEndpoint(edge.source_id, "child");
+              if (!start || !end || start === end) return null;
+              return { start, end, style: COLUMN_LINK_LINE };
+            }
+            if (treeChild.offsetParent === null || treeParent.offsetParent === null) return null;
             return { start: treeChild, end: treeParent, style: COLUMN_LINK_LINE };
           }
 
@@ -7159,22 +7490,67 @@
       docSearchClear.addEventListener("click", closeDocSearch);
     }
 
+    function formatSourceTextChunk(chunk) {
+      return escapeHtml(chunk).replace(/\n/g, "<br>");
+    }
+
+    function splitSourceParagraphs(text) {
+      if (!text) return [];
+      const parts = [];
+      const re = /\n\n+/g;
+      let lastEnd = 0;
+      let match;
+      while ((match = re.exec(text)) !== null) {
+        const chunk = text.slice(lastEnd, match.index);
+        if (chunk.trim().length > 0) {
+          parts.push({ start: lastEnd, end: match.index, text: chunk });
+        }
+        lastEnd = match.index + match[0].length;
+      }
+      const tail = text.slice(lastEnd);
+      if (tail.trim().length > 0) {
+        parts.push({ start: lastEnd, end: text.length, text: tail });
+      }
+      return parts;
+    }
+
+    function buildParagraphHighlightedHtml(text, paraStart, paraEnd, matches) {
+      let innerHtml = "";
+      let cursor = paraStart;
+
+      for (const m of matches) {
+        const mEnd = m.idx + m.content.length;
+        if (mEnd <= paraStart || m.idx >= paraEnd) continue;
+        if (m.idx < cursor) continue;
+
+        innerHtml += formatSourceTextChunk(text.slice(cursor, m.idx));
+
+        const highlightStart = Math.max(m.idx, paraStart);
+        const highlightEnd = Math.min(mEnd, paraEnd);
+        const idAttr = highlightStart === m.idx ? ` id="excerpt-${m.id}"` : "";
+        innerHtml += `<span${idAttr} class="excerpt-highlight">${formatSourceTextChunk(text.slice(highlightStart, highlightEnd))}</span>`;
+        cursor = highlightEnd;
+      }
+
+      innerHtml += formatSourceTextChunk(text.slice(cursor, paraEnd));
+      return innerHtml;
+    }
+
     function buildHighlightedHtml(text, excerpts) {
       const matches = excerpts
         .map((e) => ({ id: e.id, content: e.content, idx: text.indexOf(e.content) }))
         .filter((m) => m.idx >= 0)
         .sort((a, b) => a.idx - b.idx);
 
-      let html = "";
-      let cursor = 0;
-      for (const m of matches) {
-        if (m.idx < cursor) continue;
-        html += escapeHtml(text.slice(cursor, m.idx));
-        html += `<span id="excerpt-${m.id}" class="excerpt-highlight">${escapeHtml(m.content)}</span>`;
-        cursor = m.idx + m.content.length;
-      }
-      html += escapeHtml(text.slice(cursor));
-      return html;
+      const paragraphs = splitSourceParagraphs(text);
+      if (paragraphs.length === 0) return "";
+
+      return paragraphs
+        .map(({ start, end }) => {
+          const innerHtml = buildParagraphHighlightedHtml(text, start, end, matches);
+          return `<p class="source-paragraph">${innerHtml}</p>`;
+        })
+        .join("");
     }
 
     function getWorkspaceCard(nodeId) {
@@ -7242,6 +7618,28 @@
         if (suppressSourceChange) return;
         const sourceId = sourceSelector.value;
         if (sourceId) initDocumentCanvas(sourceId);
+      });
+    }
+
+    function initSourceDragHandle() {
+      const handle = document.getElementById("source-drag-handle");
+      if (!handle || handle.dataset.bound) return;
+      handle.dataset.bound = "1";
+
+      handle.addEventListener("dragstart", (e) => {
+        const activeSourceId = sourceSelector?.value || documentCanvasSourceId;
+        if (!activeSourceId) {
+          e.preventDefault();
+          return;
+        }
+
+        e.dataTransfer.setData("application/x-wb-node", activeSourceId);
+        e.dataTransfer.effectAllowed = "copy";
+        handle.style.cursor = "grabbing";
+      });
+
+      handle.addEventListener("dragend", () => {
+        handle.style.cursor = "grab";
       });
     }
 
@@ -8610,13 +9008,23 @@
       }
     }
 
-    function attachCardDeleteButton(card, nodeId) {
+    function ensureCardHoverMenu(card, nodeId) {
       let menu = card.querySelector(".card-hover-menu");
       if (!menu) {
         menu = document.createElement("div");
         menu.className = "card-hover-menu";
         card.appendChild(menu);
       }
+
+      if (!menu.querySelector(".summarize-card-btn")) {
+        const summarizeBtn = document.createElement("button");
+        summarizeBtn.type = "button";
+        summarizeBtn.className = "card-action-btn summarize-card-btn";
+        summarizeBtn.title = "Summarize this node";
+        summarizeBtn.innerHTML = '<i class="fa-solid fa-compress" aria-hidden="true"></i>';
+        menu.appendChild(summarizeBtn);
+      }
+
       if (menu.querySelector(".card-delete-btn")) return;
 
       const deleteBtn = document.createElement("button");
@@ -9129,10 +9537,35 @@
       card.classList.add("is-dragging", "dragging");
     }
 
+    function initCompressedViewToggle() {
+      const toggle = document.getElementById("toggle-compressed-view");
+      if (!toggle || toggle.dataset.bound) return;
+      toggle.dataset.bound = "1";
+
+      toggle.addEventListener("change", (e) => {
+        const treeContainer = document.getElementById("view-source-tree");
+        if (!treeContainer) return;
+
+        const sourceContainer =
+          document.getElementById("source-content") ||
+          document.querySelector(".source-document-container");
+
+        if (e.target.checked) {
+          treeContainer.classList.add("compressed-mode");
+          sourceContainer?.classList.add("source-compressed");
+        } else {
+          treeContainer.classList.remove("compressed-mode");
+          sourceContainer?.classList.remove("source-compressed");
+        }
+        ConnectionManager.scheduleDraw();
+      });
+    }
+
     function initWorkspaceViewToggle() {
       if (viewTreeBtn.dataset.bound) return;
       viewTreeBtn.dataset.bound = "1";
       initFlowScrollAnchoring();
+      initCompressedViewToggle();
 
       viewTreeBtn.addEventListener("click", () => applyWorkspaceViewMode("tree"));
       viewFlowBtn.addEventListener("click", () => applyWorkspaceViewMode("flow"));
@@ -9472,9 +9905,11 @@
         columns.set(id, 1);
       }
 
-      let changed = true;
-      while (changed) {
-        changed = false;
+      // Relax summary→parent column placement. Cycles in SUMMARIZES edges would
+      // otherwise spin forever; cap passes at nodes+edges so layout always settles.
+      const maxIterations = Math.max(summaryEdges.length, excerptIds.length, 1) + 1;
+      for (let pass = 0; pass < maxIterations; pass++) {
+        let changed = false;
         for (const edge of summaryEdges) {
           const childCol = columns.get(edge.target_id);
           if (childCol === undefined) continue;
@@ -9485,6 +9920,7 @@
             changed = true;
           }
         }
+        if (!changed) break;
       }
       return columns;
     }
@@ -9527,23 +9963,122 @@
       return { title, text, showTitle, showText };
     }
 
+    function getCardChromeHtml() {
+      return `
+        <div class="connection-badge hidden" title="View Connections">
+          <i class="fa-solid fa-link" aria-hidden="true"></i>
+          <span class="conn-count">0</span>
+        </div>
+        <i class="fa-solid fa-thumbtack pin-icon" aria-hidden="true"></i>
+      `;
+    }
+
+    function countCrossConnections(nodeId, node = null) {
+      if (!nodeId) return 0;
+      if (node?.connections && Array.isArray(node.connections)) {
+        return node.connections.filter((connection) => connection.type !== "hierarchy").length;
+      }
+      return ConnectionManager.getCrossConnectionCount(nodeId);
+    }
+
+    function updateConnectionBadge(card, nodeId, node = null) {
+      if (!card || !nodeId) return;
+      const badge = card.querySelector(".connection-badge");
+      if (!badge) return;
+
+      const crossConnections = countCrossConnections(nodeId, node);
+      const countEl = badge.querySelector(".conn-count");
+      if (countEl) countEl.textContent = String(crossConnections);
+
+      if (crossConnections > 0) {
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+
+    function refreshAllConnectionBadges() {
+      nodePane.querySelectorAll(".workspace-card[data-node-id]").forEach((card) => {
+        const nodeId = card.dataset.nodeId;
+        if (!nodeId) return;
+        updateConnectionBadge(card, nodeId, workspaceNodeMap.get(nodeId));
+      });
+    }
+
+    async function loadWorkspaceCrossEdges() {
+      try {
+        const res = await fetch(`${API_BASE}/api/graph`);
+        if (!res.ok) return;
+        const data = await res.json();
+        ConnectionManager.clearCrossEdges();
+
+        const nodeIds = new Set(workspaceNodeMap.keys());
+        if (documentCanvasSourceId) nodeIds.add(documentCanvasSourceId);
+
+        for (const edge of data.edges || []) {
+          const sourceId = edge.data?.source;
+          const targetId = edge.data?.target;
+          const relationshipType = edge.data?.label;
+          if (!sourceId || !targetId || !relationshipType) continue;
+          if (HIERARCHY_EDGE_TYPES.has(relationshipType)) continue;
+          if (!nodeIds.has(sourceId) && !nodeIds.has(targetId)) continue;
+          ConnectionManager.registerCrossEdge({
+            id: ConnectionManager.edgeKey(relationshipType, sourceId, targetId),
+            source_id: sourceId,
+            target_id: targetId,
+            relationship_type: relationshipType,
+          });
+        }
+        refreshAllConnectionBadges();
+      } catch (err) {
+        console.error("[loadWorkspaceCrossEdges]", err);
+      }
+    }
+
     function getSummaryCardHtml(node) {
       const { title, text, showTitle, showText } = resolveCardTitleTextVisibility(node);
       const fallback = text || title || "Untitled";
+      const levelLabel = escapeHtml(getCardLevelLabel(node, true));
 
       return `
-        <div class="card-label node-label">Level 1: Summary</div>
+        <div class="card-label node-label">${levelLabel}</div>
         ${showTitle ? `<div class="card-title text-content">${escapeHtml(title || fallback)}</div>` : ""}
         ${showText ? `<div class="card-content text-content">${escapeHtml(text || fallback)}</div>` : ""}
         ${!showTitle && !showText ? `<div class="card-content text-content">${escapeHtml("Untitled")}</div>` : ""}
       `;
     }
 
+    function bindConnectionBadgeInteraction(card, nodeId) {
+      const badge = card.querySelector(".connection-badge");
+      if (!badge || badge.dataset.badgeBound) return;
+      badge.dataset.badgeBound = "1";
+
+      badge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (typeof openNodeFocusTab === "function") {
+          openNodeFocusTab(nodeId);
+        } else {
+          console.warn("openNodeFocusTab is not defined yet.");
+        }
+      });
+    }
+
+    function getCardTypeDisplay(node, isSummary) {
+      return node.node_type || (isSummary ? "Summary" : "Excerpt");
+    }
+
+    function getCardLevelLabel(node, isSummary) {
+      const level = isSummary ? 1 : 2;
+      return `Level ${level}: ${getCardTypeDisplay(node, isSummary)}`;
+    }
+
     function applyCardPresentation(card, node) {
       const isSummary = isSummaryDensity(node.density_level);
+      const typeDisplay = getCardTypeDisplay(node, isSummary);
       card.classList.toggle("summary-card", isSummary);
       card.classList.toggle("excerpt-card", !isSummary);
       card.dataset.densityLevel = String(node.density_level);
+      card.dataset.nodeType = typeDisplay;
 
       if (isSummary) {
         const { showTitle, showText } = resolveCardTitleTextVisibility(node);
@@ -9555,24 +10090,132 @@
         const displayText = showText ? text : title;
         card.dataset.sourceSpan = `excerpt-${node.id}`;
         card.innerHTML = `
-          <div class="card-label node-label">Level 2: Excerpt</div>
+          <div class="card-label node-label">${escapeHtml(getCardLevelLabel(node, false))}</div>
           <div class="card-content text-content">${escapeHtml(displayText || "Untitled")}</div>
         `;
       }
 
-      card.insertAdjacentHTML(
-        "beforeend",
-        '<i class="fa-solid fa-thumbtack pin-icon" aria-hidden="true"></i>'
-      );
+      card.insertAdjacentHTML("beforeend", getCardChromeHtml());
+      updateConnectionBadge(card, node.id, node);
+      bindConnectionBadgeInteraction(card, node.id);
+    }
+
+    function scrollWorkspaceCardIntoView(card) {
+      if (!card) return;
+      treeScrollUserEngaged = true;
+      if (workspaceColumns) {
+        scrollElementInPane(card, {
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+          container: workspaceColumns,
+        });
+      }
+      const column = card.closest(".workspace-column");
+      if (column) {
+        scrollElementInPane(card, { behavior: "smooth", block: "nearest", container: column });
+      }
+    }
+
+    function recordWorkspaceSummaryMutation(summaryNode, parentId) {
+      if (!lastWorkspaceRender) return;
+      const summaries = deduplicateNodesById([
+        ...(lastWorkspaceRender.summaries || []),
+        summaryNode,
+      ]);
+      const summaryEdges = [
+        ...(lastWorkspaceRender.summaryEdges || []),
+        { source_id: summaryNode.id, target_id: parentId },
+      ];
+      lastWorkspaceRender = {
+        ...lastWorkspaceRender,
+        summaries,
+        summaryEdges,
+      };
+    }
+
+    async function promptSummarizeNode(nodeId) {
+      if (!nodeId) return;
+
+      const parentCard = getWorkspaceCard(nodeId);
+      if (!parentCard) return;
+
+      const parentText = getWorkspaceCardText(parentCard);
+      if (!parentText) {
+        showStatus("Cannot summarize an empty node.", true);
+        return;
+      }
+
+      try {
+        const newNodeId = await saveRecursiveSummaryFromExcerptCard(
+          parentText,
+          { parentId: nodeId },
+          null,
+          { enterInlineEdit: false }
+        );
+        if (!newNodeId) {
+          showStatus("Failed to create summary.", true);
+          return;
+        }
+
+        SelectionManager.setActiveNode(newNodeId);
+        ConnectionManager.scheduleDraw();
+
+        window.setTimeout(() => {
+          syncWorkspaceFocus(newNodeId);
+          const newCard = getWorkspaceCard(newNodeId);
+          if (!newCard) return;
+          scrollWorkspaceCardIntoView(newCard);
+          startWorkspaceCardInlineEdit(newCard, { selectAll: true });
+        }, 150);
+      } catch (err) {
+        console.error(err);
+        showStatus("Failed to create summary.", true);
+      }
+    }
+
+    function activateWorkspaceNode(nodeId, { scroll = true } = {}) {
+      if (!nodeId) return;
+      treeScrollUserEngaged = true;
+      SelectionManager.setActiveNode(nodeId);
+      const card = getWorkspaceCard(nodeId);
+      if (card) {
+        setFocusedCard(card, { scroll: false });
+        if (scroll) scrollWorkspaceCardIntoView(card);
+      }
+      window.setTimeout(() => syncWorkspaceFocus(nodeId), 100);
+      ConnectionManager.scheduleDraw();
+    }
+
+    async function summarizeWorkspaceCard(nodeId) {
+      await promptSummarizeNode(nodeId);
     }
 
     function bindWorkspaceCardInteractions(card, nodeId) {
+      ensureCardHoverMenu(card, nodeId);
       card.draggable = true;
+
+      card.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        hideCustomContextMenu();
+        hideBoardContextMenu();
+
+        SelectionManager.setActiveNode(nodeId);
+
+        const menu = document.getElementById("card-context-menu");
+        if (!menu) return;
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+        menu.dataset.targetNodeId = nodeId;
+        menu.classList.remove("hidden");
+      });
 
       card.addEventListener("mousedown", (e) => {
         // Pressing an interactive control must not arm a drag, or the browser can
         // start dragging and swallow the click (e.g. the pin toggle never fires).
-        if (e.target.closest(".pin-icon, .card-delete-btn, .promote-btn")) {
+        if (e.target.closest(".pin-icon, .card-delete-btn, .summarize-card-btn, .connection-badge, .promote-btn")) {
           card.draggable = false;
           return;
         }
@@ -9590,11 +10233,20 @@
       card.addEventListener("dragstart", (e) => onWorkspaceCardDragStart(e, card, nodeId));
       card.addEventListener("dragend", () => card.classList.remove("is-dragging", "dragging"));
 
+      bindConnectionBadgeInteraction(card, nodeId);
+
       card.addEventListener("click", (e) => {
         if (e.target.closest(".pin-icon")) {
           e.preventDefault();
           e.stopPropagation();
           togglePinNode(nodeId);
+          return;
+        }
+
+        if (e.target.closest(".summarize-card-btn")) {
+          e.preventDefault();
+          e.stopPropagation();
+          summarizeWorkspaceCard(nodeId);
           return;
         }
 
@@ -9630,7 +10282,7 @@
 
       card.addEventListener("dblclick", (e) => {
         if (!e.target.closest(".text-content")) return;
-        if (e.target.closest(".promote-btn, .card-delete-btn, .card-hover-menu")) return;
+        if (e.target.closest(".promote-btn, .card-delete-btn, .summarize-card-btn, .card-hover-menu")) return;
         e.preventDefault();
         e.stopPropagation();
         if (e.altKey || e.ctrlKey || e.metaKey) {
@@ -9656,7 +10308,6 @@
       applyCardPresentation(card, node);
       card.classList.toggle("pinned-node", !!node.pinned);
       bindWorkspaceCardInteractions(card, node.id);
-      attachCardDeleteButton(card, node.id);
       nodeColumnMap.set(node.id, columnIndex);
       applyCardTreeIndent(card);
       WorkspaceDomCache.registerCard(node.id, card);
@@ -9672,7 +10323,7 @@
       if (!col) {
         col = document.createElement("div");
         col.id = columnId;
-        col.className = "density-column workspace-column";
+        col.className = "density-column workspace-column tree-column";
         col.dataset.columnIndex = String(columnIndex);
         insertColumnInOrder(col, columnIndex);
         if (!col.dataset.scrollBound) {
@@ -9760,7 +10411,7 @@
       return unique;
     }
 
-    function renderWorkspaceCards(excerpts, summaries, summaryEdges) {
+    async function renderWorkspaceCards(excerpts, summaries, summaryEdges) {
       lastWorkspaceRender = { excerpts, summaries, summaryEdges };
       workspaceNodeMap = new Map();
       workspaceNodeOrder = new Map();
@@ -9806,13 +10457,8 @@
       ConnectionManager.clearAll();
       reconcileView(workspaceViewMode);
       scheduleDrawConnections();
-
-      // Anchor the tree horizontal scroll to the first column on document load.
-      // Async layout passes (deferred cytoscape graph load + the delayed
-      // connection-line draw) can nudge scrollLeft after the first frame, so we
-      // re-assert the anchor across the settle window. renderWorkspaceCards only
-      // runs on a full (re)load, so forcing column 1 here never fights the user.
       anchorTreeScrollToStart();
+      await loadWorkspaceCrossEdges();
     }
 
     let treeScrollUserEngaged = false;
@@ -9886,7 +10532,7 @@
       card.querySelector(".promote-btn")?.remove();
       applyCardPresentation(card, node);
       if (sourceSpan) card.dataset.sourceSpan = sourceSpan;
-      attachCardDeleteButton(card, nodeId);
+      ensureCardHoverMenu(card, nodeId);
       applyCardTreeIndent(card);
     }
 
@@ -9968,6 +10614,7 @@
         }
 
         await refreshWorkspaceAfterGraphMutation();
+        refreshAllConnectionBadges();
 
         clearStatus();
       } catch (err) {
@@ -10014,7 +10661,7 @@
       const node = workspaceNodeMap.get(nodeId) || getNodeById(nodeId);
       if (!node) return;
       applyCardPresentation(card, { ...node, id: nodeId });
-      attachCardDeleteButton(card, nodeId);
+      ensureCardHoverMenu(card, nodeId);
     }
 
     async function commitWorkspaceCardInlineEdit(card, textarea) {
@@ -10059,7 +10706,7 @@
           density_level: densityLevel,
           origin: existingNode.origin || "human",
         });
-        attachCardDeleteButton(card, nodeId);
+        ensureCardHoverMenu(card, nodeId);
         card.draggable = true;
       } catch (err) {
         showStatus(err.message, true);
@@ -10181,23 +10828,22 @@
 
         mergeSummaryChildren(nodeId, [parentId]);
 
-        const columnIndex = getCardColumnIndex(parentId) + 1;
+        const columnIndex = computeSummaryColumnForChildren([parentId]);
         nodeColumnMap.set(nodeId, columnIndex);
-        workspaceNodeMap.set(nodeId, {
+        const summaryNode = {
           id: nodeId,
           title,
           content,
           density_level: 1,
           origin: "human",
-        });
+        };
+        workspaceNodeMap.set(nodeId, summaryNode);
         workspaceNodeOrder.set(nodeId, workspaceNodeOrder.size);
+        recordWorkspaceSummaryMutation(summaryNode, parentId);
 
-        const card = createWorkspaceCard(
-          { id: nodeId, title, content, density_level: 1, origin: "human" },
-          columnIndex
-        );
+        const card = createWorkspaceCard(summaryNode, columnIndex);
         appendToColumn(columnIndex, card);
-        scrollElementInPane(card, { behavior: "smooth", block: "nearest" });
+        scrollWorkspaceCardIntoView(card);
 
         ConnectionManager.registerEdge({
           id: ConnectionManager.edgeKey("SUMMARIZES", nodeId, parentId),
@@ -10207,18 +10853,21 @@
         });
 
         await refreshWorkspaceAfterGraphMutation();
+        refreshAllConnectionBadges();
 
         if (enterInlineEdit) {
           focusNewSummaryCardInlineEdit(nodeId);
         } else {
-          showStatus("Summary saved from excerpt");
+          showStatus("Summary saved.");
           if (saveRecursiveSummaryFromExcerptCard._timer) {
             clearTimeout(saveRecursiveSummaryFromExcerptCard._timer);
           }
           saveRecursiveSummaryFromExcerptCard._timer = window.setTimeout(clearStatus, 2000);
         }
+        return nodeId;
       } catch (err) {
         showStatus(err.message, true);
+        return null;
       }
     }
 
@@ -10453,6 +11102,7 @@
         }
 
         await refreshWorkspaceAfterGraphMutation();
+        refreshAllConnectionBadges();
 
         clearStatus();
       } catch (err) {
@@ -10584,6 +11234,7 @@
         }
 
         await refreshWorkspaceAfterGraphMutation();
+        refreshAllConnectionBadges();
 
         clearStatus();
       } catch (err) {
@@ -10620,11 +11271,32 @@
         selection = window.getSelection();
       } else {
         selection = window.getSelection();
-        text = selection.toString().trim();
-        if (!text) return;
-        if (selection.rangeCount) {
-          range = selection.getRangeAt(0).cloneRange();
+        const manualSelection = selection.toString().trim();
+
+        if (manualSelection) {
+          text = manualSelection;
+          if (selection.rangeCount) {
+            range = selection.getRangeAt(0).cloneRange();
+          }
+          selection.removeAllRanges();
+        } else {
+          const activeParagraph = document.querySelector(
+            "#view-source-tree .source-paragraph.active-reader-focus"
+          );
+          if (activeParagraph) {
+            text = activeParagraph.innerText.trim();
+            if (text) {
+              range = document.createRange();
+              range.selectNodeContents(activeParagraph);
+              activeParagraph.style.backgroundColor = "rgba(74, 222, 128, 0.3)";
+              setTimeout(() => {
+                activeParagraph.style.backgroundColor = "";
+              }, 300);
+            }
+          }
         }
+
+        if (!text) return;
       }
 
       const excerptCardContext = getExcerptCardFromSelection(selection, range);
@@ -10711,6 +11383,9 @@
         });
 
         await refreshWorkspaceAfterGraphMutation();
+        refreshAllConnectionBadges();
+        activateWorkspaceNode(nodeId);
+        window.getSelection()?.removeAllRanges();
         flashExcerptSavedToast();
       } catch (err) {
         unwrapPendingExtraction();
@@ -10926,7 +11601,7 @@
           target_id: s.excerpt_id,
         })).filter((e) => e.target_id);
         ConnectionManager.setGraphData(data.source.id, data.excerpts, summaryEdges);
-        renderWorkspaceCards(data.excerpts, data.summaries, summaryEdges);
+        await renderWorkspaceCards(data.excerpts, data.summaries, summaryEdges);
 
         requestAnimationFrame(() => {
           loadWorkspaceCyGraph(data.source.id);
@@ -11107,12 +11782,105 @@
       togglePinNode(window.focusedNodeId);
     }
 
+    function shouldNavigateSourceParagraphs() {
+      if (!document.querySelector("#view-source-tree.active-view .source-paragraph")) return false;
+      if (document.activeElement?.closest("#doc-pane, #doc-body, #source-content")) return true;
+      if (document.querySelector("#view-source-tree .source-paragraph.active-reader-focus")) {
+        return true;
+      }
+      return !window.focusedNodeId;
+    }
+
+    function navigateSourceReaderFocus(isDown) {
+      const paragraphs = Array.from(
+        document.querySelectorAll("#view-source-tree .source-paragraph")
+      );
+      if (paragraphs.length === 0) return false;
+
+      let currentIndex = paragraphs.findIndex((p) =>
+        p.classList.contains("active-reader-focus")
+      );
+
+      if (currentIndex !== -1) {
+        paragraphs[currentIndex].classList.remove("active-reader-focus");
+      }
+
+      let newIndex = 0;
+      if (isDown) {
+        newIndex = currentIndex === -1 ? 0 : Math.min(paragraphs.length - 1, currentIndex + 1);
+      } else {
+        newIndex = currentIndex === -1 ? 0 : Math.max(0, currentIndex - 1);
+      }
+
+      const targetParagraph = paragraphs[newIndex];
+      targetParagraph.classList.add("active-reader-focus");
+      targetParagraph.scrollIntoView({ behavior: "smooth", block: "center" });
+      return true;
+    }
+
+    function initSensemakingHotkeys() {
+      if (document.body.dataset.sensemakingHotkeysBound) return;
+      document.body.dataset.sensemakingHotkeysBound = "1";
+
+      document.addEventListener("keydown", async (e) => {
+        if (isTypingTarget(e.target)) return;
+
+        const isUp = e.key === "ArrowUp" || e.key.toLowerCase() === "k";
+        const isDown = e.key === "ArrowDown" || e.key.toLowerCase() === "j";
+
+        if (
+          (isUp || isDown) &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          shouldNavigateSourceParagraphs()
+        ) {
+          e.preventDefault();
+          navigateSourceReaderFocus(isDown);
+          return;
+        }
+
+        if (!(e.ctrlKey || e.metaKey)) return;
+
+        const key = e.key.toLowerCase();
+
+        if (key === "f") {
+          e.preventDefault();
+          showDocSearchBar({ select: true });
+          return;
+        }
+
+        // Ctrl+E: extract highlighted source text (or summarize selection inside a card)
+        if (key === "e") {
+          e.preventDefault();
+          hideCustomContextMenu();
+          autoSaveExcerptFromSelection();
+          return;
+        }
+
+        // Ctrl+S: summarize the active workspace node
+        if (key === "s") {
+          e.preventDefault();
+          const activeId = SelectionManager.activeNode || window.focusedNodeId;
+          if (activeId) await promptSummarizeNode(activeId);
+          return;
+        }
+      });
+    }
+
     function initTreeKeyboardNav() {
       document.addEventListener("keydown", (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         if (isTypingTarget(e.target)) return;
 
         const key = e.key.toLowerCase();
+
+        const isReaderNavKey =
+          key === "j" ||
+          key === "k" ||
+          e.key === "ArrowUp" ||
+          e.key === "ArrowDown";
+        if (isReaderNavKey && shouldNavigateSourceParagraphs()) return;
 
         // Arrow keys mirror HJKL node-focus navigation in the Tree view.
         const navKeyMap = {
@@ -11153,6 +11921,7 @@
       initShowNodeLabelsToggle();
       initWorkspaceViewToggle();
       initSourceSelector();
+      initSourceDragHandle();
       initAddSourceModal();
       initSourceFileUpload();
       initEditSourcePropertiesModal();
@@ -11168,31 +11937,15 @@
       initWhiteboardDrop();
       initWhiteboardDraftEscape();
       initBoardContextMenu();
+      initCardContextMenu();
       initTreeKeyboardNav();
       initGlobalDeselectHotkey();
+      initSensemakingHotkeys();
 
       // Default to a focused workspace: Connections sidebar (left) and the Graph
       // minimap start collapsed. Runs after initDocks() so panel-hidden applies on load.
       collapseWorkbenchSidebar();
       collapseWorkspaceGraph();
-
-      document.addEventListener("keydown", (e) => {
-        if (!(e.ctrlKey || e.metaKey)) return;
-
-        const key = e.key.toLowerCase();
-        if (key === "f") {
-          e.preventDefault();
-          showDocSearchBar({ select: true });
-          return;
-        }
-
-        if (key === "e") {
-          if (e.target.closest("textarea, input, select")) return;
-          e.preventDefault();
-          hideCustomContextMenu();
-          autoSaveExcerptFromSelection();
-        }
-      });
 
       try {
         showStatus("Loading…");
