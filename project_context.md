@@ -46,8 +46,10 @@ graph LR
 The system uses a graph database approach (Nodes and Edges) mapped to the DOM.
 
 * **Nodes** possess a strict ontology: Excerpt, Summary, Concept, and Prose Structures (Chapter, Part).
-* Nodes track spatial visual state: `data-indent-level`, `data-density-level`, and `data-node-id`.
-* **Edges** track relationships: Hierarchical (parent/child data provenance) and Lateral (cross-connections).
+* Nodes track spatial visual state via DOM attributes: `data-indent-level`, `data-density-level`, and `data-node-id`.
+* **Edges** track relationships in `ConnectionManager.edges`: 
+    * `type: 'hierarchy'` (parent/child data provenance) 
+    * `type: 'lateral'` (cross-connections).
 * **Excerpt anchoring** uses `start_offset` / `end_offset` on source text (not naive string matching).
 
 ### Provenance & Deep Trace
@@ -56,8 +58,8 @@ Graph relationships that `traceNodeLineage` follows to climb from a synthesis no
 
 ```mermaid
 graph BT
-    SubConcept["Sub-Section / Concept"] -->|SUMMARIZES| Summary["Summary Node"]
-    Summary -->|SUMMARIZES| Excerpt["Excerpt Node"]
+    SubConcept["Sub-Section / Concept"] -->|type: hierarchy| Summary["Summary Node"]
+    Summary -->|type: hierarchy| Excerpt["Excerpt Node"]
     Excerpt -->|startOffset / endOffset| Source["Document Text Highlight"]
 
     Click["User Clicks Node in Synthesis"] -.-> SubConcept
@@ -93,6 +95,7 @@ sequenceDiagram
     DOM->>DOM: Clone Block and Update Type Label
     DOM->>Excerpt: Set Indent Level to +1 (Shift Right)
     DOM->>DOM: Insert New Summary Block ABOVE Excerpt (Indent 0)
+    DOM->>DOM: Call scheduleSynthesisSave()
     DOM->>User: Auto-focus Summary text for immediate editing
 ```
 
@@ -107,4 +110,4 @@ Clicking any node in the Synthesis pane triggers a recursive function that climb
 ## Current Technical Priorities
 
 * Refactoring text extraction to use precise DOM offset anchoring (`startOffset` / `endOffset`) instead of naive string matching to prevent duplicate string targeting.
-* Hardening the `traceNodeLineage` engine to strictly prioritize database graph edges over visual DOM indentation to ensure true data provenance.
+* Hardening the `traceNodeLineage` engine to strictly prioritize database graph edges (`type: 'hierarchy'`) over visual DOM indentation to ensure true data provenance.
