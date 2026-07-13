@@ -1782,6 +1782,7 @@
     }
 
     .synthesis-dropzone {
+      position: relative;
       flex: 1 1 auto;
       min-height: 120px;
       overflow-y: auto;
@@ -2114,6 +2115,24 @@
 
     .synthesis-item.custom-thought .inline-edit-area:focus {
       border-color: #22d3ee;
+    }
+
+    /* Target the contenteditable area when it has focus */
+    .synthesis-view .workspace-card:focus-within,
+    .synthesis-view .synthesis-item:focus-within {
+      outline: 2px solid rgba(74, 222, 128, 0.5) !important;
+      background-color: rgba(30, 41, 59, 0.8) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transform: translateX(2px);
+      transition: all 0.15s ease;
+    }
+
+    /* Make the text slightly brighter when focused */
+    .synthesis-view .workspace-card:focus-within .card-content,
+    .synthesis-view .synthesis-item:focus-within .synthesis-item-text,
+    .synthesis-view .synthesis-item:focus-within .custom-thought-text,
+    .synthesis-view .synthesis-item:focus-within .inline-edit-area {
+      color: #ffffff;
     }
 
     .synthesis-dropzone.synthesis-reading-mode .synthesis-item.custom-thought .custom-thought-text {
@@ -2555,14 +2574,30 @@
       background: #273449;
     }
 
+    .workspace-card.multi-selected,
+    .synthesis-item.multi-selected {
+      outline: 2px solid #22d3ee !important;
+      background-color: rgba(34, 211, 238, 0.05) !important;
+      box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+    }
+
+    /* Highlight for cards in the ancestral path */
     .workspace-card.trace-highlight,
-    .excerpt-highlight.trace-highlight {
-      box-shadow: 0 0 15px #deff9a;
-      transition: all 0.3s;
+    .trace-highlight {
+      box-shadow: 0 0 20px rgba(74, 222, 128, 0.15) inset !important;
+      border-color: #4ade80 !important;
+      transition: all 0.3s ease;
+    }
+
+    /* Highlight for the actual text in the document */
+    span.excerpt-highlight.trace-highlight {
+      background-color: rgba(74, 222, 128, 0.6) !important;
+      border-bottom: 2px solid #22c55e !important;
+      box-shadow: none;
     }
 
     .workspace-card.excerpt-card.trace-highlight {
-      border-left-color: #deff9a;
+      border-left-color: #4ade80;
     }
 
     @keyframes card-pulse {
@@ -2760,6 +2795,28 @@
     </div>
     <div class="ctx-menu-item" id="ctx-card-change-type" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center;">
       <i class="fa-solid fa-tags" style="margin-right: 8px;"></i> Change Node Type
+    </div>
+  </div>
+  <div id="custom-prompt-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+    <div style="background: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 8px; width: 300px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+      <div id="custom-prompt-msg" style="color: #f8fafc; margin-bottom: 12px; font-size: 14px; font-weight: 500;"></div>
+      <select id="custom-prompt-select" style="width: 100%; padding: 8px; background: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 4px; margin-bottom: 16px; outline: none; font-family: inherit; font-size: 14px; cursor: pointer;">
+        <optgroup label="Knowledge Graph">
+          <option value="Excerpt">Excerpt</option>
+          <option value="Summary">Summary</option>
+          <option value="Concept">Concept</option>
+        </optgroup>
+        <optgroup label="Prose Structure">
+          <option value="Part">Part</option>
+          <option value="Chapter">Chapter</option>
+          <option value="Section">Section</option>
+          <option value="Sub-section">Sub-section</option>
+        </optgroup>
+      </select>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button id="custom-prompt-cancel" style="background: transparent; border: 1px solid #475569; color: #cbd5e1; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Cancel</button>
+        <button id="custom-prompt-confirm" style="background: #4ade80; border: none; color: #0f172a; font-weight: bold; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Save</button>
+      </div>
     </div>
   </div>
   <div id="line-canvas" aria-hidden="true"></div>
@@ -3048,7 +3105,11 @@
           </div>
         </div>
         <div class="synthesis-doc-wrap">
-          <div class="synthesis-dropzone"></div>
+          <div class="synthesis-dropzone">
+            <div id="synthesis-drop-indicator" class="synthesis-drop-indicator hidden" style="position: absolute; height: 2px; background-color: #4ade80; z-index: 100; right: 20px; pointer-events: none; display: flex; align-items: center; justify-content: center; transition: top 0.05s linear;">
+              <div style="background: #4ade80; color: #0f172a; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; line-height: 1;">+</div>
+            </div>
+          </div>
           <textarea
             class="synthesis-custom-input synthesis-composer"
             placeholder="Add a thought… (Enter to add block, Shift+Enter for new line, Ctrl+Enter to save)"
@@ -3279,6 +3340,7 @@
     let currentSearchIndex = -1;
     let docSearchDebounceTimer = null;
     let documentCanvasSourceId = null;
+    let documentCanvasText = "";
     let canvasContextMenuRange = null;
     let contextMenuTargetId = null;
     let contextMenuTargetText = null;
@@ -3840,6 +3902,7 @@
         v.classList.add("hidden");
         v.classList.remove("active-view");
         v.style.borderRight = "none";
+        v.style.flex = "1";
       });
 
       if (layoutMode === 0) {
@@ -3853,6 +3916,7 @@
         if (target) {
           target.classList.remove("hidden");
           target.classList.add("active-view");
+          target.style.flex = "1";
         }
       } else if (layoutMode === 1) {
         container?.classList.add("split-active");
@@ -3861,15 +3925,20 @@
           btn.innerHTML = '<i class="fa-solid fa-columns"></i>';
           btn.title = "Split View";
         }
+
         sourceView?.classList.remove("hidden");
         sourceView?.classList.add("active-view");
-        if (sourceView) sourceView.style.borderRight = "1px solid #334155";
+        if (sourceView) {
+          sourceView.style.borderRight = "1px solid #334155";
+          sourceView.style.flex = "0 0 66.66%";
+        }
 
         if (TabManager.activeId !== "view-source-tree") {
           const target = document.getElementById(TabManager.activeId);
           if (target) {
             target.classList.remove("hidden");
             target.classList.add("active-view");
+            target.style.flex = "1";
           }
         }
       } else if (layoutMode === 2) {
@@ -3882,19 +3951,24 @@
 
         sourceView?.classList.remove("hidden");
         sourceView?.classList.add("active-view");
-        if (sourceView) sourceView.style.borderRight = "1px solid #334155";
+        if (sourceView) {
+          sourceView.style.borderRight = "1px solid #334155";
+          sourceView.style.flex = "0 0 20%";
+        }
 
         const firstBoard = document.querySelector(".board-view");
         if (firstBoard) {
           firstBoard.classList.remove("hidden");
           firstBoard.classList.add("active-view");
           firstBoard.style.borderRight = "1px solid #334155";
+          firstBoard.style.flex = "1";
         }
 
         const firstSynth = document.querySelector(".synthesis-view");
         if (firstSynth) {
           firstSynth.classList.remove("hidden");
           firstSynth.classList.add("active-view");
+          firstSynth.style.flex = "0 0 33%";
         }
       }
 
@@ -4463,26 +4537,20 @@
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
           dropzone.classList.add("drag-over");
+          updateSynthesisDropIndicator(e.currentTarget, e.clientY);
         });
         dropzone.addEventListener("dragleave", (e) => {
-          if (!dropzone.contains(e.relatedTarget)) {
-            dropzone.classList.remove("drag-over");
-          }
+          if (e.currentTarget.contains(e.relatedTarget)) return;
+          dropzone.classList.remove("drag-over");
+          hideSynthesisDropIndicator(e.currentTarget);
         });
         dropzone.addEventListener("drop", (e) => {
           setSynthesisContext(viewEl);
           e.preventDefault();
           dropzone.classList.remove("drag-over");
-          const raw = e.dataTransfer.getData("application/x-internalize-node");
-          if (!raw) return;
-          try {
-            const { nodeId, text, depthLevel } = JSON.parse(raw);
-            if (!text) return;
-            appendSynthesisItem(nodeId, text, depthLevel);
-            scheduleSynthesisSave();
-          } catch (_) {
-            showStatus("Could not read dropped card data.", true);
-          }
+          hideSynthesisDropIndicator(e.currentTarget);
+          if (handleSynthesisDrop(e, e.currentTarget)) return;
+          showStatus("Could not read dropped card data.", true);
         });
         dropzone.addEventListener("click", (e) => {
           setSynthesisContext(viewEl);
@@ -4502,7 +4570,10 @@
             )
           ) {
             const nodeId = synthItem.dataset.nodeId;
-            if (nodeId) {
+            if (!nodeId) return;
+
+            const mode = SelectionManager.handleCardSelectionClick(e, nodeId, synthItem);
+            if (mode === "single") {
               syncWorkspaceFocusFromSynthesis(nodeId);
             }
             return;
@@ -4528,6 +4599,7 @@
         });
         dropzone.addEventListener("keydown", (e) => {
           if (handleSynthesisBlockTabIndent(e)) return;
+          if (handleSynthesisBlockAltArrowIndent(e)) return;
           if (e.key !== "Enter" && e.key !== " ") return;
           const refLink = e.target.closest(".reference-link");
           if (!refLink) return;
@@ -4559,6 +4631,7 @@
         composer.addEventListener("keydown", (e) => {
           setSynthesisContext(viewEl);
           if (handleSynthesisBlockTabIndent(e)) return;
+          if (handleSynthesisBlockAltArrowIndent(e)) return;
           if (e.key === "Enter" && !e.shiftKey && !(e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             const text = composer.value.trim();
@@ -5512,10 +5585,45 @@
       });
     }
 
+    function showWorkspaceNodeContextMenu(e, nodeBlock, nodeId) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      hideCustomContextMenu();
+      hideBoardContextMenu();
+
+      SelectionManager.setActiveNode(nodeId);
+
+      const menu = document.getElementById("card-context-menu");
+      if (!menu) return;
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      menu.dataset.targetNodeId = nodeId;
+      menu.classList.remove("hidden");
+    }
+
+    function handleWorkspaceNodeContextMenu(e) {
+      const nodeBlock = e.target.closest(
+        ".workspace-card[data-node-id], .synthesis-item[data-node-id], .synthesis-block[data-node-id], .wb-node-wrapper[data-node-id]"
+      );
+      if (!nodeBlock) return;
+
+      const isWorkspaceNode = nodeBlock.closest(
+        "#view-source-tree, .synthesis-view, .synthesis-workspace, .board-view"
+      );
+      if (!isWorkspaceNode) return;
+
+      const nodeId = nodeBlock.dataset.nodeId?.trim();
+      if (!nodeId) return;
+
+      showWorkspaceNodeContextMenu(e, nodeBlock, nodeId);
+    }
+
     function initCardContextMenu() {
       if (document.body.dataset.cardCtxMenuBound) return;
       document.body.dataset.cardCtxMenuBound = "1";
 
+      document.addEventListener("contextmenu", handleWorkspaceNodeContextMenu);
       document.getElementById("ctx-card-summarize")?.addEventListener("click", async (e) => {
         e.stopPropagation();
         const menu = document.getElementById("card-context-menu");
@@ -5524,55 +5632,112 @@
         if (targetId) await promptSummarizeNode(targetId);
       });
 
-      document.getElementById("ctx-card-change-type")?.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const menu = document.getElementById("card-context-menu");
-        const targetId = menu?.dataset.targetNodeId;
-        hideCardContextMenu();
-        if (!targetId) return;
+      const changeTypeBtn = document.getElementById("ctx-card-change-type");
+      if (changeTypeBtn) {
+        const newBtn = changeTypeBtn.cloneNode(true);
+        changeTypeBtn.parentNode.replaceChild(newBtn, changeTypeBtn);
 
-        let currentType = "Excerpt";
-        const activeCard = getWorkspaceCard(targetId);
-        if (activeCard) {
-          currentType = activeCard.dataset.nodeType || "Excerpt";
-        }
+        newBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
 
-        const newType = window.prompt(
-          "Enter node type (e.g., Chapter, Part, Concept, Summary, Excerpt):",
-          currentType
-        );
-        if (!newType) return;
-        const trimmedType = newType.trim();
-        if (!trimmedType || trimmedType === currentType) return;
+          const menu = document.getElementById("card-context-menu");
+          const targetId = menu?.dataset.targetNodeId;
+          hideCardContextMenu();
+          if (!targetId) return;
 
-        try {
-          const response = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(targetId)}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node_type: trimmedType }),
-          });
+          const activeCard =
+            getWorkspaceCard(targetId) ||
+            document.querySelector(
+              `.workspace-card[data-node-id="${CSS.escape(targetId)}"]`
+            );
+          if (!activeCard) return;
 
-          if (response.ok) {
-            const existingNode = workspaceNodeMap.get(targetId) || { id: targetId, origin: "human" };
-            const updatedNode = { ...existingNode, id: targetId, node_type: trimmedType };
-            workspaceNodeMap.set(targetId, updatedNode);
+          const currentType = activeCard.dataset.nodeType || "Excerpt";
 
-            const card = getWorkspaceCard(targetId);
-            if (card) {
-              applyCardPresentation(card, updatedNode);
-              ensureCardHoverMenu(card, targetId);
+          const modal = document.getElementById("custom-prompt-modal");
+          const msgEl = document.getElementById("custom-prompt-msg");
+          const selectEl = document.getElementById("custom-prompt-select");
+          if (!modal || !msgEl || !selectEl) return;
+
+          msgEl.innerText = "Enter new node type (e.g., Chapter, Concept):";
+          const formattedCurrent =
+            currentType.charAt(0).toUpperCase() + currentType.slice(1).toLowerCase();
+          const optionExists = Array.from(selectEl.options).some(
+            (opt) => opt.value === formattedCurrent
+          );
+          selectEl.value = optionExists ? formattedCurrent : "Concept";
+          modal.classList.remove("hidden");
+          selectEl.focus();
+
+          const cleanup = () => {
+            modal.classList.add("hidden");
+            const confirmBtn = document.getElementById("custom-prompt-confirm");
+            const cancelBtn = document.getElementById("custom-prompt-cancel");
+            const selectField = document.getElementById("custom-prompt-select");
+            if (confirmBtn) confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+            if (cancelBtn) cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+            if (selectField) selectField.replaceWith(selectField.cloneNode(true));
+          };
+
+          const handleConfirm = async () => {
+            const newType = document.getElementById("custom-prompt-select")?.value;
+            cleanup();
+
+            if (!newType || newType === currentType) return;
+
+            activeCard.dataset.nodeType = newType;
+            const typeLabel =
+              activeCard.querySelector(".node-label") ||
+              activeCard.querySelector(".node-type-label") ||
+              activeCard.querySelector('span[style*="color"]');
+            if (typeLabel) {
+              const levelMatch = typeLabel.innerText.match(/Level\s+\d+:/i);
+              typeLabel.innerText = levelMatch
+                ? `${levelMatch[0]} ${newType}`
+                : newType;
             }
-            ConnectionManager.scheduleDraw();
-            showStatus(`Node type updated to ${trimmedType}.`);
-          } else {
-            const body = await response.json().catch(() => ({}));
-            showStatus(body.detail || "Failed to update node type.", true);
-          }
-        } catch (err) {
-          console.error("Error updating node type:", err);
-          showStatus("Failed to update node type.", true);
-        }
-      });
+
+            const existingNode = workspaceNodeMap.get(targetId) || {
+              id: targetId,
+              origin: "human",
+            };
+            workspaceNodeMap.set(targetId, {
+              ...existingNode,
+              id: targetId,
+              node_type: newType,
+            });
+
+            try {
+              const response = await fetch(
+                `${API_BASE}/api/nodes/${encodeURIComponent(targetId)}`,
+                {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ node_type: newType }),
+                }
+              );
+              if (!response.ok) {
+                const body = await response.json().catch(() => ({}));
+                showStatus(body.detail || "Failed to update node type.", true);
+                return;
+              }
+              ConnectionManager.scheduleDraw();
+              showStatus(`Node type updated to ${newType}.`);
+            } catch (err) {
+              console.error("Error saving new node type:", err);
+              showStatus("Failed to update node type.", true);
+            }
+          };
+
+          document.getElementById("custom-prompt-confirm")?.addEventListener("click", handleConfirm);
+          document.getElementById("custom-prompt-cancel")?.addEventListener("click", cleanup);
+          document.getElementById("custom-prompt-select")?.addEventListener("keydown", (ke) => {
+            if (ke.key === "Enter") handleConfirm();
+            if (ke.key === "Escape") cleanup();
+          });
+        });
+      }
     }
 
     function initWhiteboardDrop() {
@@ -6035,6 +6200,106 @@
       listB: new Map(),
       activeLineageNodes: new Set(),
       activeLineageEdges: new Set(),
+      selectedNodeIds: new Set(),
+      lastSelectedNodeId: null,
+
+      addMultiSelectVisual(nodeId) {
+        if (!nodeId) return;
+        document
+          .querySelectorAll(`[data-node-id="${CSS.escape(nodeId)}"]`)
+          .forEach((el) => {
+            if (el.matches(".workspace-card, .synthesis-item")) {
+              el.classList.add("multi-selected");
+            }
+          });
+      },
+
+      removeMultiSelectVisual(nodeId) {
+        if (!nodeId) return;
+        document
+          .querySelectorAll(`[data-node-id="${CSS.escape(nodeId)}"]`)
+          .forEach((el) => el.classList.remove("multi-selected"));
+      },
+
+      clearMultiSelection() {
+        document.querySelectorAll(".multi-selected").forEach((el) => {
+          el.classList.remove("multi-selected");
+        });
+        this.selectedNodeIds.clear();
+        this.lastSelectedNodeId = null;
+      },
+
+      handleCardSelectionClick(e, nodeId, card) {
+        e.stopPropagation();
+
+        if (e.shiftKey && this.lastSelectedNodeId) {
+          const container =
+            card.closest(".synthesis-view") ||
+            card.closest("#view-source-tree") ||
+            card.parentElement;
+
+          if (container) {
+            const allCards = Array.from(
+              container.querySelectorAll(
+                ".workspace-card, .synthesis-item[data-node-id]"
+              )
+            );
+            const currentIndex = allCards.indexOf(card);
+            const lastCard = container.querySelector(
+              `.workspace-card[data-node-id="${CSS.escape(this.lastSelectedNodeId)}"], .synthesis-item[data-node-id="${CSS.escape(this.lastSelectedNodeId)}"]`
+            );
+            const lastIndex = allCards.indexOf(lastCard);
+
+            if (currentIndex !== -1 && lastIndex !== -1) {
+              const start = Math.min(currentIndex, lastIndex);
+              const end = Math.max(currentIndex, lastIndex);
+
+              for (let i = start; i <= end; i++) {
+                const targetCard = allCards[i];
+                const targetId = targetCard.dataset.nodeId;
+                if (!targetId) continue;
+                this.selectedNodeIds.add(targetId);
+                this.addMultiSelectVisual(targetId);
+              }
+            }
+          }
+          this.lastSelectedNodeId = nodeId;
+          return "range";
+        }
+
+        if (e.ctrlKey || e.metaKey) {
+          if (this.selectedNodeIds.has(nodeId)) {
+            this.selectedNodeIds.delete(nodeId);
+            this.removeMultiSelectVisual(nodeId);
+            if (this.lastSelectedNodeId === nodeId) {
+              this.lastSelectedNodeId = null;
+            }
+          } else {
+            this.selectedNodeIds.add(nodeId);
+            this.addMultiSelectVisual(nodeId);
+            this.lastSelectedNodeId = nodeId;
+          }
+          return "toggle";
+        }
+
+        this.clearMultiSelection();
+        this.selectedNodeIds.add(nodeId);
+        this.addMultiSelectVisual(nodeId);
+        this.setActiveNode(nodeId);
+        this.lastSelectedNodeId = nodeId;
+        return "single";
+      },
+
+      toggleMultiSelect(nodeId) {
+        if (!nodeId) return;
+        if (this.selectedNodeIds.has(nodeId)) {
+          this.selectedNodeIds.delete(nodeId);
+          this.removeMultiSelectVisual(nodeId);
+        } else {
+          this.selectedNodeIds.add(nodeId);
+          this.addMultiSelectVisual(nodeId);
+        }
+      },
 
       setActiveNode(nodeId) {
         this.activeNode = nodeId || null;
@@ -6223,6 +6488,7 @@
         this.activeNode = null;
         this.activeLineageNodes.clear();
         this.activeLineageEdges.clear();
+        this.clearMultiSelection();
         this.renderSidebar();
         updateLineVisibility();
         syncCyGraphHighlight();
@@ -7220,6 +7486,195 @@
       });
     }
 
+    function findHierarchyParentId(nodeId) {
+      if (!nodeId) return null;
+      for (const edge of ConnectionManager.edges.values()) {
+        if (edge.target_id !== nodeId) continue;
+        if (!HIERARCHY_EDGE_TYPES.has(edge.relationship_type)) continue;
+        return edge.source_id;
+      }
+      return null;
+    }
+
+    function findHierarchyChildIds(nodeId) {
+      if (!nodeId) return [];
+      const childIds = [];
+      for (const edge of ConnectionManager.edges.values()) {
+        if (edge.source_id !== nodeId) continue;
+        if (!HIERARCHY_EDGE_TYPES.has(edge.relationship_type)) continue;
+        childIds.push(edge.target_id);
+      }
+      return childIds;
+    }
+
+    function getNodeDensityLevel(nodeId) {
+      const node = getNodeById(nodeId);
+      if (node?.density_level != null) return node.density_level;
+      const card = getWorkspaceCard(nodeId);
+      if (card?.dataset?.densityLevel) {
+        return parseInt(card.dataset.densityLevel, 10);
+      }
+      return null;
+    }
+
+    function resolveLineageAnchorExcerptId(startNodeId) {
+      if (!startNodeId) return null;
+      if (getNodeDensityLevel(startNodeId) === 2) return startNodeId;
+
+      const node = getNodeById(startNodeId);
+      if (node?.excerpt_id) return node.excerpt_id;
+
+      const mappedChildren = summaryChildMap.get(startNodeId) || [];
+      for (const childId of mappedChildren) {
+        if (getNodeDensityLevel(childId) === 2) return childId;
+        const nested = resolveLineageAnchorExcerptId(childId);
+        if (nested) return nested;
+      }
+
+      const visited = new Set();
+      const queue = [...findHierarchyChildIds(startNodeId)];
+      while (queue.length) {
+        const childId = queue.shift();
+        if (!childId || visited.has(childId)) continue;
+        visited.add(childId);
+
+        if (getNodeDensityLevel(childId) === 2) return childId;
+
+        const nested = resolveLineageAnchorExcerptId(childId);
+        if (nested) return nested;
+
+        for (const nextId of findHierarchyChildIds(childId)) {
+          if (!visited.has(nextId)) queue.push(nextId);
+        }
+      }
+
+      return null;
+    }
+
+    function collectLineagePathNodeIds(startNodeId) {
+      const pathIds = new Set();
+      if (!startNodeId) return pathIds;
+
+      pathIds.add(startNodeId);
+
+      let currentId = startNodeId;
+      for (let depth = 0; depth < 20 && currentId; depth++) {
+        const parentId = findHierarchyParentId(currentId);
+        if (!parentId || pathIds.has(parentId)) break;
+        pathIds.add(parentId);
+        currentId = parentId;
+      }
+
+      const anchorExcerptId = resolveLineageAnchorExcerptId(startNodeId);
+      if (anchorExcerptId) {
+        pathIds.add(anchorExcerptId);
+        currentId = startNodeId;
+        for (let depth = 0; depth < 20 && currentId && currentId !== anchorExcerptId; depth++) {
+          const childIds = findHierarchyChildIds(currentId);
+          const mappedChildren = summaryChildMap.get(currentId) || [];
+          const candidates = [...new Set([...mappedChildren, ...childIds])];
+          const nextId =
+            candidates.find((id) => id === anchorExcerptId) ||
+            candidates.find((id) => getNodeDensityLevel(id) === 2) ||
+            (candidates.length === 1 ? candidates[0] : null);
+          if (!nextId || pathIds.has(nextId)) break;
+          pathIds.add(nextId);
+          currentId = nextId;
+        }
+      }
+
+      return pathIds;
+    }
+
+    function highlightTraceNode(nodeId) {
+      if (!nodeId) return;
+
+      const treeCard = document.querySelector(
+        `#view-source-tree .workspace-card[data-node-id="${CSS.escape(nodeId)}"]`
+      );
+      if (treeCard) treeCard.classList.add("trace-highlight");
+
+      const synthCard = getSynthesisTraceCard(nodeId);
+      if (synthCard) synthCard.classList.add("trace-highlight");
+    }
+
+    function getSynthesisTraceCard(nodeId) {
+      if (!nodeId) return null;
+      return (
+        document.querySelector(
+          `.synthesis-view .workspace-card[data-node-id="${CSS.escape(nodeId)}"]`
+        ) ||
+        document.querySelector(
+          `.synthesis-view .synthesis-block[data-node-id="${CSS.escape(nodeId)}"]`
+        ) ||
+        document.querySelector(
+          `.synthesis-view .synthesis-item[data-node-id="${CSS.escape(nodeId)}"]`
+        )
+      );
+    }
+
+    function findSynthesisBlockParentId(item) {
+      if (!item?.classList?.contains("synthesis-item")) return null;
+
+      const currentIndent = parseInt(item.dataset.indentLevel || "0", 10) || 0;
+      if (currentIndent === 0) return null;
+
+      let prevBlock = item.previousElementSibling;
+      while (prevBlock) {
+        if (!prevBlock.classList?.contains("synthesis-item") || !prevBlock.dataset.nodeId) {
+          prevBlock = prevBlock.previousElementSibling;
+          continue;
+        }
+
+        const prevIndent = parseInt(prevBlock.dataset.indentLevel || "0", 10) || 0;
+        if (prevIndent < currentIndent) {
+          return prevBlock.dataset.nodeId;
+        }
+        prevBlock = prevBlock.previousElementSibling;
+      }
+      return null;
+    }
+
+    function registerBlockHierarchyEdges(blocks) {
+      if (!blocks?.length || typeof ConnectionManager === "undefined") return;
+
+      for (const block of blocks) {
+        if (block?.type !== "reference") continue;
+        const childId = block.nodeId || block.node_id;
+        const parentId = block.parentNodeId || block.parent_node_id;
+        if (!childId || !parentId || childId === parentId) continue;
+
+        ConnectionManager.registerEdge({
+          id: ConnectionManager.edgeKey("SUMMARIZES", parentId, childId),
+          source_id: parentId,
+          target_id: childId,
+          relationship_type: "SUMMARIZES",
+        });
+      }
+    }
+
+    function traceNodeLineage(startNodeId) {
+      clearTraceHighlights();
+      if (!startNodeId) return;
+
+      for (const nodeId of collectLineagePathNodeIds(startNodeId)) {
+        highlightTraceNode(nodeId);
+      }
+
+      const anchorExcerptId = resolveLineageAnchorExcerptId(startNodeId);
+      const sourceTextSpan = anchorExcerptId
+        ? document.getElementById(`excerpt-${anchorExcerptId}`)
+        : document.getElementById(`excerpt-${startNodeId}`);
+
+      if (sourceTextSpan) {
+        sourceTextSpan.classList.add("trace-highlight");
+        scrollWithLineReposition(sourceTextSpan, {
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }
+
     function scrollWithLineReposition(element, options) {
       if (!element) return;
       scrollElementInPane(element, options);
@@ -7514,6 +7969,102 @@
       return parts;
     }
 
+    function getTextOffsetInParagraph(para, container, nodeOffset) {
+      const range = document.createRange();
+      range.selectNodeContents(para);
+      range.setEnd(container, nodeOffset);
+      return range.toString().length;
+    }
+
+    function getRangeTextOffsetsInSourceText(range) {
+      if (!range || !docBody) return null;
+
+      const resolveParagraph = (node) => {
+        const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+        return el?.closest?.(".source-paragraph") || null;
+      };
+
+      const startPara = resolveParagraph(range.startContainer);
+      const endPara = resolveParagraph(range.endContainer);
+      if (!startPara || !endPara) return null;
+
+      const startBase = parseInt(startPara.dataset.textStart || "0", 10);
+      const endBase = parseInt(endPara.dataset.textStart || "0", 10);
+      if (!Number.isFinite(startBase) || !Number.isFinite(endBase)) return null;
+
+      const startOffset =
+        startBase +
+        getTextOffsetInParagraph(startPara, range.startContainer, range.startOffset);
+      const endOffset =
+        endBase + getTextOffsetInParagraph(endPara, range.endContainer, range.endOffset);
+
+      if (!Number.isFinite(startOffset) || !Number.isFinite(endOffset) || endOffset <= startOffset) {
+        return null;
+      }
+
+      return { start_offset: startOffset, end_offset: endOffset };
+    }
+
+    function findBestContentMatchIndex(text, content) {
+      if (!text || !content) return -1;
+
+      const matches = [];
+      let searchFrom = 0;
+      while (searchFrom <= text.length) {
+        const idx = text.indexOf(content, searchFrom);
+        if (idx < 0) break;
+        matches.push(idx);
+        searchFrom = idx + 1;
+      }
+
+      if (matches.length === 0) return -1;
+      if (matches.length === 1) return matches[0];
+
+      let bestIdx = matches[0];
+      let bestScore = Number.NEGATIVE_INFINITY;
+
+      for (const idx of matches) {
+        const end = idx + content.length;
+        const after = text.slice(end, end + 80);
+        const before = text.slice(Math.max(0, idx - 40), idx);
+
+        let score = idx;
+        if (/^\s*[-–—.]/.test(after)) score -= 100000;
+        if (/^\s*\n/.test(after)) score += 5000;
+        if (/\n\n/.test(before)) score += 2000;
+        if (content.length < 24) score += idx / 100;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = idx;
+        }
+      }
+
+      return bestIdx;
+    }
+
+    function resolveExcerptMatch(text, excerpt) {
+      const start = excerpt.start_offset;
+      const end = excerpt.end_offset;
+      if (
+        Number.isInteger(start) &&
+        Number.isInteger(end) &&
+        end > start &&
+        end <= text.length
+      ) {
+        const slice = text.slice(start, end);
+        if (slice === excerpt.content) {
+          return { id: excerpt.id, content: excerpt.content, idx: start };
+        }
+      }
+
+      const idx = findBestContentMatchIndex(text, excerpt.content);
+      if (idx >= 0) {
+        return { id: excerpt.id, content: excerpt.content, idx };
+      }
+      return null;
+    }
+
     function buildParagraphHighlightedHtml(text, paraStart, paraEnd, matches) {
       let innerHtml = "";
       let cursor = paraStart;
@@ -7538,8 +8089,8 @@
 
     function buildHighlightedHtml(text, excerpts) {
       const matches = excerpts
-        .map((e) => ({ id: e.id, content: e.content, idx: text.indexOf(e.content) }))
-        .filter((m) => m.idx >= 0)
+        .map((e) => resolveExcerptMatch(text, e))
+        .filter(Boolean)
         .sort((a, b) => a.idx - b.idx);
 
       const paragraphs = splitSourceParagraphs(text);
@@ -7548,7 +8099,7 @@
       return paragraphs
         .map(({ start, end }) => {
           const innerHtml = buildParagraphHighlightedHtml(text, start, end, matches);
-          return `<p class="source-paragraph">${innerHtml}</p>`;
+          return `<p class="source-paragraph" data-text-start="${start}" data-text-end="${end}">${innerHtml}</p>`;
         })
         .join("");
     }
@@ -7937,6 +8488,31 @@
         content: node.content,
         density_level: node.density_level,
         origin: node.origin || "human",
+        excerpt_id: node.excerpt_id || null,
+      });
+    }
+
+    function enrichBlocksWithParentNodeIds(blocks) {
+      const sortedBlocks = normalizeDocumentBlocks(blocks);
+      return sortedBlocks.map((block, index) => {
+        if (block?.type !== "reference") return block;
+
+        const indentLevel = parseInt(block.indentLevel || "0", 10) || 0;
+        if (indentLevel === 0 || block.parentNodeId || block.parent_node_id) {
+          return block;
+        }
+
+        for (let i = index - 1; i >= 0; i--) {
+          const previous = sortedBlocks[i];
+          if (previous?.type !== "reference") continue;
+          const previousIndent = parseInt(previous.indentLevel || "0", 10) || 0;
+          const previousNodeId = previous.nodeId || previous.node_id;
+          if (previousIndent < indentLevel && previousNodeId) {
+            return { ...block, parentNodeId: previousNodeId };
+          }
+        }
+
+        return block;
       });
     }
 
@@ -7975,11 +8551,13 @@
 
         const nodeId = item.dataset.nodeId || item.getAttribute("data-node-id");
         if (nodeId && item.dataset.type !== "custom-text") {
+          const parentNodeId = findSynthesisBlockParentId(item);
           documentBlocks.push({
             type: "reference",
             nodeId,
             order: index,
             indentLevel: parseInt(item.dataset.indentLevel || "0", 10) || 0,
+            ...(parentNodeId ? { parentNodeId } : {}),
           });
           return;
         }
@@ -8072,7 +8650,7 @@
     }
 
     function rebuildSynthesisDropzoneFromBlocks(blocks, referenceNodes) {
-      const sortedBlocks = normalizeDocumentBlocks(blocks);
+      const sortedBlocks = enrichBlocksWithParentNodeIds(blocks);
       const refById = new Map((referenceNodes || []).map((node) => [node.id, node]));
 
       synthesisDropzone?.replaceChildren();
@@ -8094,7 +8672,9 @@
             block.nodeId,
             text,
             getCardDepthLevel(block.nodeId),
-            block.indentLevel ?? 0
+            block.indentLevel ?? 0,
+            null,
+            block.parentNodeId || block.parent_node_id || null
           );
           return;
         }
@@ -8107,6 +8687,7 @@
           }
         }
       });
+      registerBlockHierarchyEdges(sortedBlocks);
     }
 
     function hydrateSynthesisWorkspaceFromBlocks(blocks, referenceNodes) {
@@ -8243,14 +8824,24 @@
 
     async function saveWorkspaceSession() {
       const isUpdate = !!activeWorkspaceSessionId;
+
+      let currentSourceTitle = "My";
+      if (sourceSelector && sourceSelector.selectedIndex > -1) {
+        currentSourceTitle = sourceSelector.options[sourceSelector.selectedIndex].text;
+      }
+
+      const defaultName = isUpdate
+        ? activeWorkspaceSessionName
+        : `${currentSourceTitle} Workspace`;
+
       const promptMsg = isUpdate
         ? "Update existing session or Save As new?\n\nLeave name exactly as is to overwrite, or type a new name to clone:"
         : "Enter a name for this new Workspace Session:";
 
-      const sessionName = prompt(promptMsg, activeWorkspaceSessionName);
+      const sessionName = window.prompt(promptMsg, defaultName);
       if (!sessionName) return;
 
-      const isClone = sessionName !== activeWorkspaceSessionName;
+      const isClone = isUpdate && sessionName !== activeWorkspaceSessionName;
 
       const sessionBlock = {
         type: "workspace-session",
@@ -8681,21 +9272,30 @@
 
       const card = getWorkspaceCard(nodeId);
       if (!card) {
+        const cached = getNodeById(nodeId);
+        if (cached) registerReferenceNodeInWorkspace(cached);
+      }
+
+      SelectionManager.setActiveNode(nodeId);
+
+      const anchorExcerptId = resolveLineageAnchorExcerptId(nodeId);
+      if (getWorkspaceCard(nodeId)) {
+        jumpToSourceNode(nodeId);
+      } else if (!anchorExcerptId) {
         showStatus(`Source node ${nodeId} not found in workspace.`, true);
         return;
       }
 
-      SelectionManager.setActiveNode(nodeId);
-      jumpToSourceNode(nodeId);
       syncWorkspaceFocus(nodeId);
+
+      if (anchorExcerptId) {
+        focusDocumentCanvasTargets(null, anchorExcerptId);
+        return;
+      }
 
       const node = getNodeById(nodeId);
       if (node?.density_level === 1) {
-        const excerptId =
-          node.excerpt_id ||
-          cy?.getElementById(nodeId)?.data("excerpt_id") ||
-          null;
-        focusDocumentCanvasTargets(nodeId, excerptId);
+        focusDocumentCanvasTargets(nodeId, node.excerpt_id || null);
       } else if (node?.density_level === 2) {
         focusDocumentCanvasTargets(null, nodeId);
       }
@@ -8913,11 +9513,14 @@
         if (isCreate && documentCanvasSourceId !== docId) {
           showStatus(`Created synthesis document: “${trimmedTitle}”`);
         } else if (documentCanvasSourceId === docId) {
+          registerBlockHierarchyEdges(documentBlocks);
           await initDocumentCanvas(docId);
           showStatus(`Updated synthesis document: “${trimmedTitle}”`);
         } else {
           showStatus(`Saved synthesis document: “${trimmedTitle}”`);
         }
+
+        registerBlockHierarchyEdges(documentBlocks);
 
         return true;
       } catch (err) {
@@ -9132,15 +9735,77 @@
 
       e.preventDefault();
 
-      let currentIndent = parseInt(blockEl.dataset.indentLevel || "0", 10) || 0;
-      if (e.shiftKey) {
-        currentIndent = Math.max(0, currentIndent - 1);
-      } else {
-        currentIndent = Math.min(5, currentIndent + 1);
+      let blocksToIndent = [blockEl];
+      if (
+        blockEl.classList.contains("multi-selected") &&
+        SelectionManager.selectedNodeIds.size > 1
+      ) {
+        blocksToIndent = Array.from(
+          document.querySelectorAll(".synthesis-view .multi-selected")
+        );
+        if (blocksToIndent.length === 0) {
+          blocksToIndent = [blockEl];
+        }
       }
 
-      blockEl.dataset.indentLevel = String(currentIndent);
+      blocksToIndent.forEach((el) => {
+        let currentIndent = parseInt(el.dataset.indentLevel || "0", 10) || 0;
+        if (e.shiftKey) {
+          currentIndent = Math.max(0, currentIndent - 1);
+        } else {
+          currentIndent = Math.min(5, currentIndent + 1);
+        }
+        el.dataset.indentLevel = String(currentIndent);
+        applySynthesisItemIndent(el);
+      });
+
+      scheduleSynthesisSave();
+      return true;
+    }
+
+    function handleSynthesisBlockAltArrowIndent(e) {
+      if (!e.altKey || (e.key !== "ArrowRight" && e.key !== "ArrowLeft")) return false;
+
+      const blockEl =
+        e.target.closest(".synthesis-item") ||
+        e.target.closest(".synthesis-block") ||
+        e.target.closest(".workspace-card");
+      if (!blockEl) return false;
+
+      e.preventDefault();
+
+      const isIndent = e.key === "ArrowRight";
+      const baseIndent = parseInt(blockEl.dataset.indentLevel || "0", 10) || 0;
+      const newBaseIndent = isIndent
+        ? Math.min(5, baseIndent + 1)
+        : Math.max(0, baseIndent - 1);
+      if (baseIndent === newBaseIndent) return true;
+
+      const delta = newBaseIndent - baseIndent;
+
+      blockEl.dataset.indentLevel = String(newBaseIndent);
       applySynthesisItemIndent(blockEl);
+
+      let sibling = blockEl.nextElementSibling;
+      while (sibling) {
+        if (
+          !sibling.classList.contains("synthesis-item") &&
+          !sibling.classList.contains("synthesis-block") &&
+          !sibling.classList.contains("workspace-card")
+        ) {
+          break;
+        }
+
+        const sibIndent = parseInt(sibling.dataset.indentLevel || "0", 10) || 0;
+        if (sibIndent <= baseIndent) break;
+
+        const newSibIndent = Math.max(0, Math.min(5, sibIndent + delta));
+        sibling.dataset.indentLevel = String(newSibIndent);
+        applySynthesisItemIndent(sibling);
+
+        sibling = sibling.nextElementSibling;
+      }
+
       scheduleSynthesisSave();
       return true;
     }
@@ -9176,6 +9841,15 @@
       return card.textContent.trim();
     }
 
+    function getSummarizeBlockText(block) {
+      const contentEl =
+        block.querySelector(".card-content") ||
+        block.querySelector(".synthesis-item-text") ||
+        block.querySelector(".inline-edit-area") ||
+        block.querySelector("[contenteditable='true']");
+      return contentEl ? contentEl.innerText.trim() : getWorkspaceCardText(block);
+    }
+
     function syncWorkspaceFocusFromSynthesis(nodeId) {
       const activeInput = document.activeElement;
       syncWorkspaceFocus(nodeId, { skipSynthesisScroll: true });
@@ -9203,7 +9877,15 @@
       }
 
       const sourceSpan = document.getElementById(`excerpt-${nodeId}`);
-      if (sourceSpan) {
+      const anchorExcerptId = resolveLineageAnchorExcerptId(nodeId);
+      const traceSpan = anchorExcerptId
+        ? document.getElementById(`excerpt-${anchorExcerptId}`)
+        : sourceSpan;
+      if (traceSpan) {
+        traceSpan.scrollIntoView({ behavior: "smooth", block: "center" });
+        traceSpan.classList.add("excerpt-focus");
+        setTimeout(() => traceSpan.classList.remove("excerpt-focus"), 2000);
+      } else if (sourceSpan) {
         sourceSpan.scrollIntoView({ behavior: "smooth", block: "center" });
         sourceSpan.classList.add("excerpt-focus");
         setTimeout(() => sourceSpan.classList.remove("excerpt-focus"), 2000);
@@ -9236,6 +9918,8 @@
           setTimeout(() => synthCard.classList.remove("workspace-focus"), 2000);
         }
       }
+
+      traceNodeLineage(nodeId);
     }
 
     function jumpToSourceNode(nodeId) {
@@ -9348,6 +10032,7 @@
 
       textarea.addEventListener("keydown", (e) => {
         if (handleSynthesisBlockTabIndent(e)) return;
+        if (handleSynthesisBlockAltArrowIndent(e)) return;
         scheduleSynthesisSave();
         if (e.key === "Escape") {
           e.preventDefault();
@@ -9360,6 +10045,102 @@
           textarea.blur();
         }
       });
+    }
+
+    function startSynthesisItemInlineEdit(item, { selectAll = false } = {}) {
+      if (!item || item.querySelector(".inline-edit-area")) return;
+
+      const textEl = item.querySelector(".synthesis-item-text");
+      if (!textEl) return;
+
+      const originalText = textEl.textContent;
+      const textTag = textEl.tagName.toLowerCase();
+      const textarea = document.createElement("textarea");
+      textarea.className = "inline-edit-area";
+      textarea.value = originalText.trim();
+      textEl.replaceWith(textarea);
+
+      adjustInlineEditTextareaHeight(textarea);
+
+      textarea.addEventListener("input", () => {
+        adjustInlineEditTextareaHeight(textarea);
+        scheduleSynthesisSave();
+      });
+
+      textarea.addEventListener("blur", () => {
+        if (textarea.dataset.cancelled) return;
+        void commitSynthesisItemInlineEdit(item, textarea, textTag);
+      });
+
+      textarea.addEventListener("keydown", (e) => {
+        if (handleSynthesisBlockTabIndent(e)) return;
+        if (handleSynthesisBlockAltArrowIndent(e)) return;
+        if (e.key === "Escape") {
+          e.preventDefault();
+          textarea.dataset.cancelled = "1";
+          const replacement = document.createElement(textTag);
+          replacement.className = "synthesis-item-text";
+          replacement.textContent = originalText;
+          textarea.replaceWith(replacement);
+          return;
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          textarea.blur();
+        }
+      });
+
+      textarea.focus();
+      if (selectAll) {
+        textarea.select();
+      } else {
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      }
+    }
+
+    async function commitSynthesisItemInlineEdit(item, textarea, textTag = "div") {
+      if (textarea.dataset.committing) return;
+      textarea.dataset.committing = "1";
+
+      const nodeId = item.dataset.nodeId;
+      const content = textarea.value.trim();
+      if (!content) {
+        showStatus("Content cannot be empty.", true);
+        textarea.dataset.committing = "";
+        return;
+      }
+
+      const title = autoExcerptTitle(content);
+      const replacement = document.createElement(textTag);
+      replacement.className = "synthesis-item-text";
+      replacement.textContent = content;
+      textarea.replaceWith(replacement);
+      scheduleSynthesisSave();
+
+      if (!nodeId) return;
+
+      try {
+        const putRes = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(nodeId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, content }),
+        });
+        if (!putRes.ok) {
+          const body = await putRes.json().catch(() => ({}));
+          throw new Error(body.detail || "Failed to update node");
+        }
+
+        const existingNode = workspaceNodeMap.get(nodeId) || { id: nodeId, origin: "human" };
+        workspaceNodeMap.set(nodeId, {
+          ...existingNode,
+          id: nodeId,
+          title,
+          content,
+          density_level: existingNode.density_level ?? 1,
+        });
+      } catch (err) {
+        showStatus(err.message, true);
+      }
     }
 
     function createSynthesisCustomThoughtActions() {
@@ -9429,7 +10210,157 @@
       return item;
     }
 
-    function appendSynthesisItem(nodeId, text, depthLevel, indentLevel = 0) {
+    function hideSynthesisDropIndicator(container) {
+      container
+        ?.querySelector(".synthesis-drop-indicator")
+        ?.classList.add("hidden");
+    }
+
+    function updateSynthesisDropIndicator(container, clientY) {
+      const indicator = container.querySelector(".synthesis-drop-indicator");
+      if (!indicator) return;
+
+      indicator.classList.remove("hidden");
+
+      const referenceNode = getSynthesisInsertPosition(container, clientY);
+
+      if (referenceNode) {
+        const rect = referenceNode.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        indicator.style.top = `${rect.top - containerRect.top + container.scrollTop}px`;
+        indicator.style.left = referenceNode.style.marginLeft || "20px";
+      } else {
+        const lastChild = container.lastElementChild;
+        if (lastChild && !lastChild.classList.contains("synthesis-drop-indicator")) {
+          const rect = lastChild.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+          indicator.style.top = `${rect.bottom - containerRect.top + container.scrollTop + 8}px`;
+          indicator.style.left = "20px";
+        } else {
+          indicator.style.top = "16px";
+          indicator.style.left = "20px";
+        }
+      }
+    }
+
+    function getSynthesisInsertPosition(container, yCoordinate) {
+      const draggableElements = [
+        ...container.querySelectorAll(".synthesis-item, .synthesis-block, .workspace-card"),
+      ];
+
+      return draggableElements.reduce(
+        (closest, child) => {
+          const box = child.getBoundingClientRect();
+          const offset = yCoordinate - box.top - box.height / 2;
+
+          if (offset < 0 && offset > closest.offset) {
+            return { offset, element: child };
+          }
+          return closest;
+        },
+        { offset: Number.NEGATIVE_INFINITY }
+      ).element;
+    }
+
+    function resolveSynthesisDropEntries(dataTransfer) {
+      let nodeIds = [];
+      const multiRaw = dataTransfer.getData("application/x-internalize-nodes");
+      if (multiRaw) {
+        try {
+          const parsed = JSON.parse(multiRaw);
+          if (Array.isArray(parsed)) nodeIds = parsed.filter(Boolean);
+        } catch (_) {
+          /* invalid multi payload */
+        }
+      }
+
+      let primaryPayload = null;
+      const singleRaw = dataTransfer.getData("application/x-internalize-node");
+      if (singleRaw) {
+        try {
+          primaryPayload = JSON.parse(singleRaw);
+        } catch (_) {
+          /* invalid single payload */
+        }
+      }
+
+      if (!nodeIds.length && primaryPayload?.nodeId) {
+        nodeIds = [primaryPayload.nodeId];
+      }
+      if (!nodeIds.length) return [];
+
+      return nodeIds
+        .map((nodeId) => {
+          if (primaryPayload?.nodeId === nodeId && primaryPayload.text) {
+            return {
+              nodeId,
+              text: primaryPayload.text,
+              depthLevel:
+                primaryPayload.depthLevel ?? getCardDepthLevel(nodeId),
+            };
+          }
+          const card = getWorkspaceCard(nodeId);
+          const node = workspaceNodeMap.get(nodeId);
+          const text =
+            (card && getWorkspaceCardText(card)) ||
+            node?.content ||
+            node?.title ||
+            "";
+          return {
+            nodeId,
+            text,
+            depthLevel: getCardDepthLevel(nodeId),
+          };
+        })
+        .filter((entry) => entry.text);
+    }
+
+    function handleSynthesisDrop(e, container) {
+      const entries = resolveSynthesisDropEntries(e.dataTransfer);
+      if (!entries.length) return false;
+
+      const referenceNode = getSynthesisInsertPosition(container, e.clientY);
+      let insertBeforeEl = referenceNode || null;
+      let previousNode = referenceNode
+        ? referenceNode.previousElementSibling
+        : container.lastElementChild;
+
+      for (const { nodeId, text, depthLevel } of entries) {
+        let targetIndent = 0;
+        if (
+          previousNode &&
+          previousNode.matches(".synthesis-item, .synthesis-block, .workspace-card")
+        ) {
+          targetIndent = parseInt(previousNode.dataset.indentLevel || "0", 10) || 0;
+        }
+
+        const item = appendSynthesisItem(
+          nodeId,
+          text,
+          depthLevel,
+          targetIndent,
+          insertBeforeEl
+        );
+        if (!item) continue;
+
+        if (insertBeforeEl) {
+          insertBeforeEl = item.nextElementSibling;
+        }
+        previousNode = item;
+      }
+
+      scheduleSynthesisSave();
+      return true;
+    }
+
+    function appendSynthesisItem(
+      nodeId,
+      text,
+      depthLevel,
+      indentLevel = 0,
+      insertBefore = null,
+      parentNodeId = null
+    ) {
       if (!synthesisDropzone) return null;
 
       const item = document.createElement("div");
@@ -9482,12 +10413,27 @@
       item.appendChild(body);
       item.appendChild(createSynthesisRemoveButton());
 
-      synthesisDropzone.appendChild(item);
+      if (insertBefore && insertBefore.parentNode === synthesisDropzone) {
+        synthesisDropzone.insertBefore(item, insertBefore);
+      } else {
+        synthesisDropzone.appendChild(item);
+      }
       applySynthesisItemIndent(item);
       if (synthesisViewMode === "read") {
         ensureSynthesisItemTextElement(item, true);
         appendSynthesisReferenceLink(item);
       }
+
+      const resolvedParentId = parentNodeId || findSynthesisBlockParentId(item);
+      if (resolvedParentId && resolvedParentId !== nodeId) {
+        ConnectionManager.registerEdge({
+          id: ConnectionManager.edgeKey("SUMMARIZES", resolvedParentId, nodeId),
+          source_id: resolvedParentId,
+          target_id: nodeId,
+          relationship_type: "SUMMARIZES",
+        });
+      }
+
       scrollElementInPane(item, { behavior: "smooth", block: "nearest" });
       return item;
     }
@@ -9523,6 +10469,15 @@
         e.preventDefault();
         return;
       }
+
+      if (!SelectionManager.selectedNodeIds.has(nodeId)) {
+        SelectionManager.clearMultiSelection();
+        SelectionManager.selectedNodeIds.add(nodeId);
+        SelectionManager.addMultiSelectVisual(nodeId);
+      }
+
+      const payloadIds = Array.from(SelectionManager.selectedNodeIds);
+      e.dataTransfer.setData("application/x-internalize-nodes", JSON.stringify(payloadIds));
 
       const text = getWorkspaceCardText(card);
       const depthLevel = parseInt(card.dataset.depthLevel, 10);
@@ -10134,19 +11089,171 @@
       };
     }
 
+    async function createSummaryLinkedToExcerpt(text, parentId) {
+      const title = autoExcerptTitle(text);
+      const content = text;
+
+      const nodeRes = await fetch(`${API_BASE}/api/nodes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          content,
+          density_level: 1,
+          significance: 1.0,
+          origin: "human",
+        }),
+      });
+      if (!nodeRes.ok) {
+        const body = await nodeRes.json().catch(() => ({}));
+        throw new Error(body.detail || "Failed to create summary");
+      }
+      const nodeData = await nodeRes.json();
+      const nodeId = nodeData.node_id;
+
+      const edgeRes = await fetch(`${API_BASE}/api/edges`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source_id: nodeId,
+          target_id: parentId,
+          relationship_type: "SUMMARIZES",
+          strength: 1.0,
+          origin: "human",
+        }),
+      });
+      if (!edgeRes.ok) {
+        const body = await edgeRes.json().catch(() => ({}));
+        throw new Error(body.detail || "Failed to link summary to excerpt");
+      }
+
+      mergeSummaryChildren(nodeId, [parentId]);
+
+      const columnIndex = computeSummaryColumnForChildren([parentId]);
+      nodeColumnMap.set(nodeId, columnIndex);
+      const summaryNode = {
+        id: nodeId,
+        title,
+        content,
+        density_level: 1,
+        origin: "human",
+      };
+      workspaceNodeMap.set(nodeId, summaryNode);
+      workspaceNodeOrder.set(nodeId, workspaceNodeOrder.size);
+      recordWorkspaceSummaryMutation(summaryNode, parentId);
+
+      ConnectionManager.registerEdge({
+        id: ConnectionManager.edgeKey("SUMMARIZES", nodeId, parentId),
+        source_id: nodeId,
+        target_id: parentId,
+        relationship_type: "SUMMARIZES",
+      });
+
+      return nodeId;
+    }
+
     async function promptSummarizeNode(nodeId) {
       if (!nodeId) return;
 
-      const parentCard = getWorkspaceCard(nodeId);
-      if (!parentCard) return;
+      const parentBlock =
+        getSynthesisTraceCard(nodeId) ||
+        getWorkspaceCard(nodeId) ||
+        document.querySelector(`[data-node-id="${CSS.escape(nodeId)}"]`);
+      if (!parentBlock) return;
 
-      const parentText = getWorkspaceCardText(parentCard);
+      const parentText = getSummarizeBlockText(parentBlock);
       if (!parentText) {
         showStatus("Cannot summarize an empty node.", true);
         return;
       }
 
+      const isSynthesis =
+        parentBlock.hasAttribute("data-indent-level") ||
+        !!parentBlock.closest(".synthesis-view, .synthesis-workspace");
+
       try {
+        if (isSynthesis) {
+          const newNodeId = await createSummaryLinkedToExcerpt(parentText, nodeId);
+          if (!newNodeId) {
+            showStatus("Failed to create summary.", true);
+            return;
+          }
+
+          SelectionManager.setActiveNode(newNodeId);
+
+          const newBlock = parentBlock.cloneNode(true);
+          newBlock.classList.remove("multi-selected");
+          newBlock.querySelector(".inline-edit-area")?.remove();
+          newBlock.dataset.nodeId = newNodeId;
+          newBlock.dataset.sourceNode = newNodeId;
+
+          if (newBlock.classList.contains("synthesis-item")) {
+            newBlock.dataset.itemType = "summary";
+            const metaLabel = newBlock.querySelector(".synthesis-item-meta-label");
+            if (metaLabel) metaLabel.textContent = "Summary";
+
+            const anchor = newBlock.querySelector(".source-link-anchor");
+            if (anchor) {
+              const newAnchor = anchor.cloneNode(true);
+              newAnchor.dataset.nodeId = newNodeId;
+              newAnchor.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                focusGraphNodeFromReference(newNodeId);
+              });
+              anchor.replaceWith(newAnchor);
+            }
+
+            if (synthesisViewMode === "read") {
+              ensureSynthesisItemTextElement(newBlock, true);
+              appendSynthesisReferenceLink(newBlock);
+            }
+          } else {
+            newBlock.dataset.nodeType = "Summary";
+            const typeLabel =
+              newBlock.querySelector(".node-label") ||
+              newBlock.querySelector('span[style*="color"]');
+            if (typeLabel) {
+              const levelMatch = typeLabel.textContent.match(/LEVEL \d+:/i);
+              typeLabel.textContent = levelMatch ? `${levelMatch[0]} SUMMARY` : "SUMMARY";
+              typeLabel.style.color = "#a3e635";
+            }
+          }
+
+          const currentIndent = parseInt(parentBlock.dataset.indentLevel || "0", 10) || 0;
+          newBlock.dataset.indentLevel = String(currentIndent);
+          applySynthesisItemIndent(newBlock);
+
+          const childIndent = Math.min(5, currentIndent + 1);
+          parentBlock.dataset.indentLevel = String(childIndent);
+          applySynthesisItemIndent(parentBlock);
+
+          parentBlock.parentNode.insertBefore(newBlock, parentBlock);
+          scheduleSynthesisSave();
+
+          const outlineParentId = findSynthesisBlockParentId(newBlock);
+          if (outlineParentId) {
+            ConnectionManager.registerEdge({
+              id: ConnectionManager.edgeKey("SUMMARIZES", outlineParentId, newNodeId),
+              source_id: outlineParentId,
+              target_id: newNodeId,
+              relationship_type: "SUMMARIZES",
+            });
+          }
+
+          window.setTimeout(() => {
+            if (newBlock.classList.contains("synthesis-item")) {
+              startSynthesisItemInlineEdit(newBlock, { selectAll: true });
+            } else {
+              startWorkspaceCardInlineEdit(newBlock, { selectAll: true });
+            }
+          }, 100);
+
+          await refreshWorkspaceAfterGraphMutation();
+          ConnectionManager.scheduleDraw();
+          return;
+        }
+
         const newNodeId = await saveRecursiveSummaryFromExcerptCard(
           parentText,
           { parentId: nodeId },
@@ -10163,7 +11270,10 @@
 
         window.setTimeout(() => {
           syncWorkspaceFocus(newNodeId);
-          const newCard = getWorkspaceCard(newNodeId);
+          const newCard =
+            document.querySelector(
+              `#view-source-tree .workspace-card[data-node-id="${CSS.escape(newNodeId)}"]`
+            ) || getWorkspaceCard(newNodeId);
           if (!newCard) return;
           scrollWorkspaceCardIntoView(newCard);
           startWorkspaceCardInlineEdit(newCard, { selectAll: true });
@@ -10194,23 +11304,6 @@
     function bindWorkspaceCardInteractions(card, nodeId) {
       ensureCardHoverMenu(card, nodeId);
       card.draggable = true;
-
-      card.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        hideCustomContextMenu();
-        hideBoardContextMenu();
-
-        SelectionManager.setActiveNode(nodeId);
-
-        const menu = document.getElementById("card-context-menu");
-        if (!menu) return;
-        menu.style.left = `${e.clientX}px`;
-        menu.style.top = `${e.clientY}px`;
-        menu.dataset.targetNodeId = nodeId;
-        menu.classList.remove("hidden");
-      });
 
       card.addEventListener("mousedown", (e) => {
         // Pressing an interactive control must not arm a drag, or the browser can
@@ -10264,20 +11357,14 @@
           return;
         }
 
-        clearGroupingSelection();
-        clearTraceHighlights();
-        SelectionManager.setActiveNode(nodeId);
-        // A click moves the keyboard-focus (green outline) to this card too, but
-        // without scrolling — the card is already where the user clicked.
-        setFocusedCard(card, { scroll: false });
-        if (e.ctrlKey || e.metaKey || e.shiftKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleCardSelection(nodeId, card);
-          return;
+        const mode = SelectionManager.handleCardSelectionClick(e, nodeId, card);
+        if (mode === "single") {
+          clearGroupingSelection();
+          clearTraceHighlights();
+          setFocusedCard(card, { scroll: false });
+          handleWorkspaceCardTrace(card);
+          syncWorkspaceFocus(nodeId);
         }
-        handleWorkspaceCardTrace(card);
-        syncWorkspaceFocus(nodeId);
       });
 
       card.addEventListener("dblclick", (e) => {
@@ -10411,21 +11498,36 @@
       return unique;
     }
 
+    function sortColumn1NodesBySourceDocumentOrder(column1Nodes) {
+      if (!column1Nodes?.length) return column1Nodes;
+
+      const highlights = Array.from(
+        docBody.querySelectorAll(".excerpt-highlight[id]")
+      );
+      const chronologicalIds = highlights.map((el) =>
+        el.id.replace(/^excerpt-/, "")
+      );
+
+      column1Nodes.sort((a, b) => {
+        const indexA = chronologicalIds.indexOf(a.id);
+        const indexB = chronologicalIds.indexOf(b.id);
+
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+
+        if (indexA === -1 && indexB !== -1) return 1;
+        if (indexB === -1 && indexA !== -1) return -1;
+
+        return 0;
+      });
+
+      return column1Nodes;
+    }
+
     async function renderWorkspaceCards(excerpts, summaries, summaryEdges) {
       lastWorkspaceRender = { excerpts, summaries, summaryEdges };
-      workspaceNodeMap = new Map();
-      workspaceNodeOrder = new Map();
-      let order = 0;
-      for (const excerpt of deduplicateNodesById(excerpts)) {
-        workspaceNodeMap.set(excerpt.id, excerpt);
-        workspaceNodeOrder.set(excerpt.id, order++);
-      }
-      for (const summary of deduplicateNodesById(summaries)) {
-        if (!workspaceNodeMap.has(summary.id)) {
-          workspaceNodeMap.set(summary.id, summary);
-          workspaceNodeOrder.set(summary.id, order++);
-        }
-      }
+
+      const uniqueExcerpts = deduplicateNodesById(excerpts);
+      const uniqueSummaries = deduplicateNodesById(summaries);
 
       summaryChildMap = buildSummaryChildMapFromEdges(summaryEdges);
       hierarchyChildMap = buildHierarchyChildMap(
@@ -10437,17 +11539,46 @@
         excerpts.map((e) => e.id),
         summaryEdges
       );
+
+      const column1Nodes = uniqueExcerpts.filter(
+        (excerpt) => (nodeColumnMap.get(excerpt.id) || 1) === 1
+      );
+      sortColumn1NodesBySourceDocumentOrder(column1Nodes);
+
+      const column1Ids = new Set(column1Nodes.map((node) => node.id));
+      const orderedExcerpts = [
+        ...column1Nodes,
+        ...uniqueExcerpts.filter((excerpt) => !column1Ids.has(excerpt.id)),
+      ];
+
+      workspaceNodeMap = new Map();
+      workspaceNodeOrder = new Map();
+      let order = 0;
+      for (const excerpt of orderedExcerpts) {
+        workspaceNodeMap.set(excerpt.id, excerpt);
+        workspaceNodeOrder.set(excerpt.id, order++);
+      }
+      for (const summary of uniqueSummaries) {
+        if (!workspaceNodeMap.has(summary.id)) {
+          workspaceNodeMap.set(summary.id, summary);
+          workspaceNodeOrder.set(summary.id, order++);
+        } else if (summary.excerpt_id) {
+          const existing = workspaceNodeMap.get(summary.id);
+          workspaceNodeMap.set(summary.id, { ...existing, excerpt_id: summary.excerpt_id });
+        }
+      }
+
       resetWorkspaceColumns();
       clearGroupingSelection();
 
-      for (const excerpt of deduplicateNodesById(excerpts)) {
+      for (const excerpt of orderedExcerpts) {
         const columnIndex = nodeColumnMap.get(excerpt.id) || 1;
         const card = createWorkspaceCard(excerpt, columnIndex);
         appendToColumn(columnIndex, card);
       }
 
       const excerptIds = new Set(excerpts.map((e) => e.id));
-      for (const summary of deduplicateNodesById(summaries)) {
+      for (const summary of uniqueSummaries) {
         if (excerptIds.has(summary.id)) continue;
         const columnIndex = nodeColumnMap.get(summary.id) || 2;
         const card = createWorkspaceCard(summary, columnIndex);
@@ -10787,70 +11918,16 @@
 
     async function saveRecursiveSummaryFromExcerptCard(text, { parentId }, selection, options = {}) {
       const { enterInlineEdit = false } = options;
-      const title = autoExcerptTitle(text);
-      const content = text;
       selection?.removeAllRanges();
 
       try {
-        const nodeRes = await fetch(`${API_BASE}/api/nodes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title,
-            content,
-            density_level: 1,
-            significance: 1.0,
-            origin: "human",
-          }),
-        });
-        if (!nodeRes.ok) {
-          const body = await nodeRes.json().catch(() => ({}));
-          throw new Error(body.detail || "Failed to create summary");
-        }
-        const nodeData = await nodeRes.json();
-        const nodeId = nodeData.node_id;
-
-        const edgeRes = await fetch(`${API_BASE}/api/edges`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source_id: nodeId,
-            target_id: parentId,
-            relationship_type: "SUMMARIZES",
-            strength: 1.0,
-            origin: "human",
-          }),
-        });
-        if (!edgeRes.ok) {
-          const body = await edgeRes.json().catch(() => ({}));
-          throw new Error(body.detail || "Failed to link summary to excerpt");
-        }
-
-        mergeSummaryChildren(nodeId, [parentId]);
-
-        const columnIndex = computeSummaryColumnForChildren([parentId]);
-        nodeColumnMap.set(nodeId, columnIndex);
-        const summaryNode = {
-          id: nodeId,
-          title,
-          content,
-          density_level: 1,
-          origin: "human",
-        };
-        workspaceNodeMap.set(nodeId, summaryNode);
-        workspaceNodeOrder.set(nodeId, workspaceNodeOrder.size);
-        recordWorkspaceSummaryMutation(summaryNode, parentId);
+        const nodeId = await createSummaryLinkedToExcerpt(text, parentId);
+        const summaryNode = workspaceNodeMap.get(nodeId);
+        const columnIndex = nodeColumnMap.get(nodeId);
 
         const card = createWorkspaceCard(summaryNode, columnIndex);
         appendToColumn(columnIndex, card);
         scrollWorkspaceCardIntoView(card);
-
-        ConnectionManager.registerEdge({
-          id: ConnectionManager.edgeKey("SUMMARIZES", nodeId, parentId),
-          source_id: nodeId,
-          target_id: parentId,
-          relationship_type: "SUMMARIZES",
-        });
 
         await refreshWorkspaceAfterGraphMutation();
         refreshAllConnectionBadges();
@@ -10882,8 +11959,19 @@
       parent.normalize();
     }
 
+    function readStoredSpanOffsets(span) {
+      if (!span) return {};
+      const start = parseInt(span.dataset.startOffset, 10);
+      const end = parseInt(span.dataset.endOffset, 10);
+      if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+        return { start_offset: start, end_offset: end };
+      }
+      return {};
+    }
+
     function wrapSelectionInPendingSpan(range) {
       unwrapPendingExtraction();
+      const offsets = getRangeTextOffsetsInSourceText(range);
       const span = document.createElement("span");
       span.id = "pending-extraction";
 
@@ -10893,6 +11981,11 @@
         const fragment = range.extractContents();
         span.appendChild(fragment);
         range.insertNode(span);
+      }
+
+      if (offsets) {
+        span.dataset.startOffset = String(offsets.start_offset);
+        span.dataset.endOffset = String(offsets.end_offset);
       }
 
       return span;
@@ -11137,6 +12230,7 @@
             density_level: densityLevel,
             significance: 1.0,
             origin: "human",
+            ...(densityLevel === 2 ? readStoredSpanOffsets(anchorSpan) : {}),
           }),
         });
         if (!nodeRes.ok) {
@@ -11327,6 +12421,7 @@
             density_level: 2,
             significance: 1.0,
             origin: "human",
+            ...readStoredSpanOffsets(anchorSpan),
           }),
         });
         if (!nodeRes.ok) {
@@ -11590,6 +12685,7 @@
         const data = await res.json();
 
         documentCanvasSourceId = data.source.id;
+        documentCanvasText = data.document_text || "";
         await loadSourceLibrary(data.source.id);
         unwrapPendingExtraction();
         removeCanvasInlineEditor();
