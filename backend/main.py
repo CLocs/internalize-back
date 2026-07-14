@@ -51,11 +51,22 @@ RELATIONSHIP_AXES: dict[str, list[RelationshipType]] = {
 
 ALLOWED_RELATIONSHIP_TYPES: frozenset[str] = frozenset(t.value for t in RelationshipType)
 
-DensityLevel = Literal[1, 2, 3, 4]
-NodeType = Literal["Concept", "Document"]
+DensityLevel = Literal[1, 2, 3, 4, 5]
+NodeType = Literal[
+    "Concept",
+    "Document",
+    "Book",
+    "Article",
+    "Transcript",
+    "Synthesis",
+    "Whiteboard",
+    "WorkspaceSession",
+]
 
 SOURCE_NODE_PREDICATE = (
-    "n.density_level IN [3, 4] OR coalesce(n.node_type, 'Concept') = 'Document'"
+    "n.density_level IN [3, 4] OR "
+    "coalesce(n.node_type, 'Concept') IN "
+    "['Document', 'Book', 'Article', 'Transcript', 'Synthesis']"
 )
 
 
@@ -67,6 +78,8 @@ class NodeCreate(BaseModel):
     origin: str = "human"
     node_type: NodeType = "Concept"
     blocks: list[dict[str, Any]] | None = None
+    start_offset: Optional[int] = Field(default=None, ge=0)
+    end_offset: Optional[int] = Field(default=None, ge=0)
 
 
 class NodeResponse(BaseModel):
@@ -99,6 +112,19 @@ class NodeUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1)
     content: Optional[str] = Field(default=None, min_length=1)
     blocks: list[dict[str, Any]] | None = None
+    node_type: Optional[str] = None
+    start_offset: Optional[int] = Field(default=None, ge=0)
+    end_offset: Optional[int] = Field(default=None, ge=0)
+
+
+class NodePinUpdate(BaseModel):
+    pinned: bool
+
+
+class NodePinResponse(BaseModel):
+    status: str = "success"
+    id: str
+    pinned: bool
 
 
 class EdgeCreate(BaseModel):
@@ -138,6 +164,9 @@ class DocumentNodeResponse(BaseModel):
     origin: str = "human"
     node_type: str = "Concept"
     blocks: list[dict[str, Any]] | None = None
+    pinned: bool = False
+    start_offset: int | None = None
+    end_offset: int | None = None
 
 
 class DocumentSummaryResponse(DocumentNodeResponse):
@@ -240,6 +269,8 @@ def _upsert_concept_node(
     significance: float,
     origin: str,
     node_type: str = "Concept",
+    start_offset: int | None = None,
+    end_offset: int | None = None,
 ) -> dict:
     driver = _require_neo4j()
 
@@ -248,6 +279,8 @@ def _upsert_concept_node(
     WHERE n.title = $title
       AND n.content = $content
       AND n.density_level = $density_level
+      AND coalesce(n.start_offset, -1) = coalesce($start_offset, -1)
+      AND coalesce(n.end_offset, -1) = coalesce($end_offset, -1)
     RETURN n.id AS id, n.title AS title, n.density_level AS density_level
     LIMIT 1
     """
@@ -260,6 +293,8 @@ def _upsert_concept_node(
         significance: $significance,
         origin: $origin,
         node_type: $node_type,
+        start_offset: $start_offset,
+        end_offset: $end_offset,
         created_at: timestamp()
     })
     RETURN n.id AS id, n.title AS title, n.density_level AS density_level
@@ -271,6 +306,8 @@ def _upsert_concept_node(
             title=title,
             content=content,
             density_level=density_level,
+            start_offset=start_offset,
+            end_offset=end_offset,
         ).single()
         if existing:
             return {
@@ -288,6 +325,8 @@ def _upsert_concept_node(
             significance=significance,
             origin=origin,
             node_type=node_type,
+            start_offset=start_offset,
+            end_offset=end_offset,
         ).single()
         return {
             "id": created["id"],
@@ -354,6 +393,45 @@ def _set_node_blocks(node_id: str, blocks: list[dict[str, Any]]) -> None:
         )
 
 
+def _extract_hierarchy_edges_from_blocks(
+    blocks: list[dict[str, Any]] | None,
+) -> list[tuple[str, str]]:
+    """Return (parent_id, child_id) pairs declared by synthesis reference blocks."""
+    edges: list[tuple[str, str]] = []
+    if not blocks:
+        return edges
+    for block in blocks:
+        if not isinstance(block, dict) or block.get("type") != "reference":
+            continue
+        child_id = block.get("nodeId") or block.get("node_id")
+        parent_id = block.get("parentNodeId") or block.get("parent_node_id")
+        if not isinstance(child_id, str) or not isinstance(parent_id, str):
+            continue
+        child_id = child_id.strip()
+        parent_id = parent_id.strip()
+        if child_id and parent_id and child_id != parent_id:
+            edges.append((parent_id, child_id))
+    return edges
+
+
+def _sync_block_hierarchy_edges(blocks: list[dict[str, Any]] | None) -> None:
+    """Ensure SUMMARIZES edges exist for parent-child links declared in synthesis blocks."""
+    edges = _extract_hierarchy_edges_from_blocks(blocks)
+    if not edges:
+        return
+
+    merge_query = """
+    UNWIND $pairs AS pair
+    MATCH (parent:Concept {id: pair.parent_id}), (child:Concept {id: pair.child_id})
+    MERGE (parent)-[r:SUMMARIZES]->(child)
+    ON CREATE SET r.strength = 1.0, r.origin = 'human'
+    """
+    pairs = [{"parent_id": parent_id, "child_id": child_id} for parent_id, child_id in edges]
+    driver = _require_neo4j()
+    with driver.session() as session:
+        session.run(merge_query, pairs=pairs)
+
+
 def _sync_document_reference_edges(doc_id: str, blocks: list[dict[str, Any]] | None) -> None:
     """Replace REFERENCES edges for a document using block-based reference node IDs."""
     ref_ids = _extract_reference_ids_from_blocks(blocks)
@@ -380,6 +458,7 @@ def _sync_document_reference_edges(doc_id: str, blocks: list[dict[str, Any]] | N
         session.run(clear_query, doc_id=doc_id)
         if ref_ids:
             session.run(create_query, doc_id=doc_id, target_ids=ref_ids)
+    _sync_block_hierarchy_edges(blocks)
 
 
 @app.get("/")
@@ -425,6 +504,8 @@ def create_knowledge_node(node: NodeCreate, response: Response):
             significance=node.significance,
             origin=node.origin,
             node_type=node.node_type,
+            start_offset=node.start_offset,
+            end_offset=node.end_offset,
         )
     except GqlError as exc:
         raise HTTPException(
@@ -472,11 +553,23 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
     if update.blocks is not None:
         set_clauses.append("n.blocks = $blocks")
         params["blocks"] = _serialize_blocks(update.blocks)
+    if update.node_type is not None:
+        set_clauses.append("n.node_type = $node_type")
+        params["node_type"] = update.node_type
+    if update.start_offset is not None:
+        set_clauses.append("n.start_offset = $start_offset")
+        params["start_offset"] = update.start_offset
+    if update.end_offset is not None:
+        set_clauses.append("n.end_offset = $end_offset")
+        params["end_offset"] = update.end_offset
 
     if not set_clauses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one of density_level, title, content, or blocks is required",
+            detail=(
+                "At least one of density_level, title, content, blocks, node_type, "
+                "start_offset, or end_offset is required"
+            ),
         )
 
     query = f"""
@@ -485,7 +578,8 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
     RETURN n.id AS id,
            n.title AS title,
            n.density_level AS density_level,
-           coalesce(n.origin, 'human') AS origin
+           coalesce(n.origin, 'human') AS origin,
+           coalesce(n.node_type, 'Concept') AS node_type
     """
     driver = _require_neo4j()
     try:
@@ -511,7 +605,35 @@ def update_knowledge_node(node_id: str, update: NodeUpdate):
         title=record["title"],
         density_level=record["density_level"],
         origin=record["origin"],
+        node_type=record["node_type"],
     )
+
+
+@app.patch("/api/nodes/{node_id}", response_model=NodePinResponse)
+def patch_node_pinned(node_id: str, update: NodePinUpdate):
+    """Persist a node's pinned flag so the pin state survives reloads."""
+    query = """
+    MATCH (n:Concept {id: $node_id})
+    SET n.pinned = $pinned
+    RETURN n.id AS id, coalesce(n.pinned, false) AS pinned
+    """
+    driver = _require_neo4j()
+    try:
+        with driver.session() as session:
+            record = session.run(query, node_id=node_id, pinned=update.pinned).single()
+    except GqlError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
+        ) from exc
+
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Node not found: {node_id}",
+        )
+
+    return NodePinResponse(id=record["id"], pinned=record["pinned"])
 
 
 def _format_neo4j_datetime(value) -> str | None:
@@ -1052,7 +1174,10 @@ def get_document_canvas(source_id: Optional[str] = None):
            excerpt.title AS title,
            excerpt.content AS content,
            excerpt.density_level AS density_level,
-           coalesce(excerpt.origin, 'human') AS origin
+           coalesce(excerpt.origin, 'human') AS origin,
+           coalesce(excerpt.pinned, false) AS pinned,
+           excerpt.start_offset AS start_offset,
+           excerpt.end_offset AS end_offset
     ORDER BY excerpt.created_at
     """
 
@@ -1070,18 +1195,23 @@ def get_document_canvas(source_id: Optional[str] = None):
            coalesce(s.content, s.title) AS content,
            s.density_level AS density_level,
            coalesce(s.origin, 'human') AS origin,
+           coalesce(s.pinned, false) AS pinned,
            excerpt_id
     ORDER BY s.created_at
     """
 
     summary_edges_query = """
-    MATCH (source:Concept {id: $source_id})-[:CONTAINS]->(excerpt:Concept)
+    MATCH (source:Concept {id: $source_id})
+    OPTIONAL MATCH (source)-[:CONTAINS]->(excerpt:Concept)
     WHERE excerpt.density_level IN [1, 2]
-    MATCH (summary:Concept {density_level: 1})-[:SUMMARIZES*1..15]->(excerpt)
-    WITH collect(DISTINCT summary) AS summaries, collect(DISTINCT excerpt) AS excerpts
-    UNWIND summaries AS parent
-    MATCH (parent)-[:SUMMARIZES]->(child:Concept)
-    WHERE child IN excerpts OR child IN summaries
+    OPTIONAL MATCH (summary:Concept)-[:SUMMARIZES*1..15]->(excerpt)
+    OPTIONAL MATCH (source)-[:REFERENCES]->(referenced:Concept)
+    WITH collect(DISTINCT excerpt) + collect(DISTINCT summary) + collect(DISTINCT referenced) AS nodes
+    UNWIND [n IN nodes WHERE n IS NOT NULL] AS workspace_node
+    WITH collect(DISTINCT workspace_node) AS workspace_nodes
+    UNWIND workspace_nodes AS child
+    MATCH (parent:Concept)-[:SUMMARIZES]->(child)
+    WHERE parent IN workspace_nodes
     RETURN DISTINCT parent.id AS source_id, child.id AS target_id
     """
 
@@ -1123,6 +1253,9 @@ def get_document_canvas(source_id: Optional[str] = None):
             content=r["content"],
             density_level=r["density_level"],
             origin=r["origin"],
+            pinned=r["pinned"],
+            start_offset=r.get("start_offset"),
+            end_offset=r.get("end_offset"),
         )
         for r in excerpt_rows
     ]
@@ -1143,6 +1276,7 @@ def get_document_canvas(source_id: Optional[str] = None):
                 content=r["content"],
                 density_level=r["density_level"],
                 origin=r["origin"],
+                pinned=r["pinned"],
                 excerpt_id=r["excerpt_id"],
             )
             for r in summary_rows

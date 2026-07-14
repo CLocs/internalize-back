@@ -32,10 +32,15 @@ copy .env.example .env
 # Edit .env — set NEO4J_PASSWORD to your actual Neo4j password
 
 # Run the API + Input Pane (hot reload)
-uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Open **http://127.0.0.1:8000/** for the Human Linker UI. API docs: **http://127.0.0.1:8000/docs**.
+URLs:
+* Spatial viewer: http://127.0.0.1:8000/viewer
+* Human Linker UI: http://127.0.0.1:8000/
+* API docs: http://127.0.0.1:8000/docs
+* Health check: http://127.0.0.1:8000/health
+
 
 ## Connecting Neo4j
 
@@ -199,12 +204,80 @@ curl -X POST http://127.0.0.1:8000/api/edges \
 | `uv lock` | Refresh `uv.lock` after changing `pyproject.toml` |
 | `uv add <package>` | Add a dependency |
 
+## Testing
+
+Internalize uses a three-layer test strategy: manual smoke checks, pytest API integration tests (Neo4j required), and Playwright browser E2E tests (server + Neo4j required).
+
+### Setup
+
+```powershell
+uv sync --group dev
+uv run playwright install chromium
+```
+
+Start Neo4j Desktop and the API server:
+
+```powershell
+uv run uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+### Run automated tests
+
+```powershell
+# API integration tests (in-process FastAPI TestClient + live Neo4j)
+uv run pytest tests/api -v
+
+# Browser E2E tests (hits http://127.0.0.1:8000 — server must already be running)
+uv run pytest tests/e2e -v
+
+# Quick API smoke script
+.\scripts\smoke.ps1
+```
+
+Tests skip gracefully when Neo4j or the dev server is unavailable.
+
+### Manual smoke checklist
+
+Use this before a release or after large viewer changes. Load **Thinking, Fast and Slow** (or any multi-column source).
+
+**API**
+
+| Check | Pass criteria |
+|-------|---------------|
+| `GET /health` | `"neo4j": "connected"` |
+| `GET /api/sources` | Returns at least one source |
+| `GET /api/document-canvas?source_id=<id>` | Returns `source`, `excerpts`, `summaries` |
+| `POST /api/nodes` (Level 3 Document) | Returns `node_id` |
+| `PATCH /api/nodes/{id}` `{"pinned": true}` | Returns `pinned: true` |
+
+**Viewer** (`/viewer`)
+
+| Area | Pass criteria |
+|------|---------------|
+| Init layout | Connections sidebar + Graph minimap collapsed |
+| Tree horizontal scroll | Column 1 fully visible on reload (no left clip) |
+| Column vertical scroll | Excerpt/summary columns scroll vertically |
+| HJKL / arrows | Green focus outline moves between cards |
+| Pin click / `P` | Toggles pin, sets focus outline, persists on reload |
+| Add source (`+`) | Modal import loads new source in dropdown + doc pane |
+| Docks | CONNECTIONS / GRAPH buttons expand and collapse panels |
+
 ## Project layout
 
 ```
 internalize-back/
-├── main.py           # FastAPI app + Neo4j queries
-├── index.html        # Human Linker Input Pane
+├── backend/
+│   └── main.py       # FastAPI app + Neo4j queries
+├── frontend/
+│   ├── index.html    # Human Linker Input Pane
+│   └── viewer.html   # Spatial graph viewer
+├── tests/
+│   ├── conftest.py   # Shared pytest fixtures
+│   ├── api/          # API integration tests
+│   └── e2e/          # Playwright browser tests
+├── scripts/
+│   ├── ingest.py     # CLI book ingest helper
+│   └── smoke.ps1     # API smoke test runner
 ├── pyproject.toml    # Project metadata & dependencies
 ├── uv.lock           # Locked dependency versions
 ├── .env.example      # Environment template
@@ -219,7 +292,7 @@ When you come back:
 2. Confirm `.env` has the correct `NEO4J_PASSWORD`.
 3. Start the server:
    ```powershell
-   uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000
+   uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
    ```
 4. Open **http://127.0.0.1:8000/** and confirm the green *Connected to Neo4j* banner.
 5. Create a node (left column), then link it to another node (right column).
