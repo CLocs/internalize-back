@@ -2793,6 +2793,9 @@
       <span><i class="fa-solid fa-compress" style="margin-right: 8px;"></i> Summarize Node</span>
       <span style="color: #64748b; font-size: 11px;">Ctrl+S</span>
     </div>
+    <div class="ctx-menu-item" id="ctx-card-reanchor" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: none; align-items: center;">
+      <i class="fa-solid fa-location-crosshairs" style="margin-right: 8px;"></i> Fix Highlight Position
+    </div>
     <div class="ctx-menu-item" id="ctx-card-change-type" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center;">
       <i class="fa-solid fa-tags" style="margin-right: 8px;"></i> Change Node Type
     </div>
@@ -2887,6 +2890,7 @@
       <li id="menu-create-excerpt">Create Excerpt (Ctrl+E)</li>
       <li id="menu-create-summary" style="display: none;">Summarize (Ctrl+E)</li>
       <li id="menu-summarize-node" style="display: none;">Summarize Node</li>
+      <li id="menu-reanchor-excerpt" style="display: none;">Fix Highlight for Active Excerpt</li>
     </ul>
   </div>
 
@@ -3243,6 +3247,8 @@
     const menuCreateExcerpt = document.getElementById("menu-create-excerpt");
     const menuCreateSummary = document.getElementById("menu-create-summary");
     const menuCreateSummarizeNode = document.getElementById("menu-summarize-node");
+    const menuReanchorExcerpt = document.getElementById("menu-reanchor-excerpt");
+    const menuCardReanchor = document.getElementById("ctx-card-reanchor");
     let synthesisPane = null;
     let synthesisDocWrap = null;
     let synthesisEditBtn = null;
@@ -5599,6 +5605,15 @@
       menu.style.left = `${e.clientX}px`;
       menu.style.top = `${e.clientY}px`;
       menu.dataset.targetNodeId = nodeId;
+
+      const node = getNodeById(nodeId);
+      const density =
+        node?.density_level ??
+        parseInt(nodeBlock.dataset.densityLevel || nodeBlock.dataset.depthLevel || "", 10);
+      if (menuCardReanchor) {
+        menuCardReanchor.style.display = density === 2 ? "flex" : "none";
+      }
+
       menu.classList.remove("hidden");
     }
 
@@ -5630,6 +5645,23 @@
         const targetId = menu?.dataset.targetNodeId;
         hideCardContextMenu();
         if (targetId) await promptSummarizeNode(targetId);
+      });
+
+      menuCardReanchor?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById("card-context-menu");
+        const targetId = menu?.dataset.targetNodeId;
+        hideCardContextMenu();
+        if (!targetId) return;
+        const range = getDocSelectionRange();
+        if (!range) {
+          showStatus(
+            "Select the correct text in the Source Document, then choose Fix Highlight Position again.",
+            true
+          );
+          return;
+        }
+        await reanchorExcerptToRange(targetId, range);
       });
 
       const changeTypeBtn = document.getElementById("ctx-card-change-type");
@@ -8020,27 +8052,23 @@
       if (matches.length === 0) return -1;
       if (matches.length === 1) return matches[0];
 
-      let bestIdx = matches[0];
-      let bestScore = Number.NEGATIVE_INFINITY;
-
-      for (const idx of matches) {
+      const scored = matches.map((idx) => {
         const end = idx + content.length;
         const after = text.slice(end, end + 80);
         const before = text.slice(Math.max(0, idx - 40), idx);
 
-        let score = idx;
-        if (/^\s*[-–—.]/.test(after)) score -= 100000;
-        if (/^\s*\n/.test(after)) score += 5000;
-        if (/\n\n/.test(before)) score += 2000;
-        if (content.length < 24) score += idx / 100;
+        // Context-only score so the first strong body occurrence wins ties.
+        let score = 0;
+        // TOC / list continuations: "CHAPTER 2 - …", "CHAPTER 2 A - …"
+        if (/^\s*[A-Za-z]?\s*[-–—.]/.test(after)) score -= 100000;
+        // Body heading ends at a hard linebreak (\n or \r\n)
+        if (/^\s*[\r\n]/.test(after)) score += 5000;
+        if (/\n\n|\r\n\r\n/.test(before)) score += 2000;
+        return { idx, score };
+      });
 
-        if (score > bestScore) {
-          bestScore = score;
-          bestIdx = idx;
-        }
-      }
-
-      return bestIdx;
+      scored.sort((a, b) => b.score - a.score || a.idx - b.idx);
+      return scored[0].idx;
     }
 
     function resolveExcerptMatch(text, excerpt) {
@@ -11969,6 +11997,119 @@
       return {};
     }
 
+    function getActiveExcerptNodeIdForReanchor() {
+      const candidates = [
+        SelectionManager.activeNode,
+        window.focusedNodeId,
+        ...SelectionManager.selectedNodeIds,
+      ].filter(Boolean);
+
+      for (const nodeId of candidates) {
+        const node = getNodeById(nodeId);
+        const density =
+          node?.density_level ??
+          parseInt(getWorkspaceCard(nodeId)?.dataset?.densityLevel || "", 10);
+        if (density === 2) return nodeId;
+      }
+      return null;
+    }
+
+    function getDocSelectionRange() {
+      const selection = window.getSelection();
+      if (!selection?.rangeCount) return null;
+      const range = selection.getRangeAt(0);
+      if (selection.toString().trim().length === 0) return null;
+      if (!isRangeInsideDocBody(range)) return null;
+      return range.cloneRange();
+    }
+
+    async function reanchorExcerptToRange(nodeId, range) {
+      if (!nodeId) {
+        showStatus("Select an excerpt card first, then re-anchor.", true);
+        return false;
+      }
+      if (!range) {
+        showStatus("Select the correct text in the Source Document first.", true);
+        return false;
+      }
+
+      const node = getNodeById(nodeId);
+      const density =
+        node?.density_level ??
+        parseInt(getWorkspaceCard(nodeId)?.dataset?.densityLevel || "", 10);
+      if (density !== 2) {
+        showStatus("Only Excerpt nodes (density 2) can be re-anchored.", true);
+        return false;
+      }
+
+      const offsets = getRangeTextOffsetsInSourceText(range);
+      if (!offsets) {
+        showStatus("Could not map selection to document offsets.", true);
+        return false;
+      }
+
+      const selectedText = range.toString();
+      if (!selectedText.trim()) {
+        showStatus("Selection is empty.", true);
+        return false;
+      }
+
+      try {
+        const putRes = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(nodeId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            start_offset: offsets.start_offset,
+            end_offset: offsets.end_offset,
+            content: selectedText,
+            title: autoExcerptTitle(selectedText.trim()),
+          }),
+        });
+        if (!putRes.ok) {
+          const body = await putRes.json().catch(() => ({}));
+          throw new Error(body.detail || "Failed to update excerpt anchors");
+        }
+
+        const existing = workspaceNodeMap.get(nodeId) || { id: nodeId, density_level: 2 };
+        workspaceNodeMap.set(nodeId, {
+          ...existing,
+          id: nodeId,
+          content: selectedText,
+          title: autoExcerptTitle(selectedText.trim()),
+          density_level: 2,
+          start_offset: offsets.start_offset,
+          end_offset: offsets.end_offset,
+        });
+
+        const card = getWorkspaceCard(nodeId);
+        if (card) {
+          const contentEl = card.querySelector(".card-content, .text-content");
+          if (contentEl) contentEl.textContent = selectedText;
+          const titleEl = card.querySelector(".card-title");
+          if (titleEl) titleEl.textContent = autoExcerptTitle(selectedText.trim());
+        }
+
+        if (documentCanvasSourceId) {
+          await initDocumentCanvas(documentCanvasSourceId);
+          activateWorkspaceNode(nodeId, { scroll: true });
+          const span = document.getElementById(`excerpt-${nodeId}`);
+          if (span) {
+            span.classList.add("excerpt-focus", "trace-highlight");
+            scrollWithLineReposition(span, { behavior: "smooth", block: "center" });
+            setTimeout(() => {
+              span.classList.remove("excerpt-focus");
+            }, 2000);
+          }
+        }
+
+        showStatus(`Re-anchored excerpt at ${offsets.start_offset}–${offsets.end_offset}`);
+        return true;
+      } catch (err) {
+        showStatus(err.message || "Failed to re-anchor excerpt.", true);
+        return false;
+      }
+    }
+
     function wrapSelectionInPendingSpan(range) {
       unwrapPendingExtraction();
       const offsets = getRangeTextOffsetsInSourceText(range);
@@ -12522,8 +12663,13 @@
       contextMenuTargetId = null;
       contextMenuTargetText = null;
       menuCreateSummarizeNode.style.display = "none";
+      if (menuReanchorExcerpt) menuReanchorExcerpt.style.display = "none";
 
       const isInsideCard = isSelectionInsideNodeCard(selection, range);
+      const inDoc =
+        (range && isRangeInsideDocBody(range)) ||
+        (selection && isSelectionInsideDocBody(selection));
+      const activeExcerptId = getActiveExcerptNodeIdForReanchor();
 
       if (isInsideCard) {
         menuCreateSummary.style.display = "block";
@@ -12531,6 +12677,11 @@
       } else {
         menuCreateExcerpt.style.display = "block";
         menuCreateSummary.style.display = "none";
+      }
+
+      if (menuReanchorExcerpt && inDoc && activeExcerptId && !isInsideCard) {
+        menuReanchorExcerpt.style.display = "block";
+        menuReanchorExcerpt.dataset.targetNodeId = activeExcerptId;
       }
     }
 
@@ -12545,6 +12696,7 @@
       menuCreateExcerpt.style.display = "none";
       menuCreateSummary.style.display = "none";
       menuCreateSummarizeNode.style.display = "block";
+      if (menuReanchorExcerpt) menuReanchorExcerpt.style.display = "none";
 
       customContextMenu.style.left = `${e.pageX}px`;
       customContextMenu.style.top = `${e.pageY}px`;
@@ -12624,6 +12776,15 @@
           window.getSelection(),
           { enterInlineEdit: true }
         );
+      });
+
+      menuReanchorExcerpt?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const targetId =
+          menuReanchorExcerpt.dataset.targetNodeId || getActiveExcerptNodeIdForReanchor();
+        const range = canvasContextMenuRange;
+        hideCustomContextMenu();
+        await reanchorExcerptToRange(targetId, range);
       });
 
       window.addEventListener("click", () => {

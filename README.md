@@ -276,8 +276,9 @@ internalize-back/
 │   ├── api/          # API integration tests
 │   └── e2e/          # Playwright browser tests
 ├── scripts/
-│   ├── ingest.py     # CLI book ingest helper
-│   └── smoke.ps1     # API smoke test runner
+│   ├── ingest.py                    # CLI book ingest helper
+│   ├── backfill_excerpt_offsets.py  # Backfill missing excerpt text offsets
+│   └── smoke.ps1                    # API smoke test runner
 ├── pyproject.toml    # Project metadata & dependencies
 ├── uv.lock           # Locked dependency versions
 ├── .env.example      # Environment template
