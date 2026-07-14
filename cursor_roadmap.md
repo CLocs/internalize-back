@@ -13,6 +13,9 @@
 *The goal of this phase is to make the Sensemaking and Synthesis loops frictionless.*
 
 - [x] **Chronological Source Tree Sorting:** Column 1 sorts by source-document highlight order (`sortColumn1NodesBySourceDocumentOrder`). Further hardening via `start_offset` sort is optional.
+- [x] **Create Connection UX:** No auto-elevate of L2→L1 on SUMMARIZES; lightweight edge refresh (no full canvas remount) preserves scroll; source highlights only for density-2 excerpts.
+- [x] **Persist prose `node_type`:** document-canvas returns `node_type`; Chapter/Part labels survive reload.
+- [x] **Click source highlight → focus excerpt:** Clicking `.excerpt-highlight` activates the matching Source Tree card.
 - [ ] **Multi-Select Payload Upgrades:** Ensure that dragging a multi-selected group of nodes from the Source Tree into the Synthesis pane (or into the Connections List A/B) transfers all IDs seamlessly and preserves their relative indentations upon dropping. *(IDs already transfer; relative indent preservation still open.)*
 - [x] **"Summarize-in-Place" Edge Creation:** Synthesis / tree summarize flows create `SUMMARIZES` edges from the new summary to the child excerpt/node.
 

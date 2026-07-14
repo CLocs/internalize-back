@@ -6635,18 +6635,32 @@
       repositionDocumentCanvasLines();
     }
 
-    function isExcerptNode(nodeId) {
-      const node = getNodeById(nodeId);
-      return node?.density_level === 2;
-    }
+    function applyWorkbenchConnectionLocally(pairs, relationshipType) {
+      for (const { source_id, target_id } of pairs) {
+        ConnectionManager.addEdge({
+          id: ConnectionManager.edgeKey(relationshipType, source_id, target_id),
+          source_id,
+          target_id,
+          relationship_type: relationshipType,
+        });
 
-    function collectExcerptSourcesToElevate(pairs, relationshipType) {
-      if (relationshipType !== "SUMMARIZES") return [];
-      const nodeIds = new Set();
-      for (const { source_id } of pairs) {
-        if (isExcerptNode(source_id)) nodeIds.add(source_id);
+        if (relationshipType === "SUMMARIZES") {
+          mergeSummaryChildren(source_id, [target_id]);
+          addHierarchyChild(source_id, target_id);
+          if (lastWorkspaceRender) {
+            lastWorkspaceRender = {
+              ...lastWorkspaceRender,
+              summaryEdges: [
+                ...(lastWorkspaceRender.summaryEdges || []),
+                { source_id, target_id },
+              ],
+            };
+          }
+        } else if (relationshipType === "CONTAINS") {
+          addHierarchyChild(source_id, target_id);
+        }
       }
-      return [...nodeIds];
+      refreshAllConnectionBadges();
     }
 
     async function createWorkbenchConnections() {
@@ -6677,33 +6691,19 @@
       showStatus(`Creating ${pairs.length} connection(s)…`);
 
       try {
-        const promises = [];
-
-        for (const nodeId of collectExcerptSourcesToElevate(pairs, relationshipType)) {
-          promises.push(
-            fetch(`${API_BASE}/api/nodes/${encodeURIComponent(nodeId)}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ density_level: 1 }),
-            })
-          );
-        }
-
-        for (const { source_id, target_id } of pairs) {
-          promises.push(
-            fetch(`${API_BASE}/api/edges`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                source_id,
-                target_id,
-                relationship_type: relationshipType,
-                strength: 1.0,
-                origin: "human",
-              }),
-            })
-          );
-        }
+        const promises = pairs.map(({ source_id, target_id }) =>
+          fetch(`${API_BASE}/api/edges`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source_id,
+              target_id,
+              relationship_type: relationshipType,
+              strength: 1.0,
+              origin: "human",
+            }),
+          })
+        );
 
         const responses = await Promise.all(promises);
 
@@ -6726,10 +6726,8 @@
         }
 
         SelectionManager.clearLists();
-
-        if (documentCanvasSourceId) {
-          await initDocumentCanvas(documentCanvasSourceId);
-        }
+        applyWorkbenchConnectionLocally(pairs, relationshipType);
+        await refreshWorkspaceAfterGraphMutation();
         await refreshWorkbenchGraphAndLines();
 
         clearStatus();
@@ -7503,6 +7501,39 @@
       }
     }
 
+    function getExcerptIdFromHighlightElement(el) {
+      const span = el?.closest?.(".excerpt-highlight");
+      if (!span) return null;
+      if (span.dataset?.nodeId) return span.dataset.nodeId;
+      if (span.id?.startsWith("excerpt-")) return span.id.slice("excerpt-".length);
+      const withId = span.closest?.('[id^="excerpt-"]');
+      if (withId?.id?.startsWith("excerpt-")) return withId.id.slice("excerpt-".length);
+      return null;
+    }
+
+    function initExcerptHighlightClickListeners() {
+      if (!docBody || docBody.dataset.highlightClickBound) return;
+      docBody.dataset.highlightClickBound = "1";
+
+      docBody.addEventListener("click", (e) => {
+        const highlight = e.target.closest?.(".excerpt-highlight");
+        if (!highlight || !docBody.contains(highlight)) return;
+
+        const selection = window.getSelection?.();
+        if (selection && !selection.isCollapsed && selection.toString().trim()) {
+          return;
+        }
+
+        const excerptId = getExcerptIdFromHighlightElement(highlight);
+        if (!excerptId) return;
+
+        e.preventDefault();
+        highlight.classList.add("excerpt-focus");
+        setTimeout(() => highlight.classList.remove("excerpt-focus"), 2000);
+        activateWorkspaceNode(excerptId, { scroll: true });
+      });
+    }
+
     function initConnectionModeSelect() {
       if (!connectionModeSelect || connectionModeSelect.dataset.bound) return;
       connectionModeSelect.dataset.bound = "1";
@@ -8107,7 +8138,7 @@
         const highlightStart = Math.max(m.idx, paraStart);
         const highlightEnd = Math.min(mEnd, paraEnd);
         const idAttr = highlightStart === m.idx ? ` id="excerpt-${m.id}"` : "";
-        innerHtml += `<span${idAttr} class="excerpt-highlight">${formatSourceTextChunk(text.slice(highlightStart, highlightEnd))}</span>`;
+        innerHtml += `<span${idAttr} class="excerpt-highlight" data-node-id="${m.id}">${formatSourceTextChunk(text.slice(highlightStart, highlightEnd))}</span>`;
         cursor = highlightEnd;
       }
 
@@ -8116,7 +8147,8 @@
     }
 
     function buildHighlightedHtml(text, excerpts) {
-      const matches = excerpts
+      const matches = (excerpts || [])
+        .filter((e) => e && e.density_level === 2)
         .map((e) => resolveExcerptMatch(text, e))
         .filter(Boolean)
         .sort((a, b) => a.idx - b.idx);
@@ -11047,7 +11079,10 @@
     }
 
     function getCardTypeDisplay(node, isSummary) {
-      return node.node_type || (isSummary ? "Summary" : "Excerpt");
+      const raw = (node?.node_type || "").trim();
+      // Default Concept means "no prose override" — keep density-based Excerpt/Summary labels.
+      if (raw && raw !== "Concept") return raw;
+      return isSummary ? "Summary" : "Excerpt";
     }
 
     function getCardLevelLabel(node, isSummary) {
@@ -12406,6 +12441,7 @@
             origin: "human",
           };
           anchorSpan.id = `excerpt-${nodeId}`;
+          anchorSpan.dataset.nodeId = nodeId;
           anchorSpan.classList.add("excerpt-highlight");
           anchorSpan.removeAttribute("style");
           excerptIdForLine = nodeId;
@@ -12589,6 +12625,7 @@
         }
 
         anchorSpan.id = `excerpt-${nodeId}`;
+        anchorSpan.dataset.nodeId = nodeId;
         anchorSpan.classList.add("excerpt-highlight");
         anchorSpan.removeAttribute("style");
 
@@ -12865,6 +12902,7 @@
         });
 
         initDocumentCanvasLineListeners();
+        initExcerptHighlightClickListeners();
 
         initDocSearchListeners();
         initGroupSynthesisListeners();

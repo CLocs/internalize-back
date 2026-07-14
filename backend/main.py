@@ -1175,6 +1175,7 @@ def get_document_canvas(source_id: Optional[str] = None):
            excerpt.content AS content,
            excerpt.density_level AS density_level,
            coalesce(excerpt.origin, 'human') AS origin,
+           coalesce(excerpt.node_type, 'Concept') AS node_type,
            coalesce(excerpt.pinned, false) AS pinned,
            excerpt.start_offset AS start_offset,
            excerpt.end_offset AS end_offset
@@ -1195,6 +1196,7 @@ def get_document_canvas(source_id: Optional[str] = None):
            coalesce(s.content, s.title) AS content,
            s.density_level AS density_level,
            coalesce(s.origin, 'human') AS origin,
+           coalesce(s.node_type, 'Concept') AS node_type,
            coalesce(s.pinned, false) AS pinned,
            excerpt_id
     ORDER BY s.created_at
@@ -1253,6 +1255,7 @@ def get_document_canvas(source_id: Optional[str] = None):
             content=r["content"],
             density_level=r["density_level"],
             origin=r["origin"],
+            node_type=r.get("node_type") or "Concept",
             pinned=r["pinned"],
             start_offset=r.get("start_offset"),
             end_offset=r.get("end_offset"),
@@ -1276,6 +1279,7 @@ def get_document_canvas(source_id: Optional[str] = None):
                 content=r["content"],
                 density_level=r["density_level"],
                 origin=r["origin"],
+                node_type=r.get("node_type") or "Concept",
                 pinned=r["pinned"],
                 excerpt_id=r["excerpt_id"],
             )
