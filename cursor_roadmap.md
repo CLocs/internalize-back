@@ -16,20 +16,23 @@
 - [x] **Create Connection UX:** No auto-elevate of L2→L1 on SUMMARIZES; lightweight edge refresh (no full canvas remount) preserves scroll; source highlights only for density-2 excerpts.
 - [x] **Persist prose `node_type`:** document-canvas returns `node_type`; Chapter/Part labels survive reload.
 - [x] **Click source highlight → focus excerpt:** Clicking `.excerpt-highlight` activates the matching Source Tree card.
-- [ ] **Multi-Select Payload Upgrades:** Ensure that dragging a multi-selected group of nodes from the Source Tree into the Synthesis pane (or into the Connections List A/B) transfers all IDs seamlessly and preserves their relative indentations upon dropping. *(IDs already transfer; relative indent preservation still open.)*
+- [x] **Multi-Select Payload Upgrades:** Dragging a multi-selected group into Synthesis preserves relative tree-column indents; Connections List A/B accepts all IDs from the drag payload.
 - [x] **"Summarize-in-Place" Edge Creation:** Synthesis / tree summarize flows create `SUMMARIZES` edges from the new summary to the child excerpt/node.
 - [x] **`DEFINITION_OF` ontology + Connections:** Logical axis type for name→passage links; Connections dropdown loads it; distinct amber LeaderLine stroke (not hierarchy).
 - [x] **Click-to-reveal topology:** Selecting a hub highlights `DEFINITION_OF` partners + `SUMMARIZES` children (and source spans); active connection mode includes those edges in lineage. Multi-summary visual “swath” deferred.
 - [x] **Duplicate hub collapse:** Same `start_offset`/`end_offset` (or identical title/text) Concepts collapse to one Source Tree card; edges remap onto the canonical hub.
 - [x] **Column 2+ document order:** Higher columns sort by hub/child `start_offset` (not created_at).
 - [x] **Source Tree click priority:** Topology-first (definition + children + Active lines); own source scroll only when the hub has no partners. Focus/Board remain the deep neighborhood views.
+- [x] **Connection line layering:** Lines render behind cards (`z-index`); default dim (0.15) with hover-focus brightening on incident edges.
+- [x] **Workspace pin hotkeys:** Alt+1/2/3 pin Source / Board / Synthesis layouts; repeat the same key to cycle context-aware presets (Read, split, studio).
+- [x] **Isolation Degree:** Isolate Off/1–4/All folds non-neighborhood cards; composes with taxonomy filters.
 
 ## Phase 3: Taxonomy & Filtering (Mid-Term)
 *The goal of this phase is to utilize the new strict node typing (Excerpt, Summary, Concept, Chapter, Part) to empower navigation.*
 
-- [ ] **Taxonomy Filters:** Build a UI toggle in the Source Tree to filter nodes by type (e.g., "Show only Prose Structure" or "Hide Excerpts").
-- [ ] **Batch Type Reassignment:** Create a robust UI to multi-select nodes and assign them a new type simultaneously, utilizing the custom prompt modal.
-- [ ] **Visual Node Distinctions:** Implement subtle CSS variations for Prose Structure nodes (e.g., Chapters and Parts) to visually separate them from Knowledge Graph nodes (Excerpts, Summaries) in the Synthesis outliner.
+- [x] **Taxonomy Filters:** Source Tree header filter (All / Excerpts / Summaries / Prose / Concepts) composes with Isolation Degree folding.
+- [x] **Batch Type Reassignment:** Multi-select + context menu opens the type modal and `PUT /api/nodes` for each selected node.
+- [x] **Visual Node Distinctions:** Chapter/Part/Section/Sub-section styling in the Synthesis outliner (aligned with Source Tree prose cues).
 
 ## Phase 4: Export & Advanced "Side-Quests" (Long-Term)
 *The goal of this phase is to turn the synthesized graph into portable knowledge.*
@@ -41,7 +44,7 @@
 ## Phase 5: Continuous Core Tuning & Source Expansion (Track 1)
 *The goal of this phase is to eliminate UI/UX friction in the core extraction loop and expand ingestion beyond raw text pasting.*
 
-- [ ] **Fluidity & Mode Switching:** Build upon the dynamic TabManager to introduce global hotkeys that instantly snap the workspace into predefined layouts (e.g., *Reading Mode* = Source + Tree; *Synthesis Mode* = Tree + Board).
+- [x] **Fluidity & Mode Switching:** Alt+1/2/3 workspace pins with repeat-to-cycle presets (Read, Source+Tree, split Board/Synthesis, Studio when both exist). Manual layout toggle remains available.
 - [ ] **Web Ingestion:** Integrate a web-clipper (e.g., Mozilla Readability) to parse URLs into standard Document nodes natively within the Source Tab.
 - [ ] **PDF Ingestion:** Implement `pdf.js` in the Source pane. Map PDF bounding boxes (X/Y coordinate space) to the existing `start_offset` / `end_offset` extraction engine to maintain perfect data provenance.
 - [ ] **Continuous Ergonomics:** Refine the "Compressed Tree-View" for progressive summarization and ensure multi-select drag-and-drop mechanics remain responsive as graph size scales.

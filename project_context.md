@@ -115,11 +115,25 @@ sequenceDiagram
 
 Industry-standard DOM tracking: Ctrl+Click toggles individual nodes; Shift+Click selects a contiguous range; Tab indents entire selected groups simultaneously.
 
+### Workspace Pins (Alt+1 / Alt+2 / Alt+3)
+
+The viewer uses **pin hotkeys** to snap the workspace into context-aware layout presets. **Repeat the same key** to cycle through variants that exist in the current session (based on open Board / Synthesis tabs).
+
+| Key | First press | Repeat cycles through |
+|-----|-------------|----------------------|
+| **Alt+1** (Source) | Read mode — centered source, tree hidden | Source+Tree → +Synthesis* → +Board* → Studio* → +Synthesis* |
+| **Alt+2** (Board) | Source+Tree + Board split | Board split → Studio* |
+| **Alt+3** (Synthesis) | Source+Tree + Synthesis split | Synthesis split → Studio* |
+
+\*Steps are skipped when the relevant tab type is not open.
+
+A status toast shows the active layout (e.g. `Layout: Source + Tree + Synthesis (Alt+3 · 1/2)`). The manual layout toggle in the tab bar remains independent of pin hotkeys.
+
 ### Deep Trace Back-Propagation
 
 Clicking any node in the Synthesis pane triggers a recursive function that climbs the hierarchical graph and illuminates ancestor cards, ultimately smooth-scrolling the Source Document to the exact origin text. See **Provenance & Deep Trace** under Data Model.
 
 ## Current Technical Priorities
 
-* Refactoring text extraction to use precise DOM offset anchoring (`startOffset` / `endOffset`) instead of naive string matching to prevent duplicate string targeting.
-* Hardening the `traceNodeLineage` engine to strictly prioritize database graph edges (`type: 'hierarchy'`) over visual DOM indentation to ensure true data provenance.
+* **Phase 4+:** Markdown export engine, smart bullet import, web/PDF ingestion, multimodal views.
+* **Deferred:** Synthesis Tab/indent → Neo4j hierarchy sync; multi-summary visual “swath”.

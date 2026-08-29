@@ -149,6 +149,25 @@
       position: relative;
       z-index: 100;
       font-family: "Segoe UI", system-ui, sans-serif;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      flex-wrap: nowrap;
+      scrollbar-width: thin;
+      scrollbar-color: #475569 transparent;
+    }
+
+    #viewer-header::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    #viewer-header::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+
+    #viewer-header > * {
+      flex-shrink: 0;
     }
 
     #viewer-header label {
@@ -248,6 +267,33 @@
     }
 
     #isolation-degree:focus {
+      outline: none;
+      border-color: #deff9a;
+    }
+
+    #taxonomy-filter-label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      text-transform: none;
+      letter-spacing: normal;
+      white-space: nowrap;
+    }
+
+    #taxonomy-filter {
+      min-width: 108px;
+      padding: 0.45rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #f8fafc;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    #taxonomy-filter:focus {
       outline: none;
       border-color: #deff9a;
     }
@@ -1010,6 +1056,27 @@
       color: #e2e8f0;
       white-space: normal;
       word-break: break-word;
+    }
+
+    #doc-pane .synthesis-source-ref {
+      margin: 0 0 1rem;
+      padding: 0.5rem 0.75rem;
+      border-left: 3px solid #334155;
+      color: #e2e8f0;
+    }
+
+    #doc-pane .synthesis-source-ref strong {
+      display: block;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 0.35rem;
+    }
+
+    #doc-pane .synthesis-source-text {
+      font-family: Georgia, "Times New Roman", serif;
     }
 
     .source-paragraph {
@@ -1895,6 +1962,39 @@
       transition: margin-left 0.2s ease;
     }
 
+    .synthesis-item[data-node-type="Chapter"] {
+      border-top: 3px solid #c084fc;
+      border-color: rgba(192, 132, 252, 0.45);
+      background: linear-gradient(180deg, rgba(192, 132, 252, 0.08) 0%, #1e293b 42%);
+    }
+
+    .synthesis-item[data-node-type="Part"] {
+      border-top: 3px solid #a855f7;
+      border-color: rgba(168, 85, 247, 0.45);
+      background: linear-gradient(180deg, rgba(168, 85, 247, 0.1) 0%, #1e293b 42%);
+    }
+
+    .synthesis-item[data-node-type="Section"] {
+      border-top: 2px solid #9333ea;
+      border-color: rgba(147, 51, 234, 0.4);
+    }
+
+    .synthesis-item[data-node-type="Sub-section"] {
+      border-top: 2px dashed #7e22ce;
+      border-color: rgba(126, 34, 206, 0.38);
+    }
+
+    .synthesis-item[data-node-type="Concept"] .synthesis-item-meta-label {
+      color: #fbbf24;
+    }
+
+    .synthesis-item.synthesis-prose-item .synthesis-item-meta-label {
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: 0.68rem;
+    }
+
     .remove-synthesis-block {
       position: absolute;
       top: 6px;
@@ -2669,7 +2769,8 @@
       border-left-color: #4ade80;
     }
 
-    #view-source-tree .workspace-card.isolation-folded {
+    #view-source-tree .workspace-card.isolation-folded,
+    #view-source-tree .workspace-card.taxonomy-hidden {
       display: none !important;
     }
 
@@ -2983,6 +3084,14 @@
       <option value="3">3</option>
       <option value="4">4</option>
       <option value="all">All</option>
+    </select>
+    <label id="taxonomy-filter-label" for="taxonomy-filter">Show</label>
+    <select id="taxonomy-filter" aria-label="Source tree taxonomy filter">
+      <option value="all" selected>All</option>
+      <option value="excerpt">Excerpts</option>
+      <option value="summary">Summaries</option>
+      <option value="prose">Prose</option>
+      <option value="concept">Concepts</option>
     </select>
   </header>
 
@@ -3307,7 +3416,10 @@
     const statusEl = document.getElementById("status");
     const connectionModeSelect = document.getElementById("connection-mode");
     const isolationDegreeSelect = document.getElementById("isolation-degree");
+    const taxonomyFilterSelect = document.getElementById("taxonomy-filter");
     const ISOLATION_DEGREE_STORAGE_KEY = "internalize.isolationDegree";
+    const TAXONOMY_FILTER_STORAGE_KEY = "internalize.taxonomyFilter";
+    const PROSE_NODE_TYPES = new Set(["Chapter", "Part", "Section", "Sub-section"]);
     const documentCanvas = document.getElementById("document-canvas");
     const lineCanvas = document.getElementById("line-canvas");
     const docPane = document.getElementById("doc-pane");
@@ -3999,6 +4111,13 @@
     }
 
     let layoutMode = 0; // 0 = Single, 1 = Split, 2 = Studio
+    let studioBoardId = null;
+    let studioSynthId = null;
+    let workspacePin = null;
+    let pinCycleIndex = 0;
+    let activeWorkspacePresetId = null;
+    let lastActiveBoardId = null;
+    let lastActiveSynthesisId = null;
     let isWorkspaceSynced = true;
     let tabHoverSwitchTimer = null;
     let tabHoverSwitchTarget = null;
@@ -4067,19 +4186,23 @@
           sourceView.style.flex = "0 0 20%";
         }
 
-        const firstBoard = document.querySelector(".board-view");
-        if (firstBoard) {
-          firstBoard.classList.remove("hidden");
-          firstBoard.classList.add("active-view");
-          firstBoard.style.borderRight = "1px solid #334155";
-          firstBoard.style.flex = "1";
+        const boardEl =
+          (studioBoardId && document.getElementById(studioBoardId)) ||
+          document.querySelector(".board-view");
+        if (boardEl) {
+          boardEl.classList.remove("hidden");
+          boardEl.classList.add("active-view");
+          boardEl.style.borderRight = "1px solid #334155";
+          boardEl.style.flex = "1";
         }
 
-        const firstSynth = document.querySelector(".synthesis-view");
-        if (firstSynth) {
-          firstSynth.classList.remove("hidden");
-          firstSynth.classList.add("active-view");
-          firstSynth.style.flex = "0 0 33%";
+        const synthEl =
+          (studioSynthId && document.getElementById(studioSynthId)) ||
+          document.querySelector(".synthesis-view");
+        if (synthEl) {
+          synthEl.classList.remove("hidden");
+          synthEl.classList.add("active-view");
+          synthEl.style.flex = "0 0 33%";
         }
       }
 
@@ -4131,6 +4254,10 @@
 
       activateTab(id) {
         if (!this.tabs.some((t) => t.id === id)) return;
+
+        const tab = this.tabs.find((t) => t.id === id);
+        if (tab?.type === "board") lastActiveBoardId = id;
+        if (tab?.type === "synthesis") lastActiveSynthesisId = id;
 
         this.activeId = id;
         this.render();
@@ -4235,6 +4362,230 @@
         if (this.tabs.some((t) => t.id === id)) return;
         this.tabs.push(tabMeta);
         this.render();
+      },
+    };
+
+    const WORKSPACE_PRESET_LABELS = {
+      read: "Read · Source",
+      sensemaking: "Source + Tree",
+      "split-board": "Source + Tree + Board",
+      "split-synth": "Source + Tree + Synthesis",
+      studio: "Source + Tree + Board + Synthesis",
+    };
+
+    const WORKSPACE_PIN_ALT_KEYS = {
+      source: "1",
+      board: "2",
+      synthesis: "3",
+    };
+
+    function getOpenTabsByType(type) {
+      return TabManager.tabs.filter((tab) => tab.type === type);
+    }
+
+    function resolveBoardTabId() {
+      const boards = getOpenTabsByType("board");
+      if (!boards.length) return null;
+      if (boards.some((tab) => tab.id === TabManager.activeId)) return TabManager.activeId;
+      if (lastActiveBoardId && boards.some((tab) => tab.id === lastActiveBoardId)) {
+        return lastActiveBoardId;
+      }
+      return boards[0].id;
+    }
+
+    function resolveSynthesisTabId() {
+      const synthTabs = getOpenTabsByType("synthesis");
+      if (!synthTabs.length) return null;
+      if (synthTabs.some((tab) => tab.id === TabManager.activeId)) return TabManager.activeId;
+      if (lastActiveSynthesisId && synthTabs.some((tab) => tab.id === lastActiveSynthesisId)) {
+        return lastActiveSynthesisId;
+      }
+      return synthTabs[0].id;
+    }
+
+    function buildSensemakingFamilyPresets() {
+      const hasBoard = getOpenTabsByType("board").length > 0;
+      const hasSynth = getOpenTabsByType("synthesis").length > 0;
+      const presets = ["sensemaking"];
+      if (hasSynth) presets.push("split-synth");
+      if (hasBoard) presets.push("split-board");
+      if (hasBoard && hasSynth) {
+        presets.push("studio");
+        presets.push("split-synth");
+      }
+      return presets;
+    }
+
+    function getPresetsForPin(pin) {
+      const hasBoard = getOpenTabsByType("board").length > 0;
+      const hasSynth = getOpenTabsByType("synthesis").length > 0;
+
+      if (pin === "source") {
+        return ["read", ...buildSensemakingFamilyPresets()];
+      }
+      if (pin === "board") {
+        if (!hasBoard) return ["sensemaking"];
+        const boardPresets = ["split-board"];
+        if (hasSynth) boardPresets.push("studio");
+        return boardPresets;
+      }
+      if (pin === "synthesis") {
+        if (!hasSynth) return ["sensemaking"];
+        const synthPresets = ["split-synth"];
+        if (hasBoard) synthPresets.push("studio");
+        return synthPresets;
+      }
+      return [];
+    }
+
+    function settleWorkspacePresetLayout(isRead) {
+      const onSettle = () => {
+        repositionDocumentCanvasLines?.();
+        if (!isRead) {
+          scheduleDrawConnections?.();
+          SelectionManager.refreshActiveLineage?.();
+          applyIsolationFold?.();
+          ConnectionManager.updateVisibility?.();
+          ConnectionManager.reposition?.();
+        }
+      };
+
+      requestAnimationFrame(() => {
+        onSettle();
+        window.setTimeout(onSettle, 320);
+      });
+    }
+
+    function applyWorkspacePreset(
+      presetId,
+      { skipToast = false, pinKey = null, cycleIndex = 0, cycleTotal = 1 } = {}
+    ) {
+      if (!WORKSPACE_PRESET_LABELS[presetId]) return false;
+
+      const main = getMainWorkspaceContainer();
+      const isRead = presetId === "read";
+      activeWorkspacePresetId = presetId;
+
+      if (isRead && workspaceIntentMode !== "read") {
+        connectionModeBeforeRead =
+          ConnectionManager.connectionMode && ConnectionManager.connectionMode !== "none"
+            ? ConnectionManager.connectionMode
+            : connectionModeSelect?.value || "active";
+      }
+
+      if (typeof sourcePaneCollapsed !== "undefined" && sourcePaneCollapsed) {
+        setSourcePaneCollapsed(false);
+      }
+
+      if (isRead) {
+        workspaceIntentMode = "read";
+        layoutMode = 0;
+        studioBoardId = null;
+        studioSynthId = null;
+        TabManager.activateTab("view-source-tree");
+        setConnectionMode("none");
+        ConnectionManager.clearHoverNode?.();
+      } else {
+        workspaceIntentMode = "sensemaking";
+
+        if (presetId === "sensemaking") {
+          layoutMode = 0;
+          studioBoardId = null;
+          studioSynthId = null;
+          TabManager.activateTab("view-source-tree");
+        } else if (presetId === "split-board") {
+          const boardId = resolveBoardTabId();
+          if (!boardId) return false;
+          layoutMode = 1;
+          studioBoardId = boardId;
+          studioSynthId = null;
+          TabManager.activateTab(boardId);
+        } else if (presetId === "split-synth") {
+          const synthId = resolveSynthesisTabId();
+          if (!synthId) return false;
+          layoutMode = 1;
+          studioBoardId = null;
+          studioSynthId = synthId;
+          TabManager.activateTab(synthId);
+        } else if (presetId === "studio") {
+          const boardId = resolveBoardTabId();
+          const synthId = resolveSynthesisTabId();
+          if (!boardId || !synthId) return false;
+          layoutMode = 2;
+          studioBoardId = boardId;
+          studioSynthId = synthId;
+          TabManager.activateTab(synthId);
+        }
+
+        const restoreMode =
+          connectionModeBeforeRead === "none" ? "active" : connectionModeBeforeRead;
+        setConnectionMode(restoreMode);
+      }
+
+      document.body.classList.toggle("intent-read-mode", isRead);
+      main?.classList.toggle("intent-read-mode", isRead);
+      settleWorkspacePresetLayout(isRead);
+
+      if (!skipToast) {
+        const altKey = pinKey ? WORKSPACE_PIN_ALT_KEYS[pinKey] : null;
+        const label = WORKSPACE_PRESET_LABELS[presetId];
+        const position =
+          cycleTotal > 1 ? ` · ${cycleIndex}/${cycleTotal}` : "";
+        const hint = altKey ? ` (Alt+${altKey}${position})` : "";
+        showStatus(`Layout: ${label}${hint}`);
+      }
+
+      return true;
+    }
+
+    const WorkspacePresetManager = {
+      activatePin(pin) {
+        const presets = getPresetsForPin(pin);
+        if (!presets.length) return;
+
+        if (workspacePin === pin) {
+          pinCycleIndex = (pinCycleIndex + 1) % presets.length;
+        } else {
+          workspacePin = pin;
+          pinCycleIndex = 0;
+        }
+
+        applyWorkspacePreset(presets[pinCycleIndex], {
+          pinKey: pin,
+          cycleIndex: pinCycleIndex + 1,
+          cycleTotal: presets.length,
+        });
+      },
+
+      applyPresetById(presetId, options = {}) {
+        if (!WORKSPACE_PRESET_LABELS[presetId]) {
+          applyWorkspacePreset("sensemaking", { skipToast: true, ...options });
+          return;
+        }
+        applyWorkspacePreset(presetId, { skipToast: true, ...options });
+      },
+
+      restoreFromSession({ workspacePin: savedPin, pinCycleIndex: savedIndex, workspacePresetId }) {
+        if (savedPin) workspacePin = savedPin;
+        if (Number.isFinite(savedIndex)) pinCycleIndex = savedIndex;
+
+        if (workspacePresetId && WORKSPACE_PRESET_LABELS[workspacePresetId]) {
+          applyWorkspacePreset(workspacePresetId, { skipToast: true });
+          return true;
+        }
+
+        if (savedPin) {
+          const presets = getPresetsForPin(savedPin);
+          const idx = Number.isFinite(savedIndex)
+            ? Math.min(Math.max(0, savedIndex), presets.length - 1)
+            : 0;
+          if (presets[idx]) {
+            applyWorkspacePreset(presets[idx], { skipToast: true });
+            return true;
+          }
+        }
+
+        return false;
       },
     };
 
@@ -5711,6 +6062,20 @@
       menu.style.top = `${e.clientY}px`;
       menu.dataset.targetNodeId = nodeId;
 
+      const changeTypeItem = document.getElementById("ctx-card-change-type");
+      if (changeTypeItem) {
+        const multiCount =
+          SelectionManager.selectedNodeIds.has(nodeId) && SelectionManager.selectedNodeIds.size > 1
+            ? SelectionManager.selectedNodeIds.size
+            : 1;
+        changeTypeItem.innerHTML =
+          multiCount > 1
+            ? '<i class="fa-solid fa-tags" style="margin-right: 8px;"></i> Set type for ' +
+              multiCount +
+              " nodes"
+            : '<i class="fa-solid fa-tags" style="margin-right: 8px;"></i> Change Node Type';
+      }
+
       const node = getNodeById(nodeId);
       const density =
         node?.density_level ??
@@ -5783,98 +6148,144 @@
           hideCardContextMenu();
           if (!targetId) return;
 
-          const activeCard =
-            getWorkspaceCard(targetId) ||
-            document.querySelector(
-              `.workspace-card[data-node-id="${CSS.escape(targetId)}"]`
-            );
-          if (!activeCard) return;
-
-          const currentType = activeCard.dataset.nodeType || "Excerpt";
-
-          const modal = document.getElementById("custom-prompt-modal");
-          const msgEl = document.getElementById("custom-prompt-msg");
-          const selectEl = document.getElementById("custom-prompt-select");
-          if (!modal || !msgEl || !selectEl) return;
-
-          msgEl.innerText = "Enter new node type (e.g., Chapter, Concept):";
-          const formattedCurrent =
-            currentType.charAt(0).toUpperCase() + currentType.slice(1).toLowerCase();
-          const optionExists = Array.from(selectEl.options).some(
-            (opt) => opt.value === formattedCurrent
-          );
-          selectEl.value = optionExists ? formattedCurrent : "Concept";
-          modal.classList.remove("hidden");
-          selectEl.focus();
-
-          const cleanup = () => {
-            modal.classList.add("hidden");
-            const confirmBtn = document.getElementById("custom-prompt-confirm");
-            const cancelBtn = document.getElementById("custom-prompt-cancel");
-            const selectField = document.getElementById("custom-prompt-select");
-            if (confirmBtn) confirmBtn.replaceWith(confirmBtn.cloneNode(true));
-            if (cancelBtn) cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-            if (selectField) selectField.replaceWith(selectField.cloneNode(true));
-          };
-
-          const handleConfirm = async () => {
-            const newType = document.getElementById("custom-prompt-select")?.value;
-            cleanup();
-
-            if (!newType || newType === currentType) return;
-
-            activeCard.dataset.nodeType = newType;
-            const typeLabel =
-              activeCard.querySelector(".node-label") ||
-              activeCard.querySelector(".node-type-label") ||
-              activeCard.querySelector('span[style*="color"]');
-            if (typeLabel) {
-              const levelMatch = typeLabel.innerText.match(/Level\s+\d+:/i);
-              typeLabel.innerText = levelMatch
-                ? `${levelMatch[0]} ${newType}`
-                : newType;
-            }
-
-            const existingNode = workspaceNodeMap.get(targetId) || {
-              id: targetId,
-              origin: "human",
-            };
-            workspaceNodeMap.set(targetId, {
-              ...existingNode,
-              id: targetId,
-              node_type: newType,
-            });
-
-            try {
-              const response = await fetch(
-                `${API_BASE}/api/nodes/${encodeURIComponent(targetId)}`,
-                {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ node_type: newType }),
-                }
-              );
-              if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                showStatus(body.detail || "Failed to update node type.", true);
-                return;
-              }
-              ConnectionManager.scheduleDraw();
-              showStatus(`Node type updated to ${newType}.`);
-            } catch (err) {
-              console.error("Error saving new node type:", err);
-              showStatus("Failed to update node type.", true);
-            }
-          };
-
-          document.getElementById("custom-prompt-confirm")?.addEventListener("click", handleConfirm);
-          document.getElementById("custom-prompt-cancel")?.addEventListener("click", cleanup);
-          document.getElementById("custom-prompt-select")?.addEventListener("keydown", (ke) => {
-            if (ke.key === "Enter") handleConfirm();
-            if (ke.key === "Escape") cleanup();
-          });
+          let nodeIds = [targetId];
+          if (
+            SelectionManager.selectedNodeIds.has(targetId) &&
+            SelectionManager.selectedNodeIds.size > 1
+          ) {
+            nodeIds = getOrderedMultiSelectNodeIds(Array.from(SelectionManager.selectedNodeIds));
+          }
+          openNodeTypeModal(nodeIds);
         });
       }
+    }
+
+    async function applyNodeTypeToNodes(nodeIds, newType) {
+      const uniqueIds = [...new Set(nodeIds.filter(Boolean))];
+      if (!uniqueIds.length || !newType) return { ok: 0, fail: 0 };
+
+      let ok = 0;
+      let fail = 0;
+      for (const targetId of uniqueIds) {
+        const activeCard =
+          getWorkspaceCard(targetId) ||
+          document.querySelector(
+            `.workspace-card[data-node-id="${CSS.escape(targetId)}"]`
+          ) ||
+          document.querySelector(
+            `.synthesis-item[data-node-id="${CSS.escape(targetId)}"]`
+          );
+
+        const existingNode = workspaceNodeMap.get(targetId) || {
+          id: targetId,
+          origin: "human",
+        };
+        const updatedNode = { ...existingNode, id: targetId, node_type: newType };
+        workspaceNodeMap.set(targetId, updatedNode);
+
+        if (activeCard) {
+          activeCard.dataset.nodeType = newType;
+          if (activeCard.matches(".workspace-card")) {
+            applyCardPresentation(activeCard, updatedNode);
+          } else if (activeCard.matches(".synthesis-item")) {
+            applySynthesisItemPresentation(activeCard);
+          }
+        }
+
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/nodes/${encodeURIComponent(targetId)}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ node_type: newType }),
+            }
+          );
+          if (!response.ok) {
+            fail += 1;
+            continue;
+          }
+          ok += 1;
+        } catch (err) {
+          console.error("Error saving new node type:", err);
+          fail += 1;
+        }
+      }
+
+      ConnectionManager.scheduleDraw();
+      applyTreeCardVisibility();
+
+      if (fail === 0) {
+        showStatus(
+          `Updated type to ${newType} for ${ok} node${ok === 1 ? "" : "s"}.`
+        );
+      } else {
+        showStatus(`Updated ${ok}; failed ${fail}.`, true);
+      }
+      return { ok, fail };
+    }
+
+    function openNodeTypeModal(nodeIds, { currentTypeHint } = {}) {
+      const ids = [...new Set(nodeIds.filter(Boolean))];
+      if (!ids.length) return;
+
+      const firstId = ids[0];
+      const activeCard =
+        getWorkspaceCard(firstId) ||
+        document.querySelector(
+          `.workspace-card[data-node-id="${CSS.escape(firstId)}"]`
+        ) ||
+        document.querySelector(
+          `.synthesis-item[data-node-id="${CSS.escape(firstId)}"]`
+        );
+      const currentType =
+        currentTypeHint ||
+        activeCard?.dataset?.nodeType ||
+        workspaceNodeMap.get(firstId)?.node_type ||
+        "Excerpt";
+
+      const modal = document.getElementById("custom-prompt-modal");
+      const msgEl = document.getElementById("custom-prompt-msg");
+      const selectEl = document.getElementById("custom-prompt-select");
+      if (!modal || !msgEl || !selectEl) return;
+
+      msgEl.innerText =
+        ids.length > 1
+          ? `Set node type for ${ids.length} nodes:`
+          : "Enter new node type (e.g., Chapter, Concept):";
+      const formattedCurrent =
+        currentType.charAt(0).toUpperCase() + currentType.slice(1).toLowerCase();
+      const optionExists = Array.from(selectEl.options).some(
+        (opt) => opt.value === formattedCurrent
+      );
+      selectEl.value = optionExists ? formattedCurrent : "Concept";
+      modal.classList.remove("hidden");
+      selectEl.focus();
+
+      const cleanup = () => {
+        modal.classList.add("hidden");
+        const confirmBtn = document.getElementById("custom-prompt-confirm");
+        const cancelBtn = document.getElementById("custom-prompt-cancel");
+        const selectField = document.getElementById("custom-prompt-select");
+        if (confirmBtn) confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+        if (cancelBtn) cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+        if (selectField) selectField.replaceWith(selectField.cloneNode(true));
+      };
+
+      const handleConfirm = async () => {
+        const newType = document.getElementById("custom-prompt-select")?.value;
+        cleanup();
+        if (!newType) return;
+        if (ids.length === 1 && newType === currentType) return;
+        await applyNodeTypeToNodes(ids, newType);
+      };
+
+      document.getElementById("custom-prompt-confirm")?.addEventListener("click", handleConfirm);
+      document.getElementById("custom-prompt-cancel")?.addEventListener("click", cleanup);
+      document.getElementById("custom-prompt-select")?.addEventListener("keydown", (ke) => {
+        if (ke.key === "Enter") handleConfirm();
+        if (ke.key === "Escape") cleanup();
+      });
     }
 
     function initWhiteboardDrop() {
@@ -6332,6 +6743,7 @@
     const TOPOLOGY_LINE_TYPES = new Set(["SUMMARIZES", "CONTAINS", "DEFINITION_OF"]);
     const ISOLATION_DEGREE_VALUES = new Set(["off", "1", "2", "3", "4", "all"]);
     let isolationDegree = "off";
+    let taxonomyFilter = "all";
 
     function parseIsolationDegree(raw) {
       const value = String(raw ?? "off").toLowerCase();
@@ -6407,28 +6819,38 @@
     /**
      * Fold tree cards outside the active neighborhood when Isolate ≠ Off.
      * When Off, still highlight the 1-hop neighborhood (no folding).
+     * Composes with taxonomy filter (isolation ∩ taxonomy).
      */
-    function applyIsolationFold() {
+    function applyTreeCardVisibility() {
       const sourceTree = document.getElementById("view-source-tree");
       if (!sourceTree) return;
 
       const cards = sourceTree.querySelectorAll(".workspace-card[data-node-id]");
       cards.forEach((card) => {
-        card.classList.remove("isolation-folded", "isolation-kept");
+        card.classList.remove("taxonomy-hidden", "isolation-folded", "isolation-kept");
       });
+
+      for (const card of cards) {
+        const nodeId = card.dataset.nodeId;
+        if (!nodeId) continue;
+        if (!cardMatchesTaxonomyFilter(nodeId)) {
+          card.classList.add("taxonomy-hidden");
+        }
+      }
 
       const activeId = SelectionManager.activeNode;
       if (!activeId) {
         ConnectionManager.scheduleDraw();
+        updateLineVisibility();
         return;
       }
 
       const foldHops = getIsolationMaxHops();
-      // Off → highlight direct neighbors only; Isolate N/All → same set as fold keep.
       const highlightHops = foldHops == null ? 1 : foldHops;
       const { nodeIds } = getNeighborhood(activeId, highlightHops);
 
       for (const card of cards) {
+        if (card.classList.contains("taxonomy-hidden")) continue;
         const nodeId = card.dataset.nodeId;
         if (!nodeId) continue;
         if (nodeIds.has(nodeId)) {
@@ -6440,6 +6862,72 @@
 
       ConnectionManager.scheduleDraw();
       updateLineVisibility();
+    }
+
+    function applyIsolationFold() {
+      applyTreeCardVisibility();
+    }
+
+    function normalizeNodeTypeName(raw) {
+      const trimmed = (raw || "").trim();
+      if (!trimmed) return "";
+      return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    }
+
+    function getNodeTaxonomyBucket(nodeId) {
+      const node = workspaceNodeMap.get(nodeId);
+      const card = getWorkspaceCard(nodeId);
+      const type = normalizeNodeTypeName(node?.node_type || card?.dataset?.nodeType || "");
+      if (PROSE_NODE_TYPES.has(type)) return "prose";
+      if (type === "Concept") return "concept";
+      const density =
+        node?.density_level ??
+        parseInt(card?.dataset?.densityLevel || card?.dataset?.depthLevel || "", 10);
+      if (density === 1) return "summary";
+      if (density === 2) return "excerpt";
+      return "other";
+    }
+
+    function cardMatchesTaxonomyFilter(nodeId) {
+      if (taxonomyFilter === "all") return true;
+      return getNodeTaxonomyBucket(nodeId) === taxonomyFilter;
+    }
+
+    function getOrderedMultiSelectNodeIds(nodeIds) {
+      const idSet = new Set(nodeIds);
+      const ordered = [];
+      const sourceTree = document.getElementById("view-source-tree");
+      sourceTree?.querySelectorAll(".workspace-card[data-node-id]").forEach((card) => {
+        const id = card.dataset.nodeId?.trim();
+        if (id && idSet.has(id)) ordered.push(id);
+      });
+      for (const id of nodeIds) {
+        if (!ordered.includes(id)) ordered.push(id);
+      }
+      return ordered;
+    }
+
+    function buildMultiNodeDragPayload(nodeIds) {
+      const orderedIds = getOrderedMultiSelectNodeIds(nodeIds);
+      const depths = orderedIds.map((id) => getCardDepthLevel(id));
+      const minDepth = depths.length ? Math.min(...depths) : 0;
+      const relativeIndents = depths.map((depth) => depth - minDepth);
+      return { nodeIds: orderedIds, relativeIndents };
+    }
+
+    function parseDraggedNodeIds(dataTransfer) {
+      const multiRaw = dataTransfer.getData("application/x-internalize-nodes");
+      if (multiRaw) {
+        try {
+          const parsed = JSON.parse(multiRaw);
+          if (Array.isArray(parsed)) return parsed.filter(Boolean);
+          if (Array.isArray(parsed?.nodeIds)) return parsed.nodeIds.filter(Boolean);
+        } catch (_) {
+          /* invalid multi payload */
+        }
+      }
+      const single = dataTransfer.getData("text/plain")?.trim();
+      return single ? [single] : [];
     }
 
     function leaderColorWithAlpha(hexColor, alpha) {
@@ -6788,7 +7276,7 @@
       SelectionManager.deselectAll();
       clearGroupingSelection();
       clearWorkspaceSelectionClasses();
-      clearIsolationFoldClasses();
+      applyTreeCardVisibility();
       if (cy) {
         cy.elements().removeClass("highlighted");
         cy.elements().removeClass("selected-target");
@@ -7033,20 +7521,26 @@
           e.preventDefault();
           container.classList.remove("drag-over-active");
 
-          const nodeId = e.dataTransfer.getData("text/plain")?.trim();
-          if (!nodeId) return;
+          const nodeIds = parseDraggedNodeIds(e.dataTransfer);
+          if (!nodeIds.length) return;
 
           const targetList = container.id === "list-a" ? "A" : "B";
-          const nodeData = getNodeById(nodeId);
-          if (!nodeData) {
-            showStatus(`Node ${nodeId} not found in workspace.`, true);
+          SelectionManager.setActiveTarget(targetList);
+
+          let added = 0;
+          for (const nodeId of nodeIds) {
+            const nodeData = getNodeById(nodeId);
+            if (!nodeData) continue;
+            SelectionManager.addNode(nodeData);
+            added += 1;
+          }
+
+          if (!added) {
+            showStatus("No matching nodes found in workspace.", true);
             return;
           }
 
-          SelectionManager.setActiveTarget(targetList);
-          SelectionManager.addNode(nodeData);
-
-          const card = getWorkspaceCard(nodeId);
+          const card = getWorkspaceCard(nodeIds[0]);
           if (card) flashWorkbenchAdded(card);
         });
       });
@@ -7871,77 +8365,28 @@
       return document.getElementById("main-workspace-container");
     }
 
-    function applyWorkspaceIntentMode(mode) {
-      const next = mode === "read" ? "read" : "sensemaking";
-      const main = getMainWorkspaceContainer();
-      const isRead = next === "read";
-
-      if (isRead) {
-        // Remember the live connection mode so Alt+2 can restore it.
-        if (workspaceIntentMode !== "read") {
-          connectionModeBeforeRead =
-            ConnectionManager.connectionMode && ConnectionManager.connectionMode !== "none"
-              ? ConnectionManager.connectionMode
-              : connectionModeSelect?.value || "active";
-        }
-
-        // Read mode lives on the Source & Tree surface.
-        if (typeof TabManager !== "undefined" && TabManager.activeId !== "view-source-tree") {
-          TabManager.activateTab("view-source-tree");
-        }
-
-        // Source must be visible and expanded for reading.
-        if (typeof sourcePaneCollapsed !== "undefined" && sourcePaneCollapsed) {
-          setSourcePaneCollapsed(false);
-        }
-
-        setConnectionMode("none");
-        ConnectionManager.clearHoverNode?.();
-      } else {
-        // Restore Source + Tree split and prior line visibility.
-        if (typeof TabManager !== "undefined" && TabManager.activeId !== "view-source-tree") {
-          TabManager.activateTab("view-source-tree");
-        }
-        if (typeof sourcePaneCollapsed !== "undefined" && sourcePaneCollapsed) {
-          setSourcePaneCollapsed(false);
-        }
-        const restoreMode =
-          connectionModeBeforeRead === "none" ? "active" : connectionModeBeforeRead;
-        setConnectionMode(restoreMode);
-      }
-
-      workspaceIntentMode = next;
-      document.body.classList.toggle("intent-read-mode", isRead);
-      main?.classList.toggle("intent-read-mode", isRead);
-
-      const onSettle = () => {
-        repositionDocumentCanvasLines?.();
-        if (!isRead) {
-          scheduleDrawConnections?.();
-          SelectionManager.refreshActiveLineage?.();
-          applyIsolationFold?.();
-          ConnectionManager.updateVisibility?.();
-          ConnectionManager.reposition?.();
-        }
-      };
-
-      // Re-layout after the CSS transition (~300ms) plus one frame.
-      requestAnimationFrame(() => {
-        onSettle();
-        window.setTimeout(onSettle, 320);
-      });
-
-      showStatus(isRead ? "Read Mode (Alt+2 · Sensemaking)" : "Sensemaking Mode (Alt+1 · Read)");
-    }
-
     function setWorkspaceIntentMode(mode) {
-      if (mode !== "read" && mode !== "sensemaking") return;
-      if (workspaceIntentMode === mode) {
-        // Re-apply sensemaking so panes/lines recover if they drifted.
-        if (mode === "sensemaking") applyWorkspaceIntentMode(mode);
+      if (mode === "read") {
+        workspacePin = "source";
+        pinCycleIndex = 0;
+        applyWorkspacePreset("read", {
+          pinKey: "source",
+          cycleIndex: 1,
+          cycleTotal: getPresetsForPin("source").length,
+        });
         return;
       }
-      applyWorkspaceIntentMode(mode);
+      if (mode === "sensemaking") {
+        const presets = getPresetsForPin("source");
+        const senseIdx = presets.indexOf("sensemaking");
+        workspacePin = "source";
+        pinCycleIndex = senseIdx >= 0 ? senseIdx : 0;
+        applyWorkspacePreset("sensemaking", {
+          pinKey: "source",
+          cycleIndex: pinCycleIndex + 1,
+          cycleTotal: presets.length,
+        });
+      }
     }
 
     function onNodePaneScroll() {
@@ -8056,6 +8501,37 @@
 
       isolationDegreeSelect.addEventListener("change", () => {
         setIsolationDegree(isolationDegreeSelect.value);
+      });
+    }
+
+    function setTaxonomyFilter(value) {
+      taxonomyFilter = value || "all";
+      if (taxonomyFilterSelect && taxonomyFilterSelect.value !== taxonomyFilter) {
+        taxonomyFilterSelect.value = taxonomyFilter;
+      }
+      try {
+        localStorage.setItem(TAXONOMY_FILTER_STORAGE_KEY, taxonomyFilter);
+      } catch (_) {
+        /* private mode / blocked storage */
+      }
+      applyTreeCardVisibility();
+    }
+
+    function initTaxonomyFilterSelect() {
+      if (!taxonomyFilterSelect || taxonomyFilterSelect.dataset.bound) return;
+      taxonomyFilterSelect.dataset.bound = "1";
+
+      let saved = "all";
+      try {
+        saved = localStorage.getItem(TAXONOMY_FILTER_STORAGE_KEY) || "all";
+      } catch (_) {
+        saved = "all";
+      }
+      taxonomyFilter = saved;
+      taxonomyFilterSelect.value = taxonomyFilter;
+
+      taxonomyFilterSelect.addEventListener("change", () => {
+        setTaxonomyFilter(taxonomyFilterSelect.value);
       });
     }
 
@@ -9234,17 +9710,82 @@
         .map((block) => block.nodeId);
     }
 
-    function blocksToLegacyContent(blocks) {
+    function blocksToLegacyContent(blocks, referenceNodes = []) {
+      const refById = new Map((referenceNodes || []).map((node) => [node.id, node]));
       return (blocks || [])
         .map((block) => {
           if (block.type === "text") return block.content || "";
-          if (block.type === "reference") {
-            return `[Reference · ${block.nodeId}]`;
+          if (block.type === "reference" && block.nodeId) {
+            const resolved = synthesisNodeDisplayText(
+              block.nodeId,
+              "",
+              refById.get(block.nodeId)
+            );
+            return resolved || `[Reference · ${block.nodeId}]`;
           }
           return "";
         })
         .filter(Boolean)
         .join("\n\n");
+    }
+
+    function buildSynthesisSourceDocumentHtml(blocks, referenceNodes) {
+      const refById = new Map((referenceNodes || []).map((node) => [node.id, node]));
+      const sortedBlocks = normalizeDocumentBlocks(blocks);
+
+      return sortedBlocks
+        .map((block) => {
+          const indentLevel = parseInt(block.indentLevel || "0", 10) || 0;
+          const marginLeft = indentLevel * 20;
+
+          if (block.type === "text") {
+            const text = escapeHtml(block.content || "").replace(/\n/g, "<br>");
+            if (!text) return "";
+            return `<p class="synthesis-source-text" style="margin:0 0 1rem ${marginLeft}px">${text}</p>`;
+          }
+
+          if (block.type === "reference" && block.nodeId) {
+            const node = refById.get(block.nodeId);
+            const text = escapeHtml(
+              synthesisNodeDisplayText(block.nodeId, "", node)
+            ).replace(/\n/g, "<br>");
+            if (!text) return "";
+            const label =
+              node?.density_level === 1
+                ? "Summary"
+                : node?.density_level === 2
+                  ? "Excerpt"
+                  : "Reference";
+            return `<p class="synthesis-source-ref" style="margin-left:${marginLeft}px" data-node-id="${escapeHtml(block.nodeId)}"><strong>${label}</strong>${text}</p>`;
+          }
+
+          return "";
+        })
+        .filter(Boolean)
+        .join("");
+    }
+
+    async function resolveSynthesisSourceDocumentView(sourceId, fallbackText) {
+      try {
+        const { doc, references } = await fetchSynthesisDocumentState(sourceId);
+        const blocks = normalizeDocumentBlocks(doc.blocks);
+        if (!blocks.length) {
+          return { html: escapeHtml(fallbackText || "").replace(/\n/g, "<br>"), text: fallbackText || "" };
+        }
+
+        const referenceNodes = await enrichReferenceNodesForBlocks(blocks, references);
+        for (const ref of referenceNodes) {
+          registerReferenceNodeInWorkspace(ref);
+        }
+
+        return {
+          html: buildSynthesisSourceDocumentHtml(blocks, referenceNodes),
+          text: blocksToLegacyContent(blocks, referenceNodes),
+        };
+      } catch (err) {
+        console.warn("[resolveSynthesisSourceDocumentView]", err);
+        return { html: escapeHtml(fallbackText || "").replace(/\n/g, "<br>"), text: fallbackText || "" };
+      }
     }
 
     function normalizeDocumentBlocks(rawBlocks) {
@@ -9381,6 +9922,7 @@
     function refreshSynthesisWorkspaceLayout() {
       synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
         applySynthesisItemIndent(item);
+        applySynthesisItemPresentation(item);
       });
 
       if (synthesisViewMode === "read") {
@@ -9490,6 +10032,9 @@
         boardId: getActiveBoardSavedId(),
         synthesisId: activeSynthesisDocId || null,
         layoutMode,
+        workspacePin,
+        pinCycleIndex,
+        workspacePresetId: activeWorkspacePresetId,
       };
 
       const payload = {
@@ -9569,6 +10114,15 @@
 
         if (typeof data.layoutMode !== "undefined") {
           layoutMode = data.layoutMode;
+        }
+
+        const presetRestored = WorkspacePresetManager.restoreFromSession({
+          workspacePin: data.workspacePin,
+          pinCycleIndex: data.pinCycleIndex,
+          workspacePresetId: data.workspacePresetId,
+        });
+
+        if (!presetRestored && typeof data.layoutMode !== "undefined") {
           applyLayoutMode();
         }
 
@@ -10097,7 +10651,15 @@
         return false;
       }
 
-      const content = blocksToLegacyContent(documentBlocks);
+      const content = blocksToLegacyContent(
+        documentBlocks,
+        await enrichReferenceNodesForBlocks(
+          documentBlocks,
+          gatherSynthesisReferencedNodeIds()
+            .map((id) => workspaceNodeMap.get(id))
+            .filter(Boolean)
+        )
+      );
 
       let trimmedTitle = synthesisTitleInput?.value.trim() || "";
       if (!trimmedTitle) {
@@ -10355,9 +10917,21 @@
     function getSynthesisItemMetaLabel(nodeId) {
       const node = workspaceNodeMap.get(nodeId);
       if (!node) return "Node";
-      if (node.density_level === 1) return "Summary";
-      if (node.density_level === 2) return "Excerpt";
-      return "Source";
+      const isSummary = isSummaryDensity(node.density_level);
+      return getCardTypeDisplay(node, isSummary);
+    }
+
+    function applySynthesisItemPresentation(item) {
+      const nodeId = item.dataset.nodeId || item.dataset.sourceNode;
+      if (!nodeId) return;
+      const node = workspaceNodeMap.get(nodeId);
+      if (!node) return;
+      const isSummary = isSummaryDensity(node.density_level);
+      const typeDisplay = getCardTypeDisplay(node, isSummary);
+      item.dataset.nodeType = typeDisplay;
+      item.classList.toggle("synthesis-prose-item", PROSE_NODE_TYPES.has(typeDisplay));
+      const metaLabel = item.querySelector(".synthesis-item-meta-label");
+      if (metaLabel) metaLabel.textContent = getSynthesisItemMetaLabel(nodeId);
     }
 
     function applySynthesisItemIndent(item) {
@@ -10905,11 +11479,20 @@
 
     function resolveSynthesisDropEntries(dataTransfer) {
       let nodeIds = [];
+      let relativeIndents = [];
       const multiRaw = dataTransfer.getData("application/x-internalize-nodes");
       if (multiRaw) {
         try {
           const parsed = JSON.parse(multiRaw);
-          if (Array.isArray(parsed)) nodeIds = parsed.filter(Boolean);
+          if (Array.isArray(parsed)) {
+            nodeIds = parsed.filter(Boolean);
+            relativeIndents = nodeIds.map(() => 0);
+          } else if (Array.isArray(parsed?.nodeIds)) {
+            nodeIds = parsed.nodeIds.filter(Boolean);
+            relativeIndents = Array.isArray(parsed.relativeIndents)
+              ? parsed.relativeIndents
+              : nodeIds.map(() => 0);
+          }
         } catch (_) {
           /* invalid multi payload */
         }
@@ -10927,17 +11510,22 @@
 
       if (!nodeIds.length && primaryPayload?.nodeId) {
         nodeIds = [primaryPayload.nodeId];
+        relativeIndents = [0];
       }
       if (!nodeIds.length) return [];
 
       return nodeIds
-        .map((nodeId) => {
+        .map((nodeId, index) => {
+          const relativeIndent = Number.isFinite(relativeIndents[index])
+            ? Math.max(0, relativeIndents[index])
+            : 0;
           if (primaryPayload?.nodeId === nodeId && primaryPayload.text) {
             return {
               nodeId,
               text: primaryPayload.text,
               depthLevel:
                 primaryPayload.depthLevel ?? getCardDepthLevel(nodeId),
+              relativeIndent,
             };
           }
           const card = getWorkspaceCard(nodeId);
@@ -10951,6 +11539,7 @@
             nodeId,
             text,
             depthLevel: getCardDepthLevel(nodeId),
+            relativeIndent,
           };
         })
         .filter((entry) => entry.text);
@@ -10966,14 +11555,19 @@
         ? referenceNode.previousElementSibling
         : container.lastElementChild;
 
-      for (const { nodeId, text, depthLevel } of entries) {
-        let targetIndent = 0;
-        if (
-          previousNode &&
-          previousNode.matches(".synthesis-item, .synthesis-block, .workspace-card")
-        ) {
-          targetIndent = parseInt(previousNode.dataset.indentLevel || "0", 10) || 0;
-        }
+      let dropBaseIndent = 0;
+      if (
+        previousNode &&
+        previousNode.matches(".synthesis-item, .synthesis-block, .workspace-card")
+      ) {
+        dropBaseIndent = parseInt(previousNode.dataset.indentLevel || "0", 10) || 0;
+      }
+
+      for (const { nodeId, text, depthLevel, relativeIndent = 0 } of entries) {
+        const targetIndent = Math.min(
+          5,
+          Math.max(0, dropBaseIndent + relativeIndent)
+        );
 
         const item = appendSynthesisItem(
           nodeId,
@@ -11011,6 +11605,7 @@
       item.dataset.depthLevel = String(depthLevel ?? 0);
       item.dataset.indentLevel = String(indentLevel ?? 0);
       item.dataset.itemType = getSynthesisItemType(nodeId);
+      applySynthesisItemPresentation(item);
       item.tabIndex = 0;
 
       const handle = document.createElement("button");
@@ -11118,7 +11713,8 @@
       }
 
       const payloadIds = Array.from(SelectionManager.selectedNodeIds);
-      e.dataTransfer.setData("application/x-internalize-nodes", JSON.stringify(payloadIds));
+      const dragPayload = buildMultiNodeDragPayload(payloadIds);
+      e.dataTransfer.setData("application/x-internalize-nodes", JSON.stringify(dragPayload));
 
       const text = getWorkspaceCardText(card);
       const depthLevel = parseInt(card.dataset.depthLevel, 10);
@@ -13653,7 +14249,19 @@
           data.summaries,
           rawSummaryEdges
         );
-        docBody.innerHTML = buildHighlightedHtml(data.document_text, collapsed.excerpts);
+
+        let documentText = data.document_text || "";
+        let documentHtml = buildHighlightedHtml(documentText, collapsed.excerpts);
+        if (data.source.density_level === 4) {
+          const resolved = await resolveSynthesisSourceDocumentView(
+            data.source.id,
+            documentText
+          );
+          documentText = resolved.text;
+          documentHtml = resolved.html;
+        }
+        documentCanvasText = documentText;
+        docBody.innerHTML = documentHtml;
         ConnectionManager.setGraphData(
           data.source.id,
           collapsed.excerpts,
@@ -13888,13 +14496,24 @@
       document.addEventListener("keydown", async (e) => {
         if (isTypingTarget(e.target)) return;
 
-        // Alt+1 / Alt+2: global intent modes (Read ↔ Sensemaking)
+        // Alt+1 / Alt+2 / Alt+3: workspace pin presets (repeat cycles variants)
         if (e.altKey && !e.ctrlKey && !e.metaKey) {
           const isAlt1 = e.code === "Digit1" || e.key === "1";
           const isAlt2 = e.code === "Digit2" || e.key === "2";
-          if (isAlt1 || isAlt2) {
+          const isAlt3 = e.code === "Digit3" || e.key === "3";
+          if (isAlt1) {
             e.preventDefault();
-            setWorkspaceIntentMode(isAlt1 ? "read" : "sensemaking");
+            WorkspacePresetManager.activatePin("source");
+            return;
+          }
+          if (isAlt2) {
+            e.preventDefault();
+            WorkspacePresetManager.activatePin("board");
+            return;
+          }
+          if (isAlt3) {
+            e.preventDefault();
+            WorkspacePresetManager.activatePin("synthesis");
             return;
           }
         }
@@ -14001,6 +14620,7 @@
       initEditSourcePropertiesModal();
       initConnectionModeSelect();
       initIsolationDegreeSelect();
+      initTaxonomyFilterSelect();
       initWorkspaceGraphPane();
       initLeftPaneCollapses();
       initWorkbenchSidebar();
