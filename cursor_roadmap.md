@@ -18,6 +18,11 @@
 - [x] **Click source highlight → focus excerpt:** Clicking `.excerpt-highlight` activates the matching Source Tree card.
 - [ ] **Multi-Select Payload Upgrades:** Ensure that dragging a multi-selected group of nodes from the Source Tree into the Synthesis pane (or into the Connections List A/B) transfers all IDs seamlessly and preserves their relative indentations upon dropping. *(IDs already transfer; relative indent preservation still open.)*
 - [x] **"Summarize-in-Place" Edge Creation:** Synthesis / tree summarize flows create `SUMMARIZES` edges from the new summary to the child excerpt/node.
+- [x] **`DEFINITION_OF` ontology + Connections:** Logical axis type for name→passage links; Connections dropdown loads it; distinct amber LeaderLine stroke (not hierarchy).
+- [x] **Click-to-reveal topology:** Selecting a hub highlights `DEFINITION_OF` partners + `SUMMARIZES` children (and source spans); active connection mode includes those edges in lineage. Multi-summary visual “swath” deferred.
+- [x] **Duplicate hub collapse:** Same `start_offset`/`end_offset` (or identical title/text) Concepts collapse to one Source Tree card; edges remap onto the canonical hub.
+- [x] **Column 2+ document order:** Higher columns sort by hub/child `start_offset` (not created_at).
+- [x] **Source Tree click priority:** Topology-first (definition + children + Active lines); own source scroll only when the hub has no partners. Focus/Board remain the deep neighborhood views.
 
 ## Phase 3: Taxonomy & Filtering (Mid-Term)
 *The goal of this phase is to utilize the new strict node typing (Excerpt, Summary, Concept, Chapter, Part) to empower navigation.*

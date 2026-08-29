@@ -38,6 +38,7 @@ class RelationshipType(str, Enum):
     CAUSES = "CAUSES"
     REQUIRES = "REQUIRES"
     EXAMPLE_OF = "EXAMPLE_OF"
+    DEFINITION_OF = "DEFINITION_OF"
     FOLLOWS = "FOLLOWS"
     REFERENCES = "REFERENCES"
 
@@ -45,7 +46,12 @@ class RelationshipType(str, Enum):
 RELATIONSHIP_AXES: dict[str, list[RelationshipType]] = {
     "Hierarchy": [RelationshipType.SUMMARIZES, RelationshipType.CONTAINS],
     "Evaluation": [RelationshipType.SUPPORTS, RelationshipType.CONTRADICTS],
-    "Logical": [RelationshipType.CAUSES, RelationshipType.REQUIRES, RelationshipType.EXAMPLE_OF],
+    "Logical": [
+        RelationshipType.CAUSES,
+        RelationshipType.REQUIRES,
+        RelationshipType.EXAMPLE_OF,
+        RelationshipType.DEFINITION_OF,
+    ],
     "Narrative": [RelationshipType.FOLLOWS, RelationshipType.REFERENCES],
 }
 

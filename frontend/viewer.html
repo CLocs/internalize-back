@@ -2600,6 +2600,21 @@
       border-left-color: #4ade80;
     }
 
+    .workspace-card.definition-highlight {
+      border-color: #f59e0b !important;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.22) inset !important;
+    }
+
+    .workspace-card.excerpt-card.definition-highlight {
+      border-left-color: #f59e0b;
+    }
+
+    span.excerpt-highlight.definition-highlight {
+      background-color: rgba(245, 158, 11, 0.45) !important;
+      border-bottom: 2px solid #f59e0b !important;
+      box-shadow: none;
+    }
+
     @keyframes card-pulse {
       0%, 100% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35); }
       50% { box-shadow: 0 0 24px rgba(222, 255, 154, 0.65); }
@@ -2944,6 +2959,7 @@
             <option value="CAUSES">CAUSES</option>
             <option value="REQUIRES">REQUIRES</option>
             <option value="EXAMPLE_OF">EXAMPLE_OF</option>
+            <option value="DEFINITION_OF">DEFINITION_OF</option>
             <option value="FOLLOWS">FOLLOWS</option>
           </select>
           <fieldset class="edge-direction-control">
@@ -6214,6 +6230,18 @@
       dash: { len: 6, gap: 4 },
     };
 
+    /** Short name → longer passage (Logical). Drawn solid amber — not hierarchy. */
+    const DEFINITION_LINK_LINE = {
+      color: "#f59e0b",
+      path: "fluid",
+      startSocket: "right",
+      endSocket: "left",
+      size: 2.5,
+      endPlug: "arrow1",
+    };
+
+    const TOPOLOGY_LINE_TYPES = new Set(["SUMMARIZES", "CONTAINS", "DEFINITION_OF"]);
+
     function leaderColorWithAlpha(hexColor, alpha) {
       const hex = hexColor.replace("#", "");
       const r = parseInt(hex.slice(0, 2), 16);
@@ -6345,7 +6373,7 @@
         const edgeIds = new Set();
         if (!startNodeId) return { nodeIds, edgeIds };
 
-        const lineageEdgeTypes = new Set(["SUMMARIZES", "CONTAINS"]);
+        const lineageEdgeTypes = TOPOLOGY_LINE_TYPES;
         const childrenOf = new Map();
         const parentsOf = new Map();
 
@@ -6532,14 +6560,15 @@
         card.classList.remove(
           "selected-for-grouping",
           "trace-highlight",
+          "definition-highlight",
           "workspace-focus",
           "workbench-added",
           "is-selected",
           "highlighted"
         );
       });
-      docBody.querySelectorAll(".excerpt-highlight.trace-highlight").forEach((el) => {
-        el.classList.remove("trace-highlight");
+      docBody.querySelectorAll(".excerpt-highlight.trace-highlight, .excerpt-highlight.definition-highlight").forEach((el) => {
+        el.classList.remove("trace-highlight", "definition-highlight");
       });
     }
 
@@ -6636,6 +6665,7 @@
     }
 
     function applyWorkbenchConnectionLocally(pairs, relationshipType) {
+      const summarizesSources = new Set();
       for (const { source_id, target_id } of pairs) {
         ConnectionManager.addEdge({
           id: ConnectionManager.edgeKey(relationshipType, source_id, target_id),
@@ -6647,6 +6677,7 @@
         if (relationshipType === "SUMMARIZES") {
           mergeSummaryChildren(source_id, [target_id]);
           addHierarchyChild(source_id, target_id);
+          summarizesSources.add(source_id);
           if (lastWorkspaceRender) {
             lastWorkspaceRender = {
               ...lastWorkspaceRender,
@@ -6660,7 +6691,29 @@
           addHierarchyChild(source_id, target_id);
         }
       }
+      for (const sourceId of summarizesSources) {
+        promoteSummarySourceColumn(sourceId);
+      }
       refreshAllConnectionBadges();
+    }
+
+    function promoteSummarySourceColumn(sourceId) {
+      if (!sourceId) return;
+      const childIds = [];
+      for (const edge of ConnectionManager.edges.values()) {
+        if (edge.relationship_type !== "SUMMARIZES") continue;
+        if (edge.source_id !== sourceId) continue;
+        childIds.push(edge.target_id);
+      }
+      if (!childIds.length) return;
+
+      const desired = computeSummaryColumnForChildren(childIds);
+      const current = getCardColumnIndex(sourceId);
+      if (desired <= current) return;
+
+      assignNodeColumn(sourceId, desired);
+      const card = getWorkspaceCard(sourceId);
+      if (card) appendToColumn(desired, card);
     }
 
     async function createWorkbenchConnections() {
@@ -7117,6 +7170,50 @@
           return null;
         }
 
+        if (edge.relationship_type === "DEFINITION_OF") {
+          const focusPair = getFocusViewCardPair(edge.source_id, edge.target_id);
+          if (focusPair) {
+            return {
+              start: focusPair.parent,
+              end: focusPair.child,
+              style: DEFINITION_LINK_LINE,
+            };
+          }
+
+          const wbSource = getWhiteboardWorkspaceCard(edge.source_id);
+          const wbTarget = getWhiteboardWorkspaceCard(edge.target_id);
+          if (wbSource && wbTarget) {
+            const isBoardLine =
+              wbSource.closest(".board-view") && wbTarget.closest(".board-view");
+            return {
+              start: wbSource,
+              end: wbTarget,
+              style: isBoardLine
+                ? { ...DEFINITION_LINK_LINE, startSocket: "auto", endSocket: "auto" }
+                : DEFINITION_LINK_LINE,
+            };
+          }
+
+          const treeSource = getSourceTreeWorkspaceCard(edge.source_id);
+          const treeTarget = getSourceTreeWorkspaceCard(edge.target_id);
+          if (treeSource && treeTarget) {
+            if (compressed) {
+              let start = this.getVisibleEndpoint(edge.source_id, "parent");
+              if (!start) start = this.getVisibleEndpoint(edge.source_id, "child");
+              let end = this.getVisibleEndpoint(edge.target_id, "child");
+              if (!end) end = this.getVisibleEndpoint(edge.target_id, "parent");
+              if (!start || !end || start === end) return null;
+              return { start, end, style: DEFINITION_LINK_LINE };
+            }
+            if (treeSource.offsetParent === null || treeTarget.offsetParent === null) {
+              return null;
+            }
+            return { start: treeSource, end: treeTarget, style: DEFINITION_LINK_LINE };
+          }
+
+          return null;
+        }
+
         return null;
       },
 
@@ -7141,7 +7238,7 @@
 
       createLine(edge, start, end, style) {
         const lineContainer = lineCanvas;
-        const line = new LinkerLine({
+        const options = {
           parent: lineContainer,
           container: lineContainer,
           start,
@@ -7153,11 +7250,30 @@
           startSocket: style.startSocket,
           endSocket: style.endSocket,
           dash: style.dash,
-        });
-        line._baseColor = style.color;
-        line._edgeId = edge.id;
-        this.lines.set(edge.id, line);
-        return line;
+        };
+        if (style.endPlug) options.endPlug = style.endPlug;
+        try {
+          const line = new LinkerLine(options);
+          line._baseColor = style.color;
+          line._edgeId = edge.id;
+          this.lines.set(edge.id, line);
+          return line;
+        } catch (err) {
+          console.warn("[ConnectionManager.createLine]", edge.id, err);
+          // Retry once without optional plugs/dash if LinkerLine rejects them
+          try {
+            delete options.endPlug;
+            delete options.dash;
+            const line = new LinkerLine(options);
+            line._baseColor = style.color;
+            line._edgeId = edge.id;
+            this.lines.set(edge.id, line);
+            return line;
+          } catch (err2) {
+            console.error("[ConnectionManager.createLine] failed", edge.id, err2);
+            return null;
+          }
+        }
       },
 
       drawAllConnections() {
@@ -7251,9 +7367,14 @@
         const isLongDistance =
           Math.abs(targetRect.left - startRect.left) > paneRect.width * LONG_DISTANCE_VIEWPORT_FACTOR;
         const baseColor = line._baseColor || "#deff9a";
-        line.color = isLongDistance
-          ? "rgba(100, 100, 100, 0.2)"
-          : leaderColorWithAlpha(baseColor, 1);
+        const keepFullColor =
+          this.connectionMode === "active" &&
+          line._edgeId &&
+          SelectionManager.activeLineageEdges.has(line._edgeId);
+        line.color =
+          !keepFullColor && isLongDistance
+            ? "rgba(100, 100, 100, 0.2)"
+            : leaderColorWithAlpha(baseColor, 1);
       },
 
       updateVisibility() {
@@ -7544,9 +7665,133 @@
     }
 
     function clearTraceHighlights() {
-      document.querySelectorAll(".trace-highlight").forEach((el) => {
-        el.classList.remove("trace-highlight");
+      document.querySelectorAll(".trace-highlight, .definition-highlight").forEach((el) => {
+        el.classList.remove("trace-highlight", "definition-highlight");
       });
+    }
+
+    function getSummarizesChildIdsForNode(nodeId) {
+      if (!nodeId) return [];
+      const card = getWorkspaceCard(nodeId);
+      if (card?.dataset.childIds) {
+        const fromCard = card.dataset.childIds.split(",").filter(Boolean);
+        if (fromCard.length) return fromCard;
+      }
+      const fromMap = summaryChildMap.get(nodeId);
+      if (fromMap?.length) return [...fromMap];
+
+      const childIds = [];
+      for (const edge of ConnectionManager.edges.values()) {
+        if (edge.relationship_type !== "SUMMARIZES") continue;
+        if (edge.source_id !== nodeId) continue;
+        childIds.push(edge.target_id);
+      }
+      return childIds;
+    }
+
+    function getDefinitionPartnerIds(nodeId) {
+      if (!nodeId) return [];
+      const partners = [];
+      for (const edge of ConnectionManager.edges.values()) {
+        if (edge.relationship_type !== "DEFINITION_OF") continue;
+        if (edge.source_id === nodeId) partners.push(edge.target_id);
+        else if (edge.target_id === nodeId) partners.push(edge.source_id);
+      }
+      return partners;
+    }
+
+    function highlightTopologyNode(nodeId, { definition = false } = {}) {
+      if (!nodeId) return null;
+      const card = getWorkspaceCard(nodeId);
+      if (card) {
+        card.classList.add("trace-highlight");
+        if (definition) card.classList.add("definition-highlight");
+      }
+      const span = document.getElementById(`excerpt-${nodeId}`);
+      if (span) {
+        span.classList.add("trace-highlight");
+        if (definition) span.classList.add("definition-highlight");
+      }
+      return card || span;
+    }
+
+    function revealNodeTopology(nodeId) {
+      if (!nodeId) return;
+
+      highlightTopologyNode(nodeId);
+
+      const childIds = getSummarizesChildIdsForNode(nodeId);
+      const definitionPartners = getDefinitionPartnerIds(nodeId);
+
+      // Source Tree click priority: topology first (definition partners, then
+      // SUMMARIZES children). Own source span is secondary — scroll there only
+      // when this hub has no partners. Focus/Board own the full neighborhood.
+      let firstPartnerCard = null;
+      let firstPartnerSpan = null;
+
+      for (const partnerId of definitionPartners) {
+        const card = getWorkspaceCard(partnerId);
+        if (card) {
+          card.classList.add("trace-highlight", "definition-highlight");
+          if (!firstPartnerCard) firstPartnerCard = card;
+        }
+        const span = document.getElementById(`excerpt-${partnerId}`);
+        if (span) {
+          span.classList.add("trace-highlight", "definition-highlight");
+          if (!firstPartnerSpan) firstPartnerSpan = span;
+        }
+      }
+
+      for (const childId of childIds) {
+        const card = getWorkspaceCard(childId);
+        if (card) {
+          card.classList.add("trace-highlight");
+          if (!firstPartnerCard) firstPartnerCard = card;
+        }
+        const span = document.getElementById(`excerpt-${childId}`);
+        if (span) {
+          span.classList.add("trace-highlight");
+          if (!firstPartnerSpan) firstPartnerSpan = span;
+        }
+      }
+
+      const hasTopology = definitionPartners.length > 0 || childIds.length > 0;
+      if (!hasTopology) {
+        const spanId =
+          getWorkspaceCard(nodeId)?.dataset.sourceSpan || `excerpt-${nodeId}`;
+        const span = document.getElementById(spanId);
+        if (span) {
+          span.classList.add("trace-highlight");
+          scrollWithLineReposition(span, { behavior: "smooth", block: "center" });
+        }
+        ConnectionManager.scheduleDraw();
+        return;
+      }
+
+      // Soft-light the hub's own span if it is an L2 excerpt, but do not scroll to it.
+      const hubSpanId =
+        getWorkspaceCard(nodeId)?.dataset.sourceSpan || `excerpt-${nodeId}`;
+      const hubSpan = document.getElementById(hubSpanId);
+      if (hubSpan) hubSpan.classList.add("trace-highlight");
+
+      const scrollTarget = firstPartnerCard || firstPartnerSpan;
+      if (scrollTarget) {
+        scrollWithLineReposition(scrollTarget, { behavior: "smooth", block: "center" });
+      }
+
+      ConnectionManager.scheduleDraw();
+      requestAnimationFrame(() => ConnectionManager.reposition());
+    }
+
+    function handleWorkspaceCardTrace(card) {
+      const autoTraceToggle = document.getElementById("auto-trace-toggle");
+      if (!autoTraceToggle?.checked) return;
+
+      clearTraceHighlights();
+
+      const nodeId = card.dataset.nodeId || card.id.replace("workspace-card-", "");
+      if (!nodeId) return;
+      revealNodeTopology(nodeId);
     }
 
     function findHierarchyParentId(nodeId) {
@@ -7747,65 +7992,6 @@
         if (Date.now() < scrollEnd) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
-    }
-
-    function getSummaryChildIds(summaryId, card) {
-      if (card?.dataset.childIds) {
-        return card.dataset.childIds.split(",").filter(Boolean);
-      }
-      return summaryChildMap.get(summaryId) || [];
-    }
-
-    function handleWorkspaceCardTrace(card) {
-      const autoTraceToggle = document.getElementById("auto-trace-toggle");
-      if (!autoTraceToggle?.checked) return;
-
-      clearTraceHighlights();
-
-      if (card.classList.contains("summary-card")) {
-        const summaryId = card.dataset.nodeId || card.id.replace("workspace-card-", "");
-        card.classList.add("trace-highlight");
-
-        const childIds = getSummaryChildIds(summaryId, card);
-        let firstChildCard = null;
-        for (const childId of childIds) {
-          const childCard = getWorkspaceCard(childId);
-          if (childCard) {
-            childCard.classList.add("trace-highlight");
-            if (!firstChildCard) firstChildCard = childCard;
-          }
-        }
-
-        if (firstChildCard) {
-          scrollWithLineReposition(firstChildCard, { behavior: "smooth", block: "center" });
-        }
-
-        let firstSpan = null;
-        for (const childId of childIds) {
-          const span = document.getElementById(`excerpt-${childId}`);
-          if (span) {
-            span.classList.add("trace-highlight");
-            if (!firstSpan) firstSpan = span;
-          }
-        }
-
-        if (firstSpan) {
-          scrollWithLineReposition(firstSpan, { behavior: "smooth", block: "center" });
-        }
-        return;
-      }
-
-      if (card.classList.contains("excerpt-card")) {
-        const excerptId = card.dataset.nodeId;
-        card.classList.add("trace-highlight");
-
-        const spanId = card.dataset.sourceSpan || `excerpt-${excerptId}`;
-        const span = document.getElementById(spanId);
-        if (span) {
-          span.classList.add("trace-highlight");
-          scrollWithLineReposition(span, { behavior: "smooth", block: "center" });
-        }
-      }
     }
 
     function clearDocSearchMarks() {
@@ -11037,14 +11223,23 @@
           if (!sourceId || !targetId || !relationshipType) continue;
           if (HIERARCHY_EDGE_TYPES.has(relationshipType)) continue;
           if (!nodeIds.has(sourceId) && !nodeIds.has(targetId)) continue;
-          ConnectionManager.registerCrossEdge({
+
+          const payload = {
             id: ConnectionManager.edgeKey(relationshipType, sourceId, targetId),
             source_id: sourceId,
             target_id: targetId,
             relationship_type: relationshipType,
-          });
+          };
+          // DEFINITION_OF is drawn as a topology line; keep it in edges only
+          // so connection badges are not double-counted.
+          if (relationshipType === "DEFINITION_OF") {
+            ConnectionManager.registerEdge(payload);
+            continue;
+          }
+          ConnectionManager.registerCrossEdge(payload);
         }
         refreshAllConnectionBadges();
+        ConnectionManager.scheduleDraw();
       } catch (err) {
         console.error("[loadWorkspaceCrossEdges]", err);
       }
@@ -11355,9 +11550,17 @@
       if (card) {
         setFocusedCard(card, { scroll: false });
         if (scroll) scrollWorkspaceCardIntoView(card);
+        const autoTraceToggle = document.getElementById("auto-trace-toggle");
+        if (autoTraceToggle?.checked) {
+          clearTraceHighlights();
+          revealNodeTopology(nodeId);
+        }
       }
       window.setTimeout(() => syncWorkspaceFocus(nodeId), 100);
       ConnectionManager.scheduleDraw();
+      requestAnimationFrame(() => {
+        ConnectionManager.reposition();
+      });
     }
 
     async function summarizeWorkspaceCard(nodeId) {
@@ -11561,6 +11764,129 @@
       return unique;
     }
 
+    /** Same highlight offsets or identical title/content → one card. */
+    function nodeWorkspaceFingerprint(node) {
+      if (node?.start_offset != null && node?.end_offset != null) {
+        return `off:${node.start_offset}:${node.end_offset}`;
+      }
+      const title = (node?.title ?? "").trim().toLowerCase();
+      const content = (node?.content ?? node?.text ?? "").trim().toLowerCase();
+      if (title && content && (title === content || content.startsWith(title.replace(/\.\.\.$/, "")))) {
+        return `text:${title}`;
+      }
+      return `text:${title}|${content}`;
+    }
+
+    function scoreCanonicalHub(node, summaryEdges) {
+      let outbound = 0;
+      let inbound = 0;
+      for (const edge of summaryEdges) {
+        if (edge.source_id === node.id) outbound++;
+        if (edge.target_id === node.id) inbound++;
+      }
+      const density = Number(node.density_level) || 2;
+      // Prefer hubs that summarize more children; mild bias toward L1 summaries.
+      return outbound * 100 + (density === 1 ? 10 : 0) + inbound;
+    }
+
+    /**
+     * Collapse near-duplicate Concepts (same offsets / text) into one canvas card.
+     * Remaps SUMMARIZES edges onto the canonical id so connections stay visible.
+     */
+    function collapseDuplicateWorkspaceNodes(excerpts, summaries, summaryEdges) {
+      const uniqueExcerpts = deduplicateNodesById(excerpts || []);
+      const uniqueSummaries = deduplicateNodesById(summaries || []);
+      const byId = new Map();
+      for (const node of [...uniqueExcerpts, ...uniqueSummaries]) {
+        byId.set(node.id, node);
+      }
+
+      const groups = new Map();
+      for (const node of byId.values()) {
+        const fp = nodeWorkspaceFingerprint(node);
+        if (!groups.has(fp)) groups.set(fp, []);
+        groups.get(fp).push(node);
+      }
+
+      const remap = new Map();
+      for (const members of groups.values()) {
+        if (members.length < 2) continue;
+        members.sort(
+          (a, b) =>
+            scoreCanonicalHub(b, summaryEdges || []) -
+            scoreCanonicalHub(a, summaryEdges || [])
+        );
+        const canonical = members[0];
+        for (const member of members.slice(1)) {
+          remap.set(member.id, canonical.id);
+        }
+      }
+
+      if (remap.size === 0) {
+        return {
+          excerpts: uniqueExcerpts,
+          summaries: uniqueSummaries,
+          summaryEdges: summaryEdges || [],
+          remap,
+        };
+      }
+
+      const keep = (node) => !remap.has(node.id);
+      const remappedEdges = [];
+      const seenEdge = new Set();
+      for (const edge of summaryEdges || []) {
+        const source_id = remap.get(edge.source_id) || edge.source_id;
+        const target_id = remap.get(edge.target_id) || edge.target_id;
+        if (source_id === target_id) continue;
+        const key = `${source_id}->${target_id}`;
+        if (seenEdge.has(key)) continue;
+        seenEdge.add(key);
+        remappedEdges.push({ source_id, target_id });
+      }
+
+      return {
+        excerpts: uniqueExcerpts.filter(keep),
+        summaries: uniqueSummaries.filter(keep),
+        summaryEdges: remappedEdges,
+        remap,
+      };
+    }
+
+    function getDocumentSortKey(nodeId, nodesById, summaryEdges) {
+      const node = nodesById.get(nodeId);
+      if (node?.start_offset != null && Number.isFinite(Number(node.start_offset))) {
+        return Number(node.start_offset);
+      }
+
+      let minChild = Number.POSITIVE_INFINITY;
+      for (const edge of summaryEdges || []) {
+        if (edge.source_id !== nodeId) continue;
+        const child = nodesById.get(edge.target_id);
+        if (child?.start_offset != null && Number.isFinite(Number(child.start_offset))) {
+          minChild = Math.min(minChild, Number(child.start_offset));
+        }
+      }
+      if (Number.isFinite(minChild)) return minChild;
+
+      const span = document.getElementById(`excerpt-${nodeId}`);
+      if (span && docBody.contains(span)) {
+        const highlights = Array.from(docBody.querySelectorAll(".excerpt-highlight[id]"));
+        const idx = highlights.indexOf(span);
+        if (idx >= 0) return idx;
+      }
+      return Number.MAX_SAFE_INTEGER / 2;
+    }
+
+    function sortNodesByDocumentOrder(nodes, summaryEdges) {
+      const nodesById = new Map(nodes.map((n) => [n.id, n]));
+      return [...nodes].sort((a, b) => {
+        const ka = getDocumentSortKey(a.id, nodesById, summaryEdges);
+        const kb = getDocumentSortKey(b.id, nodesById, summaryEdges);
+        if (ka !== kb) return ka - kb;
+        return String(a.id).localeCompare(String(b.id));
+      });
+    }
+
     function sortColumn1NodesBySourceDocumentOrder(column1Nodes) {
       if (!column1Nodes?.length) return column1Nodes;
 
@@ -11587,20 +11913,25 @@
     }
 
     async function renderWorkspaceCards(excerpts, summaries, summaryEdges) {
-      lastWorkspaceRender = { excerpts, summaries, summaryEdges };
+      const collapsed = collapseDuplicateWorkspaceNodes(excerpts, summaries, summaryEdges);
+      const uniqueExcerpts = collapsed.excerpts;
+      const uniqueSummaries = collapsed.summaries;
+      const edges = collapsed.summaryEdges;
+      lastWorkspaceRender = {
+        excerpts: uniqueExcerpts,
+        summaries: uniqueSummaries,
+        summaryEdges: edges,
+      };
 
-      const uniqueExcerpts = deduplicateNodesById(excerpts);
-      const uniqueSummaries = deduplicateNodesById(summaries);
-
-      summaryChildMap = buildSummaryChildMapFromEdges(summaryEdges);
+      summaryChildMap = buildSummaryChildMapFromEdges(edges);
       hierarchyChildMap = buildHierarchyChildMap(
-        summaryEdges,
+        edges,
         documentCanvasSourceId,
-        excerpts.map((e) => e.id)
+        uniqueExcerpts.map((e) => e.id)
       );
       nodeColumnMap = computeNodeColumns(
-        excerpts.map((e) => e.id),
-        summaryEdges
+        uniqueExcerpts.map((e) => e.id),
+        edges
       );
 
       const column1Nodes = uniqueExcerpts.filter(
@@ -11608,11 +11939,14 @@
       );
       sortColumn1NodesBySourceDocumentOrder(column1Nodes);
 
-      const column1Ids = new Set(column1Nodes.map((node) => node.id));
-      const orderedExcerpts = [
-        ...column1Nodes,
-        ...uniqueExcerpts.filter((excerpt) => !column1Ids.has(excerpt.id)),
-      ];
+      const higherColumnNodes = sortNodesByDocumentOrder(
+        uniqueExcerpts.filter(
+          (excerpt) => (nodeColumnMap.get(excerpt.id) || 1) > 1
+        ),
+        edges
+      );
+
+      const orderedExcerpts = [...column1Nodes, ...higherColumnNodes];
 
       workspaceNodeMap = new Map();
       workspaceNodeOrder = new Map();
@@ -11621,11 +11955,18 @@
         workspaceNodeMap.set(excerpt.id, excerpt);
         workspaceNodeOrder.set(excerpt.id, order++);
       }
+
+      const higherSummaries = sortNodesByDocumentOrder(
+        uniqueSummaries.filter((summary) => !workspaceNodeMap.has(summary.id)),
+        edges
+      );
+      for (const summary of higherSummaries) {
+        workspaceNodeMap.set(summary.id, summary);
+        workspaceNodeOrder.set(summary.id, order++);
+      }
       for (const summary of uniqueSummaries) {
-        if (!workspaceNodeMap.has(summary.id)) {
-          workspaceNodeMap.set(summary.id, summary);
-          workspaceNodeOrder.set(summary.id, order++);
-        } else if (summary.excerpt_id) {
+        if (!workspaceNodeMap.has(summary.id)) continue;
+        if (summary.excerpt_id) {
           const existing = workspaceNodeMap.get(summary.id);
           workspaceNodeMap.set(summary.id, { ...existing, excerpt_id: summary.excerpt_id });
         }
@@ -11640,8 +11981,8 @@
         appendToColumn(columnIndex, card);
       }
 
-      const excerptIds = new Set(excerpts.map((e) => e.id));
-      for (const summary of uniqueSummaries) {
+      const excerptIds = new Set(uniqueExcerpts.map((e) => e.id));
+      for (const summary of higherSummaries) {
         if (excerptIds.has(summary.id)) continue;
         const columnIndex = nodeColumnMap.get(summary.id) || 2;
         const card = createWorkspaceCard(summary, columnIndex);
@@ -12889,13 +13230,26 @@
         removeCanvasInlineEditor();
 
         docTitle.textContent = data.source.title;
-        docBody.innerHTML = buildHighlightedHtml(data.document_text, data.excerpts);
-        const summaryEdges = data.summary_edges || data.summaries.map((s) => ({
+        const rawSummaryEdges = data.summary_edges || data.summaries.map((s) => ({
           source_id: s.id,
           target_id: s.excerpt_id,
         })).filter((e) => e.target_id);
-        ConnectionManager.setGraphData(data.source.id, data.excerpts, summaryEdges);
-        await renderWorkspaceCards(data.excerpts, data.summaries, summaryEdges);
+        const collapsed = collapseDuplicateWorkspaceNodes(
+          data.excerpts,
+          data.summaries,
+          rawSummaryEdges
+        );
+        docBody.innerHTML = buildHighlightedHtml(data.document_text, collapsed.excerpts);
+        ConnectionManager.setGraphData(
+          data.source.id,
+          collapsed.excerpts,
+          collapsed.summaryEdges
+        );
+        await renderWorkspaceCards(
+          collapsed.excerpts,
+          collapsed.summaries,
+          collapsed.summaryEdges
+        );
 
         requestAnimationFrame(() => {
           loadWorkspaceCyGraph(data.source.id);

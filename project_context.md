@@ -48,8 +48,9 @@ The system uses a graph database approach (Nodes and Edges) mapped to the DOM.
 * **Nodes** possess a strict ontology: Excerpt, Summary, Concept, and Prose Structures (Chapter, Part).
 * Nodes track spatial visual state via DOM attributes: `data-indent-level`, `data-density-level`, and `data-node-id`.
 * **Edges** track relationships in `ConnectionManager.edges`: 
-    * `type: 'hierarchy'` (parent/child data provenance) 
-    * `type: 'lateral'` (cross-connections).
+    * Hierarchy: `SUMMARIZES`, `CONTAINS` (parent/child provenance; drawn green)
+    * Logical naming: `DEFINITION_OF` (short name → longer passage; drawn amber on focus)
+    * Other lateral types stay badge/Board territory until drawn explicitly.
 * **Excerpt anchoring** uses `start_offset` / `end_offset` on source text (not naive string matching).
 
 ### Provenance & Deep Trace
