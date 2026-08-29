@@ -13,10 +13,11 @@ We use strictly typed, meaningful semantic edges and respect "Dimensions of Zoom
 2. **Edges (Relationships):** Connections MUST be one of the following:
    - Hierarchy: `SUMMARIZES`, `CONTAINS`
    - Evaluation: `SUPPORTS`, `CONTRADICTS`
-   - Logical: `CAUSES`, `REQUIRES`, `EXAMPLE_OF`
-   - Narrative: `FOLLOWS`
+   - Logical: `CAUSES`, `REQUIRES`, `EXAMPLE_OF`, `DEFINITION_OF`
+   - Narrative: `FOLLOWS`, `REFERENCES`
    - Edge Properties: All edges must contain a `strength` float (default 1.0).
 * Note: `CONTAINS` edges usually point from Level 3 -> Level 2, but they CAN point from Level 2 -> Level 2 to support nested excerpts (e.g., a paragraph containing a sentence).
+* Note: `DEFINITION_OF` marks a short phrase/name that stands for a longer passage (not a rewrite — use `SUMMARIZES` for compression).
 
 ## Current Roadmap Phase
 **MVP 1: The Human Linker.** The current focus is building a local web interface where a human acts as the orchestrator. The user pastes an excerpt, writes a summary, selects a relationship type from a dropdown, and links it to an existing node in Neo4j.
