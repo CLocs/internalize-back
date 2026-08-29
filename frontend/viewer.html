@@ -225,6 +225,33 @@
       border-color: #deff9a;
     }
 
+    #isolation-degree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      text-transform: none;
+      letter-spacing: normal;
+      white-space: nowrap;
+    }
+
+    #isolation-degree {
+      min-width: 72px;
+      padding: 0.45rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #f8fafc;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    #isolation-degree:focus {
+      outline: none;
+      border-color: #deff9a;
+    }
+
     #viewer-main {
       flex: 1;
       min-height: 0;
@@ -797,7 +824,7 @@
       display: flex;
       flex-direction: row;
       position: relative;
-      z-index: 1;
+      z-index: auto;
       overflow: hidden;
     }
 
@@ -812,7 +839,9 @@
       padding: 0;
       border-right: 1px solid #334155;
       position: relative;
-      z-index: 2;
+      /* No z-index: keep doc content and cards in the same stacking context as
+         #line-canvas so lines can pass behind solid card/doc surfaces. */
+      z-index: auto;
       transition: flex 0.3s ease, width 0.3s ease, min-width 0.3s ease, padding 0.3s ease, opacity 0.3s ease, border-width 0.3s ease;
     }
 
@@ -836,6 +865,7 @@
       padding: 10px 12px;
       background: var(--bg-darker);
       border-bottom: 1px solid var(--border-color);
+      position: relative;
       z-index: 55;
     }
 
@@ -961,6 +991,9 @@
       overflow-y: auto;
       overflow-x: hidden;
       padding: 40px;
+      position: relative;
+      z-index: 10;
+      background: #0f172a;
     }
 
     #doc-pane h1 {
@@ -1035,8 +1068,41 @@
       background: #0f172a;
       border-right: 1px solid #334155;
       position: relative;
-      z-index: 2;
+      z-index: auto;
       overflow: hidden;
+      transition: flex 0.3s ease, width 0.3s ease, min-width 0.3s ease,
+        opacity 0.3s ease, border-width 0.3s ease, padding 0.3s ease;
+    }
+
+    /* Alt+1 Read Mode: hide Tree, center Source at a comfortable measure */
+    #main-workspace-container.intent-read-mode {
+      justify-content: center;
+      background: #0f172a;
+    }
+
+    #main-workspace-container.intent-read-mode #node-pane {
+      flex: 0 0 0 !important;
+      width: 0 !important;
+      min-width: 0 !important;
+      max-width: 0 !important;
+      opacity: 0;
+      overflow: hidden;
+      border-right-width: 0 !important;
+      pointer-events: none;
+      padding: 0;
+    }
+
+    #main-workspace-container.intent-read-mode #doc-pane {
+      flex: 1 1 auto;
+      width: min(42rem, 100%);
+      max-width: 42rem;
+      min-width: min(100%, 20rem);
+      margin: 0 auto;
+      border-right: none;
+    }
+
+    body.intent-read-mode #line-canvas {
+      visibility: hidden !important;
     }
 
     #workspace-stack {
@@ -2241,7 +2307,8 @@
       overflow-x: hidden;
       overflow-anchor: auto;
       position: relative;
-      z-index: 1;
+      /* Avoid a column-level stacking context so card z-index:10 can sit above #line-canvas. */
+      z-index: auto;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -2267,6 +2334,8 @@
       pointer-events: none;
     }
 
+    /* z-index 1: below cards (10). Panes must not form a higher stacking
+       context that would bury the whole tree under an opaque layer. */
     #line-canvas {
       position: fixed;
       top: 0;
@@ -2274,7 +2343,7 @@
       width: 100vw;
       height: 100vh;
       pointer-events: none;
-      z-index: 1000;
+      z-index: 1;
       overflow: visible;
     }
 
@@ -2600,6 +2669,15 @@
       border-left-color: #4ade80;
     }
 
+    #view-source-tree .workspace-card.isolation-folded {
+      display: none !important;
+    }
+
+    #view-source-tree .workspace-card.isolation-kept {
+      box-shadow: 0 0 20px rgba(74, 222, 128, 0.15) inset !important;
+      border-color: #4ade80 !important;
+    }
+
     .workspace-card.definition-highlight {
       border-color: #f59e0b !important;
       box-shadow: 0 0 20px rgba(245, 158, 11, 0.22) inset !important;
@@ -2895,6 +2973,15 @@
     <select id="connection-mode" aria-label="Connection visibility mode">
       <option value="none">None</option>
       <option value="active" selected>Active</option>
+      <option value="all">All</option>
+    </select>
+    <label id="isolation-degree-label" for="isolation-degree">Isolate</label>
+    <select id="isolation-degree" aria-label="Isolation neighborhood degree">
+      <option value="off" selected>Off</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
       <option value="all">All</option>
     </select>
   </header>
@@ -3219,6 +3306,8 @@
 
     const statusEl = document.getElementById("status");
     const connectionModeSelect = document.getElementById("connection-mode");
+    const isolationDegreeSelect = document.getElementById("isolation-degree");
+    const ISOLATION_DEGREE_STORAGE_KEY = "internalize.isolationDegree";
     const documentCanvas = document.getElementById("document-canvas");
     const lineCanvas = document.getElementById("line-canvas");
     const docPane = document.getElementById("doc-pane");
@@ -6241,6 +6330,117 @@
     };
 
     const TOPOLOGY_LINE_TYPES = new Set(["SUMMARIZES", "CONTAINS", "DEFINITION_OF"]);
+    const ISOLATION_DEGREE_VALUES = new Set(["off", "1", "2", "3", "4", "all"]);
+    let isolationDegree = "off";
+
+    function parseIsolationDegree(raw) {
+      const value = String(raw ?? "off").toLowerCase();
+      return ISOLATION_DEGREE_VALUES.has(value) ? value : "off";
+    }
+
+    /** null = Off (no fold); Infinity = All; else hop radius. */
+    function getIsolationMaxHops() {
+      if (isolationDegree === "off") return null;
+      if (isolationDegree === "all") return Number.POSITIVE_INFINITY;
+      const n = parseInt(isolationDegree, 10);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+
+    /**
+     * Undirected BFS over topology edges within maxHops of startNodeId.
+     * maxHops = Infinity keeps the full connected component.
+     */
+    function getNeighborhood(startNodeId, maxHops) {
+      const nodeIds = new Set();
+      const edgeIds = new Set();
+      const distanceByNode = new Map();
+      if (!startNodeId || maxHops == null || maxHops < 0) {
+        return { nodeIds, edgeIds, distanceByNode };
+      }
+
+      const adjacency = new Map();
+      for (const edge of ConnectionManager.edges.values()) {
+        if (!TOPOLOGY_LINE_TYPES.has(edge.relationship_type)) continue;
+        if (!adjacency.has(edge.source_id)) adjacency.set(edge.source_id, []);
+        if (!adjacency.has(edge.target_id)) adjacency.set(edge.target_id, []);
+        adjacency.get(edge.source_id).push({ edgeId: edge.id, nodeId: edge.target_id });
+        adjacency.get(edge.target_id).push({ edgeId: edge.id, nodeId: edge.source_id });
+      }
+
+      const queue = [startNodeId];
+      distanceByNode.set(startNodeId, 0);
+      nodeIds.add(startNodeId);
+
+      while (queue.length) {
+        const currentId = queue.shift();
+        const dist = distanceByNode.get(currentId) ?? 0;
+        if (dist >= maxHops) continue;
+
+        for (const { edgeId, nodeId } of adjacency.get(currentId) || []) {
+          edgeIds.add(edgeId);
+          if (distanceByNode.has(nodeId)) continue;
+          distanceByNode.set(nodeId, dist + 1);
+          nodeIds.add(nodeId);
+          queue.push(nodeId);
+        }
+      }
+
+      // Ensure every topology edge between kept nodes is marked visible.
+      for (const edge of ConnectionManager.edges.values()) {
+        if (!TOPOLOGY_LINE_TYPES.has(edge.relationship_type)) continue;
+        if (nodeIds.has(edge.source_id) && nodeIds.has(edge.target_id)) {
+          edgeIds.add(edge.id);
+        }
+      }
+
+      return { nodeIds, edgeIds, distanceByNode };
+    }
+
+    function clearIsolationFoldClasses() {
+      const sourceTree = document.getElementById("view-source-tree");
+      if (!sourceTree) return;
+      sourceTree.querySelectorAll(".workspace-card.isolation-folded, .workspace-card.isolation-kept").forEach((card) => {
+        card.classList.remove("isolation-folded", "isolation-kept");
+      });
+    }
+
+    /**
+     * Fold tree cards outside the active neighborhood when Isolate ≠ Off.
+     * When Off, still highlight the 1-hop neighborhood (no folding).
+     */
+    function applyIsolationFold() {
+      const sourceTree = document.getElementById("view-source-tree");
+      if (!sourceTree) return;
+
+      const cards = sourceTree.querySelectorAll(".workspace-card[data-node-id]");
+      cards.forEach((card) => {
+        card.classList.remove("isolation-folded", "isolation-kept");
+      });
+
+      const activeId = SelectionManager.activeNode;
+      if (!activeId) {
+        ConnectionManager.scheduleDraw();
+        return;
+      }
+
+      const foldHops = getIsolationMaxHops();
+      // Off → highlight direct neighbors only; Isolate N/All → same set as fold keep.
+      const highlightHops = foldHops == null ? 1 : foldHops;
+      const { nodeIds } = getNeighborhood(activeId, highlightHops);
+
+      for (const card of cards) {
+        const nodeId = card.dataset.nodeId;
+        if (!nodeId) continue;
+        if (nodeIds.has(nodeId)) {
+          card.classList.add("isolation-kept", "trace-highlight");
+        } else if (foldHops != null) {
+          card.classList.add("isolation-folded");
+        }
+      }
+
+      ConnectionManager.scheduleDraw();
+      updateLineVisibility();
+    }
 
     function leaderColorWithAlpha(hexColor, alpha) {
       const hex = hexColor.replace("#", "");
@@ -6252,6 +6452,8 @@
 
     const CONNECTION_DRAW_DELAY_MS = 100;
     const HIERARCHY_EDGE_TYPES = new Set(["SUMMARIZES", "CONTAINS"]);
+    const LINE_DIM_ALPHA = 0.15;
+    const LINE_FOCUS_ALPHA = 1;
 
     const SelectionManager = {
       activeNode: null,
@@ -6364,6 +6566,7 @@
       setActiveNode(nodeId) {
         this.activeNode = nodeId || null;
         this.refreshActiveLineage();
+        applyIsolationFold();
         updateLineVisibility();
         syncCyGraphHighlight();
       },
@@ -6424,7 +6627,13 @@
         this.activeLineageEdges.clear();
         if (!this.activeNode) return;
 
-        const { nodeIds, edgeIds } = this.getLineage(this.activeNode);
+        const foldHops = getIsolationMaxHops();
+        // Isolate on → Active lines follow the degree-bounded neighborhood.
+        // Isolate Off → unbounded lineage (existing behavior).
+        const { nodeIds, edgeIds } =
+          foldHops != null
+            ? getNeighborhood(this.activeNode, foldHops)
+            : this.getLineage(this.activeNode);
         for (const id of nodeIds) this.activeLineageNodes.add(id);
         for (const id of edgeIds) this.activeLineageEdges.add(id);
       },
@@ -6550,6 +6759,7 @@
         this.activeLineageEdges.clear();
         this.clearMultiSelection();
         this.renderSidebar();
+        applyIsolationFold();
         updateLineVisibility();
         syncCyGraphHighlight();
       },
@@ -6561,6 +6771,8 @@
           "selected-for-grouping",
           "trace-highlight",
           "definition-highlight",
+          "isolation-kept",
+          "isolation-folded",
           "workspace-focus",
           "workbench-added",
           "is-selected",
@@ -6576,6 +6788,7 @@
       SelectionManager.deselectAll();
       clearGroupingSelection();
       clearWorkspaceSelectionClasses();
+      clearIsolationFoldClasses();
       if (cy) {
         cy.elements().removeClass("highlighted");
         cy.elements().removeClass("selected-target");
@@ -6955,6 +7168,8 @@
       _drawRaf: null,
       _drawTimeout: null,
       connectionMode: "active",
+      /** Node id whose incident lines are hover-focused; null = all dimmed. */
+      hoverNodeId: null,
 
       setConnectionMode(mode) {
         if (!["none", "active", "all"].includes(mode)) return;
@@ -6963,6 +7178,64 @@
           connectionModeSelect.value = mode;
         }
         this.updateVisibility();
+      },
+
+      setHoverNode(nodeId) {
+        const next = nodeId || null;
+        if (this.hoverNodeId === next) return;
+        this.hoverNodeId = next;
+        this.applyHoverFocusAppearance();
+      },
+
+      clearHoverNode() {
+        if (this.hoverNodeId == null) return;
+        this.hoverNodeId = null;
+        this.applyHoverFocusAppearance();
+      },
+
+      isEdgeConnectedToNode(edge, nodeId) {
+        if (!edge || !nodeId) return false;
+        return edge.source_id === nodeId || edge.target_id === nodeId;
+      },
+
+      setLineStackOrder(line, focused) {
+        const el = this.getLineElement(line);
+        if (!el) return;
+        el.style.zIndex = focused ? "5" : "1";
+      },
+
+      /**
+       * Dim all visible lines to LINE_DIM_ALPHA; brighten + raise lines
+       * incident to hoverNodeId.
+       */
+      applyHoverFocusAppearance() {
+        const hoverId = this.hoverNodeId;
+        for (const [edgeId, line] of this.lines.entries()) {
+          try {
+            const edge = this.edges.get(edgeId);
+            if (!edge) continue;
+            const el = this.getLineElement(line);
+            if (!el) continue;
+            // Skip lines currently hidden by updateVisibility / hide()
+            const vis = el.style.visibility || el.getAttribute("visibility") || "";
+            const computedHidden =
+              typeof window.getComputedStyle === "function" &&
+              window.getComputedStyle(el).visibility === "hidden";
+            if (vis === "hidden" || computedHidden) {
+              this.setLineStackOrder(line, false);
+              continue;
+            }
+            const focused = this.isEdgeConnectedToNode(edge, hoverId);
+            const baseColor = line._baseColor || "#deff9a";
+            line.color = leaderColorWithAlpha(
+              baseColor,
+              focused ? LINE_FOCUS_ALPHA : LINE_DIM_ALPHA
+            );
+            this.setLineStackOrder(line, focused);
+          } catch (_) {
+            /* line element may be mid-teardown */
+          }
+        }
       },
 
       getLineElement(line) {
@@ -6974,6 +7247,7 @@
       },
 
       clear() {
+        this.hoverNodeId = null;
         this.clearAll();
         this.edges.clear();
         this.crossEdges.clear();
@@ -7245,7 +7519,7 @@
           end,
           path: style.path ?? "fluid",
           size: style.size ?? 2,
-          color: leaderColorWithAlpha(style.color ?? "#deff9a", 1),
+          color: leaderColorWithAlpha(style.color ?? "#deff9a", LINE_DIM_ALPHA),
           hide: true,
           startSocket: style.startSocket,
           endSocket: style.endSocket,
@@ -7257,6 +7531,7 @@
           line._baseColor = style.color;
           line._edgeId = edge.id;
           this.lines.set(edge.id, line);
+          this.setLineStackOrder(line, false);
           return line;
         } catch (err) {
           console.warn("[ConnectionManager.createLine]", edge.id, err);
@@ -7268,6 +7543,7 @@
             line._baseColor = style.color;
             line._edgeId = edge.id;
             this.lines.set(edge.id, line);
+            this.setLineStackOrder(line, false);
             return line;
           } catch (err2) {
             console.error("[ConnectionManager.createLine] failed", edge.id, err2);
@@ -7349,6 +7625,7 @@
       applyLineAppearance(line, show) {
         if (!show) {
           line.hide("none");
+          this.setLineStackOrder(line, false);
           return;
         }
 
@@ -7357,6 +7634,7 @@
         const targetRect = targetEl.getBoundingClientRect();
         if (targetRect.width === 0 && targetRect.height === 0) {
           line.hide("none");
+          this.setLineStackOrder(line, false);
           return;
         }
 
@@ -7367,14 +7645,17 @@
         const isLongDistance =
           Math.abs(targetRect.left - startRect.left) > paneRect.width * LONG_DISTANCE_VIEWPORT_FACTOR;
         const baseColor = line._baseColor || "#deff9a";
-        const keepFullColor =
-          this.connectionMode === "active" &&
-          line._edgeId &&
-          SelectionManager.activeLineageEdges.has(line._edgeId);
-        line.color =
-          !keepFullColor && isLongDistance
-            ? "rgba(100, 100, 100, 0.2)"
-            : leaderColorWithAlpha(baseColor, 1);
+        const edge = this.edges.get(line._edgeId);
+        const focused = this.isEdgeConnectedToNode(edge, this.hoverNodeId);
+
+        // Default: quiet dim. Hovering a card raises its incident lines to full opacity.
+        // Long-distance non-focused lines stay slightly more washed out.
+        let alpha = focused ? LINE_FOCUS_ALPHA : LINE_DIM_ALPHA;
+        if (!focused && isLongDistance) {
+          alpha = Math.min(alpha, 0.12);
+        }
+        line.color = leaderColorWithAlpha(baseColor, alpha);
+        this.setLineStackOrder(line, focused);
       },
 
       updateVisibility() {
@@ -7582,6 +7863,87 @@
       ConnectionManager.reposition();
     }
 
+    /** "sensemaking" = Source + Tree + lines; "read" = Source-only reading width. */
+    let workspaceIntentMode = "sensemaking";
+    let connectionModeBeforeRead = "active";
+
+    function getMainWorkspaceContainer() {
+      return document.getElementById("main-workspace-container");
+    }
+
+    function applyWorkspaceIntentMode(mode) {
+      const next = mode === "read" ? "read" : "sensemaking";
+      const main = getMainWorkspaceContainer();
+      const isRead = next === "read";
+
+      if (isRead) {
+        // Remember the live connection mode so Alt+2 can restore it.
+        if (workspaceIntentMode !== "read") {
+          connectionModeBeforeRead =
+            ConnectionManager.connectionMode && ConnectionManager.connectionMode !== "none"
+              ? ConnectionManager.connectionMode
+              : connectionModeSelect?.value || "active";
+        }
+
+        // Read mode lives on the Source & Tree surface.
+        if (typeof TabManager !== "undefined" && TabManager.activeId !== "view-source-tree") {
+          TabManager.activateTab("view-source-tree");
+        }
+
+        // Source must be visible and expanded for reading.
+        if (typeof sourcePaneCollapsed !== "undefined" && sourcePaneCollapsed) {
+          setSourcePaneCollapsed(false);
+        }
+
+        setConnectionMode("none");
+        ConnectionManager.clearHoverNode?.();
+      } else {
+        // Restore Source + Tree split and prior line visibility.
+        if (typeof TabManager !== "undefined" && TabManager.activeId !== "view-source-tree") {
+          TabManager.activateTab("view-source-tree");
+        }
+        if (typeof sourcePaneCollapsed !== "undefined" && sourcePaneCollapsed) {
+          setSourcePaneCollapsed(false);
+        }
+        const restoreMode =
+          connectionModeBeforeRead === "none" ? "active" : connectionModeBeforeRead;
+        setConnectionMode(restoreMode);
+      }
+
+      workspaceIntentMode = next;
+      document.body.classList.toggle("intent-read-mode", isRead);
+      main?.classList.toggle("intent-read-mode", isRead);
+
+      const onSettle = () => {
+        repositionDocumentCanvasLines?.();
+        if (!isRead) {
+          scheduleDrawConnections?.();
+          SelectionManager.refreshActiveLineage?.();
+          applyIsolationFold?.();
+          ConnectionManager.updateVisibility?.();
+          ConnectionManager.reposition?.();
+        }
+      };
+
+      // Re-layout after the CSS transition (~300ms) plus one frame.
+      requestAnimationFrame(() => {
+        onSettle();
+        window.setTimeout(onSettle, 320);
+      });
+
+      showStatus(isRead ? "Read Mode (Alt+2 · Sensemaking)" : "Sensemaking Mode (Alt+1 · Read)");
+    }
+
+    function setWorkspaceIntentMode(mode) {
+      if (mode !== "read" && mode !== "sensemaking") return;
+      if (workspaceIntentMode === mode) {
+        // Re-apply sensemaking so panes/lines recover if they drifted.
+        if (mode === "sensemaking") applyWorkspaceIntentMode(mode);
+        return;
+      }
+      applyWorkspaceIntentMode(mode);
+    }
+
     function onNodePaneScroll() {
       if (nodePaneScrollRaf) return;
       nodePaneScrollRaf = requestAnimationFrame(() => {
@@ -7661,6 +8023,39 @@
 
       connectionModeSelect.addEventListener("change", () => {
         setConnectionMode(connectionModeSelect.value);
+      });
+    }
+
+    function setIsolationDegree(value) {
+      isolationDegree = parseIsolationDegree(value);
+      if (isolationDegreeSelect && isolationDegreeSelect.value !== isolationDegree) {
+        isolationDegreeSelect.value = isolationDegree;
+      }
+      try {
+        localStorage.setItem(ISOLATION_DEGREE_STORAGE_KEY, isolationDegree);
+      } catch (_) {
+        /* private mode / blocked storage */
+      }
+      SelectionManager.refreshActiveLineage();
+      applyIsolationFold();
+      updateLineVisibility();
+    }
+
+    function initIsolationDegreeSelect() {
+      if (!isolationDegreeSelect || isolationDegreeSelect.dataset.bound) return;
+      isolationDegreeSelect.dataset.bound = "1";
+
+      let saved = "off";
+      try {
+        saved = localStorage.getItem(ISOLATION_DEGREE_STORAGE_KEY) || "off";
+      } catch (_) {
+        saved = "off";
+      }
+      isolationDegree = parseIsolationDegree(saved);
+      isolationDegreeSelect.value = isolationDegree;
+
+      isolationDegreeSelect.addEventListener("change", () => {
+        setIsolationDegree(isolationDegreeSelect.value);
       });
     }
 
@@ -11045,6 +11440,7 @@
         applyCardTreeIndent(card);
         appendToColumn(nodeColumnMap.get(nodeId) || 1, card);
       }
+      applyIsolationFold();
     }
 
     function reconcileView(viewType) {
@@ -11555,6 +11951,7 @@
           clearTraceHighlights();
           revealNodeTopology(nodeId);
         }
+        applyIsolationFold();
       }
       window.setTimeout(() => syncWorkspaceFocus(nodeId), 100);
       ConnectionManager.scheduleDraw();
@@ -11570,6 +11967,20 @@
     function bindWorkspaceCardInteractions(card, nodeId) {
       ensureCardHoverMenu(card, nodeId);
       card.draggable = true;
+
+      if (!card.dataset.lineHoverBound) {
+        card.dataset.lineHoverBound = "1";
+        card.addEventListener("mouseenter", () => {
+          ConnectionManager.setHoverNode(nodeId);
+        });
+        card.addEventListener("mouseleave", () => {
+          // Only clear if this card still owns the hover focus (avoids races
+          // when moving quickly between cards).
+          if (ConnectionManager.hoverNodeId === nodeId) {
+            ConnectionManager.clearHoverNode();
+          }
+        });
+      }
 
       card.addEventListener("mousedown", (e) => {
         // Pressing an interactive control must not arm a drag, or the browser can
@@ -11630,6 +12041,7 @@
           setFocusedCard(card, { scroll: false });
           handleWorkspaceCardTrace(card);
           syncWorkspaceFocus(nodeId);
+          applyIsolationFold();
         }
       });
 
@@ -11994,6 +12406,8 @@
       scheduleDrawConnections();
       anchorTreeScrollToStart();
       await loadWorkspaceCrossEdges();
+      SelectionManager.refreshActiveLineage();
+      applyIsolationFold();
     }
 
     let treeScrollUserEngaged = false;
@@ -13474,6 +13888,17 @@
       document.addEventListener("keydown", async (e) => {
         if (isTypingTarget(e.target)) return;
 
+        // Alt+1 / Alt+2: global intent modes (Read ↔ Sensemaking)
+        if (e.altKey && !e.ctrlKey && !e.metaKey) {
+          const isAlt1 = e.code === "Digit1" || e.key === "1";
+          const isAlt2 = e.code === "Digit2" || e.key === "2";
+          if (isAlt1 || isAlt2) {
+            e.preventDefault();
+            setWorkspaceIntentMode(isAlt1 ? "read" : "sensemaking");
+            return;
+          }
+        }
+
         const isUp = e.key === "ArrowUp" || e.key.toLowerCase() === "k";
         const isDown = e.key === "ArrowDown" || e.key.toLowerCase() === "j";
 
@@ -13575,6 +14000,7 @@
       initSourceFileUpload();
       initEditSourcePropertiesModal();
       initConnectionModeSelect();
+      initIsolationDegreeSelect();
       initWorkspaceGraphPane();
       initLeftPaneCollapses();
       initWorkbenchSidebar();
