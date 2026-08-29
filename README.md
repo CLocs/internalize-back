@@ -262,6 +262,20 @@ Use this before a release or after large viewer changes. Load **Thinking, Fast a
 | Add source (`+`) | Modal import loads new source in dropdown + doc pane |
 | Docks | CONNECTIONS / GRAPH buttons expand and collapse panels |
 
+#### Workspace layout hotkeys
+
+Use these in `/viewer` to snap layouts without using the tab-bar layout toggle. **Repeat the same Alt key** to cycle presets that exist for your open tabs.
+
+| Key | First press | Repeat cycles (skipped steps when tab absent) |
+|-----|-------------|-----------------------------------------------|
+| **Alt+1** | Read — centered source, tree hidden, connections off | Source+Tree → +Synthesis → +Board → Studio → +Synthesis |
+| **Alt+2** | Source+Tree + Board (split) | Board split → Studio (when Synthesis tab exists) |
+| **Alt+3** | Source+Tree + Synthesis (split) | Synthesis split → Studio (when Board tab exists) |
+
+- Status bar shows the active preset, e.g. `Layout: Source + Tree + Synthesis (Alt+3 · 1/2)`.
+- Create tabs with **+** → New Board / New Synthesis before using Alt+2/3 split presets.
+- Saved workspace sessions store the active pin preset for reload.
+
 ## Project layout
 
 ```
