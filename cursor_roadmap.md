@@ -37,3 +37,27 @@
 - [ ] **Linear Document Export:** Build an export engine that traverses the Synthesis pane from top to bottom, reading the hierarchical structure, and exporting a clean, formatted Markdown document. *(Clipboard markdown export exists as a baseline.)*
 - [ ] **Smart Import Parser:** Upgrade the copy/paste text ingestion engine. If a user pastes a bulleted list (like from OneNote), the parser should read the tab/spacing indents and automatically assign `Excerpt` to root bullets, `Summary` to indented bullets, and generate the proper hierarchical database edges immediately.
 - [ ] **Graph Visualization (Flow View):** Polish the 2D canvas view to visualize the lateral and hierarchical edges generated during the Synthesis phase, allowing for a mind-map style alternative to the columnar outliner.
+
+## Phase 5: Continuous Core Tuning & Source Expansion (Track 1)
+*The goal of this phase is to eliminate UI/UX friction in the core extraction loop and expand ingestion beyond raw text pasting.*
+
+- [ ] **Fluidity & Mode Switching:** Build upon the dynamic TabManager to introduce global hotkeys that instantly snap the workspace into predefined layouts (e.g., *Reading Mode* = Source + Tree; *Synthesis Mode* = Tree + Board).
+- [ ] **Web Ingestion:** Integrate a web-clipper (e.g., Mozilla Readability) to parse URLs into standard Document nodes natively within the Source Tab.
+- [ ] **PDF Ingestion:** Implement `pdf.js` in the Source pane. Map PDF bounding boxes (X/Y coordinate space) to the existing `start_offset` / `end_offset` extraction engine to maintain perfect data provenance.
+- [ ] **Continuous Ergonomics:** Refine the "Compressed Tree-View" for progressive summarization and ensure multi-select drag-and-drop mechanics remain responsive as graph size scales.
+
+## Phase 6: Multi-Modal Sensemaking (Track 2)
+*The goal of this phase is to break out of text-only nodes and allow users to map parallel histories, timelines, and quantitative data.*
+
+- [ ] **Metadata Schema Expansion:** Update the `PUT /api/nodes` logic and "Change Node Type" modal to accept structural metadata properties: `date_start`, `date_end`, `location`, and `numeric_value`.
+- [ ] **Timeline View:** Create a new workspace tab that plots nodes horizontally based on their `date` properties, automatically drawing lateral edges to show event causality.
+- [ ] **Matrix/Table View:** Build a dynamic grid view where the Y-axis represents `location` (or entity) and the X-axis represents `time`, dropping connected summary nodes into the intersecting cells.
+- [ ] **Quantitative Charting:** Introduce a Chart tab (using Chart.js or Recharts). Link excerpted numeric values to chart data points, allowing visual graphs (e.g., GDP, Deaths over time) to update dynamically when the underlying source excerpt is modified.
+
+## Phase 7: The Multiplayer Horizon (Track 3)
+*The goal of this phase is to transition the graph from a private PKM into a collaborative, crowdsourced sensemaking network.*
+
+- [ ] **User & Role Authentication:** Refactor the backend database schema to associate nodes and edges with specific `user_id`s and roles (e.g., verified MD, community contributor).
+- [ ] **Reputation & Edge Weighting:** Implement a scoring system where connections validated by domain experts carry heavier mathematical weight, altering the visual gravity and layout of shared graph views.
+- [ ] **Spoken Layer (Audio Integration):** Configure cloud storage (e.g., AWS S3) to host audio files. Link audio URLs to specific `node_id`s and build an in-app audio player.
+- [ ] **Gamification Engine:** Create a ledger to track and display "contribution points" for users who narrate nodes or accurately map complex connections.

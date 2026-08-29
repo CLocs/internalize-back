@@ -71,6 +71,17 @@ graph BT
     class Source doc
 ```
 
+### Future Horizons: Multi-Modal & Multiplayer Data (Upcoming Schema)
+
+While the current ontology dictates strict visual DOM tracking (indent levels, density) and text offsets[cite: 2], the data model is expanding to support parallel sensemaking and collaborative environments. 
+
+* **Multi-Modal Properties:** Nodes will soon require expanded metadata properties to support dynamic visualizations outside the columnar tree view.
+    * `temporal_data`: Start/end dates for automatic plotting on Timeline views.
+    * `spatial_data`: Location tags for Matrix mapping.
+    * `quantitative_data`: Numeric values extracted from text to drive live-updating charts (e.g., GDP growth, casualty figures).
+* **Multiplayer Provenance:** The `ConnectionManager` edges[cite: 2] will evolve to track not just `type: 'hierarchy'` or `type: 'lateral'`, but also the `author_id` and `validation_score`. This introduces edge weighting, where connections upvoted by verified community members pull nodes closer together in spatial views.
+* **The Spoken Layer:** Nodes will support an `audio_reference_url` pointing to a cloud bucket, allowing users to crowdsource the narration of un-narrated summaries and excerpts.
+
 ## Core UX Mechanics (The Engine)
 
 ### Spatial Drag and Drop
