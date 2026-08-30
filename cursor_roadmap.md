@@ -12,7 +12,7 @@
 ## Phase 2: Workflow & UX Polish (Short-Term)
 *The goal of this phase is to make the Sensemaking and Synthesis loops frictionless.*
 
-- [x] **Chronological Source Tree Sorting:** Column 1 sorts by source-document highlight order (`sortColumn1NodesBySourceDocumentOrder`). Further hardening via `start_offset` sort is optional.
+- [x] **Chronological Source Tree Sorting:** Column 1 sorts by `start_offset` in source text (DOM highlight order as fallback). Column 2+ uses document-order keys via child excerpt offsets.
 - [x] **Create Connection UX:** No auto-elevate of L2→L1 on SUMMARIZES; lightweight edge refresh (no full canvas remount) preserves scroll; source highlights only for density-2 excerpts.
 - [x] **Persist prose `node_type`:** document-canvas returns `node_type`; Chapter/Part labels survive reload.
 - [x] **Click source highlight → focus excerpt:** Clicking `.excerpt-highlight` activates the matching Source Tree card.
@@ -40,6 +40,16 @@
 - [ ] **Linear Document Export:** Build an export engine that traverses the Synthesis pane from top to bottom, reading the hierarchical structure, and exporting a clean, formatted Markdown document. *(Clipboard markdown export exists as a baseline.)*
 - [ ] **Smart Import Parser:** Upgrade the copy/paste text ingestion engine. If a user pastes a bulleted list (like from OneNote), the parser should read the tab/spacing indents and automatically assign `Excerpt` to root bullets, `Summary` to indented bullets, and generate the proper hierarchical database edges immediately.
 - [ ] **Graph Visualization (Flow View):** Polish the 2D canvas view to visualize the lateral and hierarchical edges generated during the Synthesis phase, allowing for a mind-map style alternative to the columnar outliner.
+
+## Phase 4a: Synthesis Authoring (Near-Term)
+*The goal of this phase is OneNote-style nested outlines in-app—before Smart Import or Matrix View.*
+
+- [x] **Alt+3 guard:** Auto-open a Synthesis tab when Alt+3 is pressed with none open; status toast explains the action.
+- [x] **Heading blocks:** Section headings as first-class `heading` blocks in Synthesis (toolbar + Ctrl+Alt+H); distinct blue styling in Edit and Read modes.
+- [x] **Outline keyboard model:** Enter splits/creates sibling blocks; Tab/Shift+Tab indents; Backspace on empty block merges with previous.
+- [x] **Inline insert composer:** Click between items to set insert position (green marker); composer and Heading button respect insert point.
+- [ ] **Synthesis table blocks:** Inline comparison tables in Synthesis documents. *(Deferred — distinct from Phase 6 Matrix/Table View analytics tab.)*
+- [ ] **Read mode typography polish:** Nested list rendering and table placeholders in Read mode (tables still blocked until table blocks ship).
 
 ## Phase 5: Continuous Core Tuning & Source Expansion (Track 1)
 *The goal of this phase is to eliminate UI/UX friction in the core extraction loop and expand ingestion beyond raw text pasting.*

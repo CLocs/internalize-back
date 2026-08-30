@@ -1988,6 +1988,18 @@
       color: #fbbf24;
     }
 
+    .synthesis-item.synthesis-local-summary {
+      border-color: rgba(163, 230, 53, 0.35);
+    }
+
+    .synthesis-item.synthesis-local-summary .synthesis-item-meta-label::after {
+      content: " · outline";
+      color: #64748b;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      text-transform: none;
+    }
+
     .synthesis-item.synthesis-prose-item .synthesis-item-meta-label {
       font-weight: 700;
       letter-spacing: 0.04em;
@@ -2028,18 +2040,27 @@
     .synthesis-item-actions {
       position: absolute;
       top: 6px;
-      right: 6px;
+      right: 8px;
       z-index: 2;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 8px;
       opacity: 0;
       transition: opacity 0.2s;
     }
 
+    .synthesis-item-actions .remove-synthesis-block {
+      position: static;
+      top: auto;
+      right: auto;
+      width: 22px;
+      height: 22px;
+      opacity: 1;
+    }
+
     .edit-synthesis-block {
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       margin: 0;
       padding: 0;
       border: none;
@@ -2134,6 +2155,32 @@
       word-break: break-word;
     }
 
+    .synthesis-item .synthesis-item-body .inline-edit-area {
+      width: 100%;
+      min-height: 4.5em;
+      margin: 0;
+      padding: 8px 10px;
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #0f172a;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: none;
+      overflow: hidden;
+      outline: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-sizing: border-box;
+    }
+
+    .synthesis-item .synthesis-item-body .inline-edit-area:focus {
+      border-color: #22d3ee;
+      background: #ffffff;
+      color: #0f172a;
+    }
+
     .synthesis-reading-notes {
       display: none;
       flex-shrink: 0;
@@ -2206,6 +2253,25 @@
       line-height: 1.6;
     }
 
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item.heading-block {
+      padding: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item.heading-block h2.heading-block-text {
+      margin: 1.5rem 0 0.75rem;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #38bdf8;
+      line-height: 1.35;
+    }
+
+    .synthesis-dropzone.synthesis-reading-mode .synthesis-item.custom-thought[data-indent-level]:not([data-indent-level="0"]) .custom-thought-text {
+      margin-left: 1.25rem;
+      list-style: disc;
+    }
+
     .reference-link {
       display: inline;
       margin-left: 4px;
@@ -2250,8 +2316,74 @@
       font-style: italic;
     }
 
+    .synthesis-item.custom-thought,
+    .synthesis-item.heading-block,
+    .synthesis-item[data-node-id]:not([data-type="custom-text"]):not([data-type="heading"]) {
+      padding-right: 56px;
+    }
+
     .synthesis-item.custom-thought {
       cursor: default;
+    }
+
+    .synthesis-item.heading-block {
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 4px 28px 4px 12px;
+      box-shadow: none;
+    }
+
+    .synthesis-item.heading-block .heading-block-text,
+    .synthesis-item.heading-block .inline-edit-area {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      color: #38bdf8;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .synthesis-item.heading-block:hover {
+      background: rgba(56, 189, 248, 0.06);
+    }
+
+    .synthesis-item.custom-thought[data-indent-level]:not([data-indent-level="0"])
+      .custom-thought-text::before,
+    .synthesis-item.custom-thought[data-indent-level]:not([data-indent-level="0"])
+      .inline-edit-area::before {
+      content: "• ";
+      color: #94a3b8;
+    }
+
+    .synthesis-dropzone .synthesis-insert-marker {
+      position: relative;
+      height: 2px;
+      margin: 6px 0;
+      background: #4ade80;
+      border-radius: 1px;
+      pointer-events: none;
+    }
+
+    .synthesis-dropzone .synthesis-insert-marker::after {
+      content: "+";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #4ade80;
+      color: #0f172a;
+      font-size: 12px;
+      font-weight: bold;
+      line-height: 16px;
+      text-align: center;
     }
 
     .synthesis-item.custom-thought .custom-thought-text,
@@ -2297,7 +2429,7 @@
     .synthesis-view .workspace-card:focus-within .card-content,
     .synthesis-view .synthesis-item:focus-within .synthesis-item-text,
     .synthesis-view .synthesis-item:focus-within .custom-thought-text,
-    .synthesis-view .synthesis-item:focus-within .inline-edit-area {
+    .synthesis-view .synthesis-item:focus-within .heading-block-text {
       color: #ffffff;
     }
 
@@ -2984,8 +3116,11 @@
   </div>
   <div id="card-context-menu" class="hidden" style="position: fixed; z-index: 9999; background: #1e293b; border: 1px solid #334155; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); padding: 6px; display: flex; flex-direction: column; min-width: 200px; font-size: 13px; color: #f8fafc; font-family: 'Segoe UI', sans-serif;">
     <div class="ctx-menu-item" id="ctx-card-summarize" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-      <span><i class="fa-solid fa-compress" style="margin-right: 8px;"></i> Summarize Node</span>
+      <span id="ctx-card-summarize-label"><i class="fa-solid fa-compress" style="margin-right: 8px;"></i> Summarize Node</span>
       <span style="color: #64748b; font-size: 11px;">Ctrl+S</span>
+    </div>
+    <div class="ctx-menu-item" id="ctx-card-promote-source" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: none; align-items: center;">
+      <i class="fa-solid fa-arrow-up-right-from-square" style="margin-right: 8px;"></i> Add to Source Tree
     </div>
     <div class="ctx-menu-item" id="ctx-card-reanchor" style="padding: 8px 12px; cursor: pointer; border-radius: 4px; display: none; align-items: center;">
       <i class="fa-solid fa-location-crosshairs" style="margin-right: 8px;"></i> Fix Highlight Position
@@ -3316,6 +3451,7 @@
             >⎘</button>
           </div>
           <div class="synthesis-toolbar-actions">
+            <button type="button" class="synthesis-add-heading-btn" title="Add section heading">Heading</button>
             <button type="button" class="synthesis-new-note-btn">New Document</button>
             <button type="button" class="synthesis-load-doc-btn">Load</button>
           </div>
@@ -3466,6 +3602,8 @@
     const menuCreateSummarizeNode = document.getElementById("menu-summarize-node");
     const menuReanchorExcerpt = document.getElementById("menu-reanchor-excerpt");
     const menuCardReanchor = document.getElementById("ctx-card-reanchor");
+    const menuCardPromoteSource = document.getElementById("ctx-card-promote-source");
+    const menuCardSummarizeLabel = document.getElementById("ctx-card-summarize-label");
     let synthesisPane = null;
     let synthesisDocWrap = null;
     let synthesisEditBtn = null;
@@ -3583,6 +3721,7 @@
     const synthesisSortables = new Map();
     let loadSynthesisStatusTimer = null;
     let synthesisSaveTimer = null;
+    let synthesisInsertBeforeEl = null;
     let showNodeLabels = true;
     let flowResizeObserver = null;
     let pendingFlowScrollAnchor = null;
@@ -4539,7 +4678,21 @@
     }
 
     const WorkspacePresetManager = {
-      activatePin(pin) {
+      async activatePin(pin) {
+        if (pin === "synthesis" && getOpenTabsByType("synthesis").length === 0) {
+          await openSynthesisTab();
+          workspacePin = pin;
+          pinCycleIndex = 0;
+          const presets = getPresetsForPin(pin);
+          applyWorkspacePreset(presets[0] || "split-synth", {
+            pinKey: pin,
+            cycleIndex: 1,
+            cycleTotal: presets.length,
+          });
+          showStatus("Opened Synthesis tab (+ → New Synthesis)");
+          return;
+        }
+
         const presets = getPresetsForPin(pin);
         if (!presets.length) return;
 
@@ -5016,6 +5169,9 @@
         });
         dropzone.addEventListener("click", (e) => {
           setSynthesisContext(viewEl);
+          if (!e.target.closest("#card-context-menu")) {
+            hideCardContextMenu();
+          }
           const removeBtn = e.target.closest(".remove-synthesis-block");
           if (removeBtn) {
             e.preventDefault();
@@ -5048,9 +5204,20 @@
             return;
           }
           const anchor = e.target.closest(".source-link-anchor");
-          if (!anchor) return;
-          e.preventDefault();
-          focusGraphNodeFromReference(anchor.dataset.nodeId);
+          if (anchor) {
+            e.preventDefault();
+            focusGraphNodeFromReference(anchor.dataset.nodeId);
+            return;
+          }
+          if (
+            !e.target.closest(
+              ".synthesis-item, .drag-handle, .synthesis-drop-indicator, .synthesis-insert-marker"
+            )
+          ) {
+            const insertBefore = getSynthesisInsertPosition(dropzone, e.clientY);
+            showSynthesisInsertMarker(insertBefore);
+            synthesisComposer?.focus();
+          }
         });
         dropzone.addEventListener("focusin", (e) => {
           setSynthesisContext(viewEl);
@@ -5070,14 +5237,31 @@
         });
         dropzone.addEventListener("dblclick", (e) => {
           setSynthesisContext(viewEl);
-          const item = e.target.closest('.synthesis-item[data-type="custom-text"]');
-          if (!item || e.target.closest(".inline-edit-area, .drag-handle, .synthesis-item-actions")) {
+          const customItem = e.target.closest(
+            '.synthesis-item[data-type="custom-text"], .synthesis-item[data-type="heading"]'
+          );
+          if (customItem && !e.target.closest(".inline-edit-area, .drag-handle, .synthesis-item-actions")) {
+            e.preventDefault();
+            startEditableBlockEdit(customItem);
+            return;
+          }
+          const refItem = e.target.closest(
+            '.synthesis-item[data-type="local-summary"], .synthesis-item[data-node-id]:not([data-type="custom-text"]):not([data-type="heading"])'
+          );
+          if (!refItem || e.target.closest(".inline-edit-area, .drag-handle, .synthesis-item-actions")) {
             return;
           }
           e.preventDefault();
-          startCustomThoughtEdit(item);
+          startSynthesisItemInlineEdit(refItem);
         });
       }
+
+      viewEl.querySelector(".synthesis-add-heading-btn")?.addEventListener("click", () => {
+        setSynthesisContext(viewEl);
+        const indent = getSynthesisInsertIndent(synthesisInsertBeforeEl);
+        const item = appendHeadingBlock("", indent, synthesisInsertBeforeEl);
+        if (item) startHeadingBlockEdit(item);
+      });
 
       const composer = viewEl.querySelector(".synthesis-custom-input");
       if (composer && !composer.dataset.bound) {
@@ -5098,7 +5282,8 @@
             e.preventDefault();
             const text = composer.value.trim();
             if (!text) return;
-            appendCustomThought(text);
+            const indent = getSynthesisInsertIndent(synthesisInsertBeforeEl);
+            appendCustomThought(text, indent, synthesisInsertBeforeEl);
             composer.value = "";
             scheduleSynthesisSave();
             return;
@@ -6009,11 +6194,22 @@
       if (document.body.dataset.boardCtxMenuBound) return;
       document.body.dataset.boardCtxMenuBound = "1";
 
-      document.addEventListener("click", (e) => {
-        if (!e.target.closest("#board-context-menu")) {
+      document.addEventListener(
+        "click",
+        (e) => {
+          if (!e.target.closest("#board-context-menu")) {
+            hideBoardContextMenu();
+          }
+          if (!e.target.closest("#card-context-menu")) {
+            hideCardContextMenu();
+          }
+        },
+        true
+      );
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
           hideBoardContextMenu();
-        }
-        if (!e.target.closest("#card-context-menu")) {
           hideCardContextMenu();
         }
       });
@@ -6054,18 +6250,41 @@
       hideCustomContextMenu();
       hideBoardContextMenu();
 
-      SelectionManager.setActiveNode(nodeId);
-
       const menu = document.getElementById("card-context-menu");
       if (!menu) return;
+
+      const isLocalSummary = nodeBlock.dataset.type === "local-summary";
+      const inSynthesis = !!nodeBlock.closest(".synthesis-view, .synthesis-workspace");
+      const summarizeItem = document.getElementById("ctx-card-summarize");
+      const changeTypeItem = document.getElementById("ctx-card-change-type");
+
       menu.style.left = `${e.clientX}px`;
       menu.style.top = `${e.clientY}px`;
-      menu.dataset.targetNodeId = nodeId;
+      menu.dataset.targetNodeId = nodeId || "";
+      menu.dataset.targetLocalSummaryId = isLocalSummary
+        ? nodeBlock.dataset.localSummaryId || ""
+        : "";
 
-      const changeTypeItem = document.getElementById("ctx-card-change-type");
+      if (isLocalSummary) {
+        if (summarizeItem) summarizeItem.style.display = "none";
+        if (changeTypeItem) changeTypeItem.style.display = "none";
+        if (menuCardReanchor) menuCardReanchor.style.display = "none";
+        if (menuCardPromoteSource) menuCardPromoteSource.style.display = "flex";
+        menu.classList.remove("hidden");
+        return;
+      }
+
+      if (menuCardPromoteSource) menuCardPromoteSource.style.display = "none";
+      if (summarizeItem) summarizeItem.style.display = "flex";
+      if (changeTypeItem) changeTypeItem.style.display = "flex";
+
+      if (nodeId) SelectionManager.setActiveNode(nodeId);
+
       if (changeTypeItem) {
         const multiCount =
-          SelectionManager.selectedNodeIds.has(nodeId) && SelectionManager.selectedNodeIds.size > 1
+          nodeId &&
+          SelectionManager.selectedNodeIds.has(nodeId) &&
+          SelectionManager.selectedNodeIds.size > 1
             ? SelectionManager.selectedNodeIds.size
             : 1;
         changeTypeItem.innerHTML =
@@ -6076,7 +6295,13 @@
             : '<i class="fa-solid fa-tags" style="margin-right: 8px;"></i> Change Node Type';
       }
 
-      const node = getNodeById(nodeId);
+      if (menuCardSummarizeLabel) {
+        menuCardSummarizeLabel.innerHTML = inSynthesis
+          ? '<i class="fa-solid fa-compress" style="margin-right: 8px;"></i> Summarize in outline'
+          : '<i class="fa-solid fa-compress" style="margin-right: 8px;"></i> Summarize Node';
+      }
+
+      const node = nodeId ? getNodeById(nodeId) : null;
       const density =
         node?.density_level ??
         parseInt(nodeBlock.dataset.densityLevel || nodeBlock.dataset.depthLevel || "", 10);
@@ -6088,6 +6313,12 @@
     }
 
     function handleWorkspaceNodeContextMenu(e) {
+      const localSummary = e.target.closest('.synthesis-item[data-type="local-summary"]');
+      if (localSummary) {
+        showWorkspaceNodeContextMenu(e, localSummary, "");
+        return;
+      }
+
       const nodeBlock = e.target.closest(
         ".workspace-card[data-node-id], .synthesis-item[data-node-id], .synthesis-block[data-node-id], .wb-node-wrapper[data-node-id]"
       );
@@ -6115,6 +6346,18 @@
         const targetId = menu?.dataset.targetNodeId;
         hideCardContextMenu();
         if (targetId) await promptSummarizeNode(targetId);
+      });
+
+      menuCardPromoteSource?.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById("card-context-menu");
+        const localSummaryId = menu?.dataset.targetLocalSummaryId;
+        hideCardContextMenu();
+        if (!localSummaryId) return;
+        const item = synthesisDropzone?.querySelector(
+          `.synthesis-item[data-local-summary-id="${CSS.escape(localSummaryId)}"]`
+        );
+        if (item) await promoteLocalSummaryToSourceTree(item);
       });
 
       menuCardReanchor?.addEventListener("click", async (e) => {
@@ -9558,6 +9801,7 @@
     }
 
     function resetSynthesisWorkspaceContent() {
+      clearSynthesisInsertMarker();
       synthesisDropzone?.replaceChildren();
       if (synthesisComposer) synthesisComposer.value = "";
       if (synthesisReadingNotes) {
@@ -9688,6 +9932,32 @@
             order: index,
             indentLevel: parseInt(item.dataset.indentLevel || "0", 10) || 0,
           });
+          return;
+        }
+
+        if (item.dataset.type === "local-summary") {
+          const content = item.querySelector(".synthesis-item-text")?.textContent?.trim() || "";
+          const sourceNodeId = item.dataset.sourceNodeId?.trim();
+          if (!content || !sourceNodeId) return;
+          documentBlocks.push({
+            type: "local-summary",
+            content,
+            sourceNodeId,
+            order: index,
+            indentLevel: parseInt(item.dataset.indentLevel || "0", 10) || 0,
+          });
+          return;
+        }
+
+        if (item.dataset.type === "heading") {
+          const text = getSynthesisBlockText(item);
+          if (!text) return;
+          documentBlocks.push({
+            type: "heading",
+            content: text,
+            order: index,
+            indentLevel: parseInt(item.dataset.indentLevel || "0", 10) || 0,
+          });
         }
       });
 
@@ -9705,9 +9975,15 @@
     }
 
     function getReferenceNodeIdsFromBlocks(blocks) {
-      return (blocks || [])
-        .filter((block) => block?.type === "reference" && block.nodeId)
-        .map((block) => block.nodeId);
+      const ids = [];
+      for (const block of blocks || []) {
+        if (block?.type === "reference" && block.nodeId) {
+          ids.push(block.nodeId);
+        } else if (block?.type === "local-summary" && block.sourceNodeId) {
+          ids.push(block.sourceNodeId);
+        }
+      }
+      return ids;
     }
 
     function blocksToLegacyContent(blocks, referenceNodes = []) {
@@ -9715,6 +9991,8 @@
       return (blocks || [])
         .map((block) => {
           if (block.type === "text") return block.content || "";
+          if (block.type === "heading") return `## ${block.content || ""}`.trim();
+          if (block.type === "local-summary") return block.content || "";
           if (block.type === "reference" && block.nodeId) {
             const resolved = synthesisNodeDisplayText(
               block.nodeId,
@@ -9742,6 +10020,12 @@
             const text = escapeHtml(block.content || "").replace(/\n/g, "<br>");
             if (!text) return "";
             return `<p class="synthesis-source-text" style="margin:0 0 1rem ${marginLeft}px">${text}</p>`;
+          }
+
+          if (block.type === "heading") {
+            const text = escapeHtml(block.content || "");
+            if (!text) return "";
+            return `<h2 class="synthesis-source-heading" style="margin:1.5rem 0 0.75rem ${marginLeft}px">${text}</h2>`;
           }
 
           if (block.type === "reference" && block.nodeId) {
@@ -9867,6 +10151,20 @@
           } else {
             appendCustomThought(block.content, block.indentLevel ?? 0);
           }
+          return;
+        }
+
+        if (block.type === "local-summary" && block.content && block.sourceNodeId) {
+          appendLocalSummaryBlock(
+            block.content,
+            block.sourceNodeId,
+            block.indentLevel ?? 0
+          );
+          return;
+        }
+
+        if (block.type === "heading" && block.content) {
+          appendHeadingBlock(block.content, block.indentLevel ?? 0);
         }
       });
       registerBlockHierarchyEdges(sortedBlocks);
@@ -10439,8 +10737,13 @@
     }
 
     function appendSynthesisReferenceLink(item) {
-      const nodeId = item.dataset.nodeId || item.dataset.sourceNode;
-      const itemType = item.dataset.itemType || getSynthesisItemType(nodeId);
+      const isLocalSummary = item.dataset.type === "local-summary";
+      const nodeId = isLocalSummary
+        ? item.dataset.sourceNodeId
+        : item.dataset.nodeId || item.dataset.sourceNode;
+      const itemType = isLocalSummary
+        ? "summary"
+        : item.dataset.itemType || getSynthesisItemType(nodeId);
       if (!nodeId || (itemType !== "summary" && itemType !== "excerpt")) return;
 
       item.querySelector(".reference-link")?.remove();
@@ -10518,6 +10821,21 @@
 
     function applySynthesisReadingPresentation() {
       synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        if (item.dataset.type === "heading") {
+          const textEl = item.querySelector(".heading-block-text");
+          if (textEl && textEl.tagName.toLowerCase() !== "h2") {
+            const h2 = document.createElement("h2");
+            h2.className = "heading-block-text";
+            h2.textContent = textEl.textContent;
+            textEl.replaceWith(h2);
+          }
+          return;
+        }
+        if (item.dataset.type === "local-summary") {
+          ensureSynthesisItemTextElement(item, true);
+          appendSynthesisReferenceLink(item);
+          return;
+        }
         ensureSynthesisItemTextElement(item, true);
         appendSynthesisReferenceLink(item);
       });
@@ -10526,6 +10844,16 @@
 
     function revertSynthesisReadingPresentation() {
       synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        if (item.dataset.type === "heading") {
+          const textEl = item.querySelector(".heading-block-text");
+          if (textEl && textEl.tagName.toLowerCase() === "h2") {
+            const span = document.createElement("span");
+            span.className = "heading-block-text";
+            span.textContent = textEl.textContent;
+            textEl.replaceWith(span);
+          }
+          return;
+        }
         removeSynthesisReferenceLinks(item);
         ensureSynthesisItemTextElement(item, false);
       });
@@ -10562,9 +10890,22 @@
       const parts = [];
 
       synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        if (item.dataset.type === "local-summary") {
+          const text = item.querySelector(".synthesis-item-text")?.textContent?.trim() || "";
+          if (text) parts.push(`### ${text}`);
+          return;
+        }
+        if (item.dataset.type === "heading") {
+          const text = item.querySelector(".heading-block-text")?.textContent?.trim() || "";
+          if (text) parts.push(`## ${text}`);
+          return;
+        }
         if (item.dataset.type === "custom-text") {
+          const indent = parseInt(item.dataset.indentLevel || "0", 10) || 0;
           const text = item.querySelector(".custom-thought-text")?.textContent?.trim() || "";
-          if (text) parts.push(text);
+          if (!text) return;
+          const prefix = indent > 0 ? "  ".repeat(indent) + "- " : "";
+          parts.push(`${prefix}${text}`);
           return;
         }
 
@@ -10621,6 +10962,11 @@
       const sections = [];
 
       synthesisDropzone?.querySelectorAll(".synthesis-item").forEach((item) => {
+        if (item.dataset.type === "heading") {
+          const text = item.querySelector(".heading-block-text")?.textContent?.trim() || "";
+          if (text) sections.push(`## ${text}`);
+          return;
+        }
         if (item.dataset.type === "custom-text") {
           const text = item.querySelector(".custom-thought-text")?.textContent?.trim() || "";
           if (text) sections.push(text);
@@ -11248,6 +11594,8 @@
       textarea.addEventListener("keydown", (e) => {
         if (handleSynthesisBlockTabIndent(e)) return;
         if (handleSynthesisBlockAltArrowIndent(e)) return;
+        if (handleSynthesisOutlineBackspace(e, item)) return;
+        if (handleSynthesisOutlineEnter(e, item)) return;
         scheduleSynthesisSave();
         if (e.key === "Escape") {
           e.preventDefault();
@@ -11332,7 +11680,10 @@
       textarea.replaceWith(replacement);
       scheduleSynthesisSave();
 
-      if (!nodeId) return;
+      if (!nodeId) {
+        delete textarea.dataset.committing;
+        return;
+      }
 
       try {
         const putRes = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(nodeId)}`, {
@@ -11356,6 +11707,36 @@
       } catch (err) {
         showStatus(err.message, true);
       }
+      delete textarea.dataset.committing;
+    }
+
+    function createSynthesisReferenceActions() {
+      const actions = document.createElement("div");
+      actions.className = "synthesis-item-actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "edit-synthesis-block";
+      editBtn.title = "Edit";
+      editBtn.setAttribute("aria-label", "Edit block");
+      editBtn.textContent = "✎";
+
+      actions.appendChild(editBtn);
+      actions.appendChild(createSynthesisRemoveButton());
+      return actions;
+    }
+
+    function bindSynthesisReferenceItem(item) {
+      if (!item || item.dataset.referenceBound) return;
+      if (!item.dataset.nodeId) return;
+      if (item.dataset.type === "custom-text" || item.dataset.type === "heading") return;
+      item.dataset.referenceBound = "1";
+
+      item.querySelector(".edit-synthesis-block")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startSynthesisItemInlineEdit(item);
+      });
     }
 
     function createSynthesisCustomThoughtActions() {
@@ -11383,6 +11764,177 @@
         e.stopPropagation();
         startCustomThoughtEdit(item);
       });
+
+      bindEditableSynthesisBlock(item, {});
+    }
+
+    function bindHeadingBlock(item) {
+      if (!item || item.dataset.headingBound) return;
+      item.dataset.headingBound = "1";
+
+      item.querySelector(".edit-synthesis-block")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startHeadingBlockEdit(item);
+      });
+
+      bindEditableSynthesisBlock(item, {});
+    }
+
+    function getSynthesisInsertIndent(insertBefore) {
+      const prev = insertBefore?.previousElementSibling;
+      if (prev?.classList?.contains("synthesis-item")) {
+        return parseInt(prev.dataset.indentLevel || "0", 10) || 0;
+      }
+      const last = synthesisDropzone?.querySelector(".synthesis-item:last-of-type");
+      if (!insertBefore && last) {
+        return parseInt(last.dataset.indentLevel || "0", 10) || 0;
+      }
+      return 0;
+    }
+
+    function clearSynthesisInsertMarker() {
+      synthesisDropzone?.querySelector(".synthesis-insert-marker")?.remove();
+      synthesisInsertBeforeEl = null;
+    }
+
+    function showSynthesisInsertMarker(insertBefore) {
+      clearSynthesisInsertMarker();
+      if (!synthesisDropzone) return;
+      synthesisInsertBeforeEl = insertBefore;
+      const marker = document.createElement("div");
+      marker.className = "synthesis-insert-marker";
+      marker.setAttribute("aria-hidden", "true");
+      if (insertBefore && insertBefore.parentNode === synthesisDropzone) {
+        synthesisDropzone.insertBefore(marker, insertBefore);
+      } else {
+        synthesisDropzone.appendChild(marker);
+      }
+    }
+
+    function insertIntoSynthesisDropzone(item, insertBefore = null) {
+      if (!synthesisDropzone || !item) return item;
+      const target = insertBefore ?? synthesisInsertBeforeEl;
+      clearSynthesisInsertMarker();
+      if (target && target.parentNode === synthesisDropzone) {
+        synthesisDropzone.insertBefore(item, target);
+      } else {
+        synthesisDropzone.appendChild(item);
+      }
+      applySynthesisItemIndent(item);
+      return item;
+    }
+
+    function getSynthesisBlockText(item) {
+      if (!item) return "";
+      if (item.dataset.type === "heading") {
+        return item.querySelector(".heading-block-text")?.textContent?.trim() || "";
+      }
+      return getCustomThoughtText(item);
+    }
+
+    function bindEditableSynthesisBlock(item, { textSelector, onCommit }) {
+      if (!item || item.dataset.outlineBound) return;
+      item.dataset.outlineBound = "1";
+      item.tabIndex = 0;
+
+      item.addEventListener("keydown", (e) => {
+        if (handleSynthesisBlockTabIndent(e)) return;
+        if (handleSynthesisBlockAltArrowIndent(e)) return;
+        if (handleSynthesisOutlineBackspace(e, item)) return;
+        if (handleSynthesisOutlineEnter(e, item)) return;
+      });
+    }
+
+    function handleSynthesisOutlineBackspace(e, item) {
+      if (e.key !== "Backspace" || e.ctrlKey || e.metaKey || e.altKey) return false;
+      const textarea = e.target.closest(".inline-edit-area");
+      if (textarea) {
+        if (textarea.selectionStart !== 0 || textarea.selectionEnd !== 0) return false;
+        if (textarea.value.trim()) return false;
+        e.preventDefault();
+        e.stopPropagation();
+        const prev = item.previousElementSibling;
+        item.remove();
+        if (prev?.classList.contains("synthesis-item")) {
+          if (prev.dataset.type === "custom-text" || prev.dataset.type === "heading") {
+            startEditableBlockEdit(prev);
+          } else {
+            prev.focus();
+          }
+        }
+        scheduleSynthesisSave();
+        return true;
+      }
+
+      if (e.target !== item && !e.target.classList.contains("custom-thought-text") &&
+          !e.target.classList.contains("heading-block-text")) {
+        return false;
+      }
+      const text = getSynthesisBlockText(item);
+      if (text) return false;
+      e.preventDefault();
+      e.stopPropagation();
+      const prev = item.previousElementSibling;
+      item.remove();
+      if (prev?.classList.contains("synthesis-item")) startEditableBlockEdit(prev);
+      scheduleSynthesisSave();
+      return true;
+    }
+
+    function handleSynthesisOutlineEnter(e, item) {
+      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return false;
+      if (e.target.matches(".synthesis-custom-input, .drag-handle, .remove-synthesis-block")) {
+        return false;
+      }
+
+      const textarea = e.target.closest(".inline-edit-area");
+      if (textarea) {
+        e.preventDefault();
+        e.stopPropagation();
+        const value = textarea.value;
+        const cursor = textarea.selectionStart;
+        const before = value.slice(0, cursor).replace(/\n$/, "");
+        const after = value.slice(cursor).replace(/^\n/, "");
+        textarea.value = before;
+        adjustInlineEditTextareaHeight(textarea);
+        void commitEditableBlockEdit(item, textarea).then(() => {
+          const indent = parseInt(item.dataset.indentLevel || "0", 10) || 0;
+          const insertBefore = item.nextElementSibling;
+          const sibling =
+            item.dataset.type === "heading"
+              ? appendHeadingBlock(after, indent, insertBefore)
+              : appendCustomThought(after, indent, insertBefore);
+          if (sibling) startEditableBlockEdit(sibling);
+        });
+        return true;
+      }
+
+      if (item.dataset.type !== "custom-text" && item.dataset.type !== "heading") return false;
+      if (e.target.closest(".synthesis-item-actions, .drag-handle")) return false;
+      e.preventDefault();
+      e.stopPropagation();
+      const indent = parseInt(item.dataset.indentLevel || "0", 10) || 0;
+      const insertBefore = item.nextElementSibling;
+      const sibling =
+        item.dataset.type === "heading"
+          ? appendHeadingBlock("", indent, insertBefore)
+          : appendCustomThought("", indent, insertBefore);
+      if (sibling) startEditableBlockEdit(sibling);
+      return true;
+    }
+
+    async function commitEditableBlockEdit(item, textarea) {
+      if (item.dataset.type === "heading") {
+        await commitHeadingBlockEdit(item, textarea);
+      } else {
+        await commitCustomThoughtEdit(item, textarea);
+      }
+    }
+
+    function startEditableBlockEdit(item) {
+      if (item.dataset.type === "heading") startHeadingBlockEdit(item);
+      else startCustomThoughtEdit(item);
     }
 
     function createSynthesisRemoveButton() {
@@ -11395,7 +11947,7 @@
       return button;
     }
 
-    function appendCustomThought(text, indentLevel = 0) {
+    function appendCustomThought(text, indentLevel = 0, insertBefore = null) {
       if (!synthesisDropzone) return null;
 
       const item = document.createElement("div");
@@ -11419,10 +11971,105 @@
       item.appendChild(paragraph);
       item.appendChild(createSynthesisCustomThoughtActions());
       bindCustomThoughtBlock(item);
-      synthesisDropzone.appendChild(item);
-      applySynthesisItemIndent(item);
-      scrollSynthesisDropzoneToBottom();
+      insertIntoSynthesisDropzone(item, insertBefore);
+      if (!insertBefore) scrollSynthesisDropzoneToBottom();
       return item;
+    }
+
+    function appendHeadingBlock(text, indentLevel = 0, insertBefore = null) {
+      if (!synthesisDropzone) return null;
+
+      const item = document.createElement("div");
+      item.className = "synthesis-item heading-block draggable";
+      item.dataset.type = "heading";
+      item.dataset.indentLevel = String(indentLevel ?? 0);
+      item.tabIndex = 0;
+
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = "drag-handle";
+      handle.setAttribute("aria-label", "Drag to reorder");
+      handle.title = "Drag to reorder";
+      handle.textContent = "⋮⋮";
+
+      const heading = document.createElement("span");
+      heading.className = "heading-block-text";
+      heading.textContent = text;
+
+      item.appendChild(handle);
+      item.appendChild(heading);
+      item.appendChild(createSynthesisCustomThoughtActions());
+      bindHeadingBlock(item);
+      insertIntoSynthesisDropzone(item, insertBefore);
+      if (!insertBefore) scrollSynthesisDropzoneToBottom();
+      if (synthesisViewMode === "read") {
+        applySynthesisReadingPresentation();
+      }
+      return item;
+    }
+
+    async function commitHeadingBlockEdit(item, textarea) {
+      if (textarea.dataset.committing) return;
+      textarea.dataset.committing = "1";
+
+      const text = textarea.value.trim();
+      const heading = document.createElement("span");
+      heading.className = "heading-block-text";
+      heading.textContent = text;
+      textarea.replaceWith(heading);
+
+      if (!text) {
+        item.remove();
+      }
+
+      scheduleSynthesisSave();
+      delete textarea.dataset.committing;
+    }
+
+    function startHeadingBlockEdit(item) {
+      if (!item || item.dataset.type !== "heading") return;
+      if (item.querySelector(".inline-edit-area")) return;
+
+      const heading = item.querySelector(".heading-block-text");
+      if (!heading) return;
+
+      const text = heading.textContent;
+      const textarea = document.createElement("textarea");
+      textarea.className = "inline-edit-area";
+      textarea.value = text;
+      textarea.rows = 1;
+      heading.replaceWith(textarea);
+
+      adjustInlineEditTextareaHeight(textarea);
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+      textarea.addEventListener("input", () => {
+        adjustInlineEditTextareaHeight(textarea);
+        scheduleSynthesisSave();
+      });
+
+      textarea.addEventListener("blur", () => {
+        commitHeadingBlockEdit(item, textarea);
+      });
+
+      textarea.addEventListener("keydown", (e) => {
+        if (handleSynthesisBlockTabIndent(e)) return;
+        if (handleSynthesisBlockAltArrowIndent(e)) return;
+        if (handleSynthesisOutlineBackspace(e, item)) return;
+        if (handleSynthesisOutlineEnter(e, item)) return;
+        scheduleSynthesisSave();
+        if (e.key === "Escape") {
+          e.preventDefault();
+          textarea.blur();
+          return;
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          textarea.blur();
+        }
+      });
     }
 
     function hideSynthesisDropIndicator(container) {
@@ -11588,6 +12235,145 @@
       return true;
     }
 
+    function appendLocalSummaryBlock(content, sourceNodeId, indentLevel = 0, insertBefore = null) {
+      if (!synthesisDropzone || !sourceNodeId) return null;
+
+      const item = document.createElement("div");
+      item.className = "synthesis-item synthesis-local-summary draggable";
+      item.dataset.type = "local-summary";
+      item.dataset.sourceNodeId = sourceNodeId;
+      item.dataset.localSummaryId = crypto.randomUUID();
+      item.dataset.indentLevel = String(indentLevel ?? 0);
+      item.dataset.itemType = "summary";
+      item.tabIndex = 0;
+
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = "drag-handle";
+      handle.setAttribute("aria-label", "Drag to reorder");
+      handle.title = "Drag to reorder";
+      handle.textContent = "⋮⋮";
+
+      const body = document.createElement("div");
+      body.className = "synthesis-item-body";
+
+      const meta = document.createElement("div");
+      meta.className = "synthesis-item-meta";
+
+      const metaLabel = document.createElement("span");
+      metaLabel.className = "synthesis-item-meta-label";
+      metaLabel.textContent = "Summary";
+      metaLabel.title = "Outline summary — not yet in Source Tree";
+
+      const anchor = document.createElement("button");
+      anchor.type = "button";
+      anchor.className = "source-link-anchor";
+      anchor.title = "Jump to source excerpt";
+      anchor.dataset.nodeId = sourceNodeId;
+      anchor.textContent = "⛓";
+      anchor.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        focusGraphNodeFromReference(sourceNodeId);
+      });
+
+      const textEl = document.createElement("div");
+      textEl.className = "synthesis-item-text";
+      textEl.textContent = content;
+
+      meta.appendChild(metaLabel);
+      meta.appendChild(anchor);
+      body.appendChild(meta);
+      body.appendChild(textEl);
+      item.appendChild(handle);
+      item.appendChild(body);
+      item.appendChild(createSynthesisReferenceActions());
+      bindLocalSummaryBlock(item);
+
+      insertIntoSynthesisDropzone(item, insertBefore);
+      if (synthesisViewMode === "read") {
+        ensureSynthesisItemTextElement(item, true);
+        appendSynthesisReferenceLink(item);
+      }
+      scrollElementInPane(item, { behavior: "smooth", block: "nearest" });
+      return item;
+    }
+
+    function bindLocalSummaryBlock(item) {
+      if (!item || item.dataset.localSummaryBound) return;
+      item.dataset.localSummaryBound = "1";
+
+      item.querySelector(".edit-synthesis-block")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startSynthesisItemInlineEdit(item);
+      });
+    }
+
+    async function promoteLocalSummaryToSourceTree(item) {
+      if (!item || item.dataset.type !== "local-summary") return false;
+
+      const sourceNodeId = item.dataset.sourceNodeId?.trim();
+      const content = item.querySelector(".synthesis-item-text")?.textContent?.trim() || "";
+      if (!sourceNodeId) {
+        showStatus("Missing source excerpt link.", true);
+        return false;
+      }
+      if (!content) {
+        showStatus("Cannot promote an empty summary.", true);
+        return false;
+      }
+
+      try {
+        const newNodeId = await createSummaryLinkedToExcerpt(content, sourceNodeId);
+        if (!newNodeId) {
+          showStatus("Failed to add summary to Source Tree.", true);
+          return false;
+        }
+
+        item.classList.remove("synthesis-local-summary");
+        item.dataset.type = "";
+        item.dataset.nodeId = newNodeId;
+        item.dataset.sourceNode = newNodeId;
+        delete item.dataset.sourceNodeId;
+        delete item.dataset.localSummaryId;
+        delete item.dataset.localSummaryBound;
+        delete item.dataset.referenceBound;
+        item.dataset.itemType = "summary";
+
+        const metaLabel = item.querySelector(".synthesis-item-meta-label");
+        if (metaLabel) {
+          metaLabel.textContent = "Summary";
+          metaLabel.removeAttribute("title");
+        }
+
+        const anchor = item.querySelector(".source-link-anchor");
+        if (anchor) {
+          anchor.dataset.nodeId = newNodeId;
+          anchor.title = "Jump to source node";
+          const newAnchor = anchor.cloneNode(true);
+          newAnchor.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            focusGraphNodeFromReference(newNodeId);
+          });
+          anchor.replaceWith(newAnchor);
+        }
+
+        applySynthesisItemPresentation(item);
+        bindSynthesisReferenceItem(item);
+        SelectionManager.setActiveNode(newNodeId);
+        scheduleSynthesisSave();
+        await refreshWorkspaceAfterGraphMutation();
+        ConnectionManager.scheduleDraw();
+        showStatus("Summary added to Source Tree");
+        return true;
+      } catch (err) {
+        showStatus(err.message || "Failed to add summary to Source Tree.", true);
+        return false;
+      }
+    }
+
     function appendSynthesisItem(
       nodeId,
       text,
@@ -11647,7 +12433,8 @@
       body.appendChild(textEl);
       item.appendChild(handle);
       item.appendChild(body);
-      item.appendChild(createSynthesisRemoveButton());
+      item.appendChild(createSynthesisReferenceActions());
+      bindSynthesisReferenceItem(item);
 
       if (insertBefore && insertBefore.parentNode === synthesisDropzone) {
         synthesisDropzone.insertBefore(item, insertBefore);
@@ -12423,85 +13210,25 @@
 
       try {
         if (isSynthesis) {
-          const newNodeId = await createSummaryLinkedToExcerpt(parentText, nodeId);
-          if (!newNodeId) {
-            showStatus("Failed to create summary.", true);
+          if (parentBlock.classList.contains("synthesis-item")) {
+            const currentIndent = parseInt(parentBlock.dataset.indentLevel || "0", 10) || 0;
+            const newBlock = appendLocalSummaryBlock(parentText, nodeId, currentIndent);
+            if (!newBlock) {
+              showStatus("Failed to create outline summary.", true);
+              return;
+            }
+
+            parentBlock.remove();
+            scheduleSynthesisSave();
+            showStatus(
+              "Outline summary created — right-click → Add to Source Tree to propagate"
+            );
+
+            window.setTimeout(() => {
+              startSynthesisItemInlineEdit(newBlock, { selectAll: true });
+            }, 100);
             return;
           }
-
-          SelectionManager.setActiveNode(newNodeId);
-
-          const newBlock = parentBlock.cloneNode(true);
-          newBlock.classList.remove("multi-selected");
-          newBlock.querySelector(".inline-edit-area")?.remove();
-          newBlock.dataset.nodeId = newNodeId;
-          newBlock.dataset.sourceNode = newNodeId;
-
-          if (newBlock.classList.contains("synthesis-item")) {
-            newBlock.dataset.itemType = "summary";
-            const metaLabel = newBlock.querySelector(".synthesis-item-meta-label");
-            if (metaLabel) metaLabel.textContent = "Summary";
-
-            const anchor = newBlock.querySelector(".source-link-anchor");
-            if (anchor) {
-              const newAnchor = anchor.cloneNode(true);
-              newAnchor.dataset.nodeId = newNodeId;
-              newAnchor.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                focusGraphNodeFromReference(newNodeId);
-              });
-              anchor.replaceWith(newAnchor);
-            }
-
-            if (synthesisViewMode === "read") {
-              ensureSynthesisItemTextElement(newBlock, true);
-              appendSynthesisReferenceLink(newBlock);
-            }
-          } else {
-            newBlock.dataset.nodeType = "Summary";
-            const typeLabel =
-              newBlock.querySelector(".node-label") ||
-              newBlock.querySelector('span[style*="color"]');
-            if (typeLabel) {
-              const levelMatch = typeLabel.textContent.match(/LEVEL \d+:/i);
-              typeLabel.textContent = levelMatch ? `${levelMatch[0]} SUMMARY` : "SUMMARY";
-              typeLabel.style.color = "#a3e635";
-            }
-          }
-
-          const currentIndent = parseInt(parentBlock.dataset.indentLevel || "0", 10) || 0;
-          newBlock.dataset.indentLevel = String(currentIndent);
-          applySynthesisItemIndent(newBlock);
-
-          const childIndent = Math.min(5, currentIndent + 1);
-          parentBlock.dataset.indentLevel = String(childIndent);
-          applySynthesisItemIndent(parentBlock);
-
-          parentBlock.parentNode.insertBefore(newBlock, parentBlock);
-          scheduleSynthesisSave();
-
-          const outlineParentId = findSynthesisBlockParentId(newBlock);
-          if (outlineParentId) {
-            ConnectionManager.registerEdge({
-              id: ConnectionManager.edgeKey("SUMMARIZES", outlineParentId, newNodeId),
-              source_id: outlineParentId,
-              target_id: newNodeId,
-              relationship_type: "SUMMARIZES",
-            });
-          }
-
-          window.setTimeout(() => {
-            if (newBlock.classList.contains("synthesis-item")) {
-              startSynthesisItemInlineEdit(newBlock, { selectAll: true });
-            } else {
-              startWorkspaceCardInlineEdit(newBlock, { selectAll: true });
-            }
-          }, 100);
-
-          await refreshWorkspaceAfterGraphMutation();
-          ConnectionManager.scheduleDraw();
-          return;
         }
 
         const newNodeId = await saveRecursiveSummaryFromExcerptCard(
@@ -12895,29 +13622,57 @@
       });
     }
 
+    function getColumn1DocumentSortKey(nodeOrId) {
+      const node =
+        typeof nodeOrId === "object"
+          ? nodeOrId
+          : workspaceNodeMap.get(nodeOrId) || getNodeById(nodeOrId);
+      const nodeId = node?.id || nodeOrId;
+
+      if (node?.start_offset != null && Number.isFinite(Number(node.start_offset))) {
+        return Number(node.start_offset);
+      }
+
+      const span = document.getElementById(`excerpt-${nodeId}`);
+      if (span && docBody?.contains(span)) {
+        const highlights = Array.from(docBody.querySelectorAll(".excerpt-highlight[id]"));
+        const idx = highlights.indexOf(span);
+        if (idx >= 0) return idx;
+      }
+
+      return Number.MAX_SAFE_INTEGER / 2;
+    }
+
     function sortColumn1NodesBySourceDocumentOrder(column1Nodes) {
       if (!column1Nodes?.length) return column1Nodes;
 
-      const highlights = Array.from(
-        docBody.querySelectorAll(".excerpt-highlight[id]")
-      );
-      const chronologicalIds = highlights.map((el) =>
-        el.id.replace(/^excerpt-/, "")
-      );
-
       column1Nodes.sort((a, b) => {
-        const indexA = chronologicalIds.indexOf(a.id);
-        const indexB = chronologicalIds.indexOf(b.id);
-
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-
-        if (indexA === -1 && indexB !== -1) return 1;
-        if (indexB === -1 && indexA !== -1) return -1;
-
-        return 0;
+        const keyA = getColumn1DocumentSortKey(a);
+        const keyB = getColumn1DocumentSortKey(b);
+        if (keyA !== keyB) return keyA - keyB;
+        return String(a.id).localeCompare(String(b.id));
       });
 
       return column1Nodes;
+    }
+
+    function reorderColumn1CardsInDocumentOrder() {
+      const column = getWorkspaceColumn(1);
+      if (!column) return;
+
+      const cards = Array.from(column.querySelectorAll(".workspace-card[data-node-id]"));
+      if (cards.length < 2) return;
+
+      cards.sort((a, b) => {
+        const keyA = getColumn1DocumentSortKey(a.dataset.nodeId);
+        const keyB = getColumn1DocumentSortKey(b.dataset.nodeId);
+        if (keyA !== keyB) return keyA - keyB;
+        return String(a.dataset.nodeId).localeCompare(String(b.dataset.nodeId));
+      });
+
+      for (const card of cards) {
+        column.appendChild(card);
+      }
     }
 
     async function renderWorkspaceCards(excerpts, summaries, summaryEdges) {
@@ -12988,6 +13743,7 @@
         const card = createWorkspaceCard(excerpt, columnIndex);
         appendToColumn(columnIndex, card);
       }
+      reorderColumn1CardsInDocumentOrder();
 
       const excerptIds = new Set(uniqueExcerpts.map((e) => e.id));
       for (const summary of higherSummaries) {
@@ -13982,6 +14738,7 @@
 
         addHierarchyChild(documentCanvasSourceId, nodeId);
         const columnIndex = 1;
+        const excerptOffsets = readStoredSpanOffsets(anchorSpan);
         nodeColumnMap.set(nodeId, columnIndex);
         workspaceNodeMap.set(nodeId, {
           id: nodeId,
@@ -13989,14 +14746,16 @@
           content,
           density_level: 2,
           origin: "human",
+          ...excerptOffsets,
         });
         workspaceNodeOrder.set(nodeId, workspaceNodeOrder.size);
 
         const card = createWorkspaceCard(
-          { id: nodeId, title, content, density_level: 2, origin: "human" },
+          { id: nodeId, title, content, density_level: 2, origin: "human", ...excerptOffsets },
           columnIndex
         );
         appendToColumn(columnIndex, card);
+        reorderColumn1CardsInDocumentOrder();
         scrollElementInPane(card, { behavior: "smooth", block: "nearest" });
 
         ConnectionManager.registerEdge({
@@ -14513,9 +15272,24 @@
           }
           if (isAlt3) {
             e.preventDefault();
-            WorkspacePresetManager.activatePin("synthesis");
+            await WorkspacePresetManager.activatePin("synthesis");
             return;
           }
+        }
+
+        if (
+          (e.ctrlKey || e.metaKey) &&
+          e.altKey &&
+          e.key.toLowerCase() === "h" &&
+          getActiveSynthesisView()
+        ) {
+          e.preventDefault();
+          const synthView = getActiveSynthesisView();
+          setSynthesisContext(synthView);
+          const indent = getSynthesisInsertIndent(synthesisInsertBeforeEl);
+          const item = appendHeadingBlock("", indent, synthesisInsertBeforeEl);
+          if (item) startHeadingBlockEdit(item);
+          return;
         }
 
         const isUp = e.key === "ArrowUp" || e.key.toLowerCase() === "k";
