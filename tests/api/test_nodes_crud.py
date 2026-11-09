@@ -53,6 +53,60 @@ def test_communication_pad_persists_paragraphs(client, neo4j_required):
 
 
 @pytest.mark.integration
+def test_communication_pad_reference_is_stored(client, neo4j_required):
+    concept = client.post(
+        "/api/nodes",
+        json={
+            "title": "Pulled summary",
+            "content": "A sentence worth keeping beside the source.",
+            "density_level": 1,
+            "significance": 1.0,
+            "origin": "human",
+        },
+    )
+    assert concept.status_code in (200, 201), concept.text
+    concept_id = concept.json()["node_id"]
+
+    pad = client.post(
+        "/api/nodes",
+        json={
+            "title": "Pad with a pull",
+            "content": "Opening line\n\nPulled summary",
+            "density_level": 1,
+            "node_type": "Communication",
+            "significance": 1.0,
+            "origin": "human",
+            "blocks": [
+                {"type": "paragraph", "content": "Opening line"},
+                {
+                    "type": "reference",
+                    "nodeId": concept_id,
+                    "title": "Pulled summary",
+                    "content": "A sentence worth keeping beside the source.",
+                    "density_level": 1,
+                },
+            ],
+        },
+    )
+    assert pad.status_code in (200, 201), pad.text
+    pad_id = pad.json()["node_id"]
+
+    try:
+        saved = client.get(f"/api/nodes/{pad_id}")
+        assert saved.status_code == 200
+        blocks = saved.json()["blocks"]
+        assert blocks[1]["type"] == "reference"
+        assert blocks[1]["nodeId"] == concept_id
+
+        refs = client.get(f"/api/nodes/{pad_id}/references")
+        assert refs.status_code == 200
+        assert concept_id in {item["id"] for item in refs.json()}
+    finally:
+        client.delete(f"/api/nodes/{pad_id}")
+        client.delete(f"/api/nodes/{concept_id}")
+
+
+@pytest.mark.integration
 def test_get_node_not_found(client, neo4j_required):
     response = client.get("/api/nodes/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404

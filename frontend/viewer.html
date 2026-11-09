@@ -1697,6 +1697,7 @@
       font-family: Georgia, "Times New Roman", serif;
       font-size: 1.05rem;
       line-height: 1.65;
+      min-height: calc(1.65em + 12px);
       padding: 6px 4px;
       margin: 0 0 0.35rem;
     }
@@ -1706,8 +1707,120 @@
       background: rgba(30, 41, 59, 0.55);
     }
 
+    .pad-paragraph.pad-block-moved textarea,
+    .pad-embed.pad-block-moved {
+      animation: pad-block-moved 0.45s ease;
+    }
+
+    @keyframes pad-block-moved {
+      from { background: rgba(222, 255, 154, 0.18); }
+      to { background: transparent; }
+    }
+
     .pad-paragraph textarea::placeholder {
       color: #64748b;
+    }
+
+    .pad-embed {
+      margin: 0.35rem 0 0.7rem;
+      padding: 8px 10px;
+      border: 1px solid #334155;
+      border-left: 3px solid #f0abfc;
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.65);
+      cursor: default;
+    }
+
+    .pad-embed:focus {
+      outline: none;
+      border-color: #f0abfc;
+    }
+
+    .pad-embed-kicker {
+      color: #f0abfc;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .pad-embed-title {
+      margin-top: 2px;
+      color: #f8fafc;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.92rem;
+      font-weight: 650;
+    }
+
+    .pad-embed-text {
+      margin-top: 4px;
+      color: #cbd5e1;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .pad-picker {
+      position: fixed;
+      z-index: 1200;
+      width: min(420px, calc(100vw - 24px));
+      max-height: 280px;
+      overflow: auto;
+      padding: 4px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    .pad-picker.hidden {
+      display: none;
+    }
+
+    .pad-picker-item {
+      display: block;
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #e2e8f0;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .pad-picker-item.is-active,
+    .pad-picker-item:hover {
+      background: #334155;
+    }
+
+    .pad-picker-kicker {
+      color: #94a3b8;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .pad-picker-title {
+      color: #f8fafc;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 0.9rem;
+    }
+
+    .pad-picker-snippet {
+      color: #94a3b8;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .pad-picker-empty {
+      padding: 8px 10px;
+      color: #94a3b8;
+      font-size: 0.85rem;
     }
 
     .synthesis-saved-badge {
@@ -4109,7 +4222,7 @@
           />
           <span class="synthesis-saved-badge pad-saved-badge" aria-live="polite">Saved</span>
         </div>
-        <div class="pad-toolbar">Communication Pad</div>
+        <div class="pad-toolbar">Communication Pad · [[ or Ctrl+K</div>
         <div class="pad-doc" aria-label="Pad paragraphs"></div>
       </div>
     </div>
@@ -17594,7 +17707,6 @@
       wrap.className = "pad-paragraph";
       const area = document.createElement("textarea");
       area.rows = 1;
-      area.placeholder = "Write…";
       area.spellcheck = true;
       area.setAttribute("aria-label", "Paragraph");
       area.value = text;
@@ -17602,15 +17714,43 @@
       return wrap;
     }
 
+    function refreshPadPlaceholders(viewEl) {
+      const areas = viewEl.querySelectorAll(".pad-doc > .pad-paragraph textarea");
+      const last = areas.length - 1;
+      areas.forEach((area, index) => {
+        area.placeholder = index === last ? "Write, or [[ to pull something in" : "";
+      });
+    }
+
     function fitPadTextarea(area) {
-      area.style.height = "auto";
+      if (!area) return;
+      if (!area.getClientRects().length) {
+        area.style.height = "";
+        return;
+      }
+      area.style.height = "0px";
       area.style.height = `${area.scrollHeight}px`;
+    }
+
+    function fitPadParagraphs(viewEl) {
+      viewEl?.querySelectorAll(".pad-paragraph textarea").forEach(fitPadTextarea);
     }
 
     function readPadBlocks(viewEl) {
       const blocks = [];
-      for (const area of viewEl.querySelectorAll(".pad-paragraph textarea")) {
-        if (!area.value.trim()) continue;
+      const children = viewEl.querySelectorAll(".pad-doc > .pad-paragraph, .pad-doc > .pad-embed");
+      for (const child of children) {
+        if (child.classList.contains("pad-embed")) {
+          try {
+            const data = JSON.parse(child.dataset.padEmbed || "");
+            if (data?.nodeId) blocks.push(data);
+          } catch (_) {
+            /* skip a broken embed */
+          }
+          continue;
+        }
+        const area = child.querySelector("textarea");
+        if (!area) continue;
         blocks.push({ type: "paragraph", content: area.value });
       }
       return blocks;
@@ -17641,19 +17781,87 @@
       }, 1600);
     }
 
+    function padKindLabel(block) {
+      const density = Number(block.density_level);
+      if (density === 1) return "Summary";
+      if (density === 2) return "Excerpt";
+      if (block.node_type && block.node_type !== "Concept") return block.node_type;
+      if (density >= 3) return "Source";
+      return "Note";
+    }
+
+    function padSnippet(text) {
+      const clean = String(text || "").replace(/\s+/g, " ").trim();
+      if (clean.length <= 140) return clean;
+      return `${clean.slice(0, 137)}…`;
+    }
+
+    function createPadEmbed(block) {
+      const data = {
+        type: "reference",
+        nodeId: block.nodeId || block.id,
+        title: block.title || "",
+        content: block.content || "",
+        node_type: block.node_type || block.nodeType || "",
+        density_level: block.density_level ?? block.densityLevel ?? null,
+        start_offset: Number.isInteger(block.start_offset) ? block.start_offset : null,
+        end_offset: Number.isInteger(block.end_offset) ? block.end_offset : null,
+      };
+      const wrap = document.createElement("div");
+      wrap.className = "pad-block pad-embed";
+      wrap.tabIndex = 0;
+      wrap.dataset.nodeId = data.nodeId;
+      wrap.dataset.padEmbed = JSON.stringify(data);
+
+      const kicker = document.createElement("div");
+      kicker.className = "pad-embed-kicker";
+      kicker.textContent = padKindLabel(data);
+
+      const title = document.createElement("div");
+      title.className = "pad-embed-title";
+      title.textContent = data.title || "Untitled";
+
+      wrap.appendChild(kicker);
+      wrap.appendChild(title);
+      const snippet = padSnippet(data.content);
+      if (snippet && snippet !== data.title) {
+        const body = document.createElement("div");
+        body.className = "pad-embed-text";
+        body.textContent = snippet;
+        wrap.appendChild(body);
+      }
+      return wrap;
+    }
+
     function fillPadParagraphs(viewEl, blocks) {
       const doc = viewEl.querySelector(".pad-doc");
       if (!doc) return;
       doc.replaceChildren();
-      const paragraphs = (blocks || []).filter(
-        (block) => block?.type === "paragraph" && String(block.content || "").trim()
-      );
-      const source = paragraphs.length ? paragraphs : [{ content: "" }];
-      for (const block of source) {
+      const source = (blocks || []).filter((block) => {
+        if (block?.type === "reference" && (block.nodeId || block.node_id)) return true;
+        return block?.type === "paragraph";
+      });
+      const rows = source.length ? source : [{ type: "paragraph", content: "" }];
+      for (const block of rows) {
+        if (block.type === "reference") {
+          doc.appendChild(
+            createPadEmbed({
+              ...block,
+              nodeId: block.nodeId || block.node_id,
+            })
+          );
+          continue;
+        }
         const para = createPadParagraph(block.content || "");
         doc.appendChild(para);
         fitPadTextarea(para.querySelector("textarea"));
       }
+      if (!doc.querySelector(".pad-paragraph")) {
+        const para = createPadParagraph("");
+        doc.appendChild(para);
+        fitPadTextarea(para.querySelector("textarea"));
+      }
+      refreshPadPlaceholders(viewEl);
     }
 
     function insertPadParagraph(viewEl, afterWrap, text) {
@@ -17663,11 +17871,332 @@
       else doc.appendChild(para);
       const area = para.querySelector("textarea");
       fitPadTextarea(area);
+      refreshPadPlaceholders(viewEl);
       return area;
+    }
+
+    let padNodeCache = null;
+    let padPicker = null;
+    let padPickerToken = 0;
+
+    function padLinkQuery(area) {
+      const before = area.value.slice(0, area.selectionStart);
+      const match = before.match(/\[\[([^\]\n]*)$/);
+      return match ? match[1] : null;
+    }
+
+    function padCaretEdge(area) {
+      if (area.selectionStart !== area.selectionEnd) return null;
+      const value = area.value;
+      const start = area.selectionStart;
+      const before = value.slice(0, start);
+      const after = value.slice(start);
+      return {
+        atFirstLine: !before.includes("\n"),
+        atLastLine: !after.includes("\n"),
+        column: before.length - (before.lastIndexOf("\n") + 1),
+      };
+    }
+
+    function focusPadTextarea(area, { edge, column }) {
+      area.focus();
+      const value = area.value;
+      if (edge === "start") {
+        const lineEnd = value.indexOf("\n");
+        const limit = lineEnd === -1 ? value.length : lineEnd;
+        area.setSelectionRange(Math.min(column, limit), Math.min(column, limit));
+        return;
+      }
+      const lineStart = value.lastIndexOf("\n") + 1;
+      const pos = Math.min(value.length, lineStart + column);
+      area.setSelectionRange(pos, pos);
+    }
+
+    function movePadBlock(viewEl, blockEl, direction) {
+      const doc = viewEl.querySelector(".pad-doc");
+      if (!doc || !blockEl || !doc.contains(blockEl)) return false;
+      const neighbor = direction < 0 ? blockEl.previousElementSibling : blockEl.nextElementSibling;
+      if (!neighbor) return false;
+      if (direction < 0) doc.insertBefore(blockEl, neighbor);
+      else doc.insertBefore(blockEl, neighbor.nextSibling);
+      refreshPadPlaceholders(viewEl);
+      blockEl.classList.remove("pad-block-moved");
+      void blockEl.offsetWidth;
+      blockEl.classList.add("pad-block-moved");
+      schedulePadSave(viewEl);
+      return true;
+    }
+
+    function tryMovePadBlock(viewEl, event, blockEl) {
+      if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return false;
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return false;
+      event.preventDefault();
+      closePadPicker();
+      const area = event.target?.matches?.("textarea") ? event.target : null;
+      const start = area ? area.selectionStart : null;
+      const end = area ? area.selectionEnd : null;
+      const moved = movePadBlock(viewEl, blockEl, event.key === "ArrowUp" ? -1 : 1);
+      if (!moved) return true;
+      if (area) {
+        area.focus();
+        if (start != null && end != null) area.setSelectionRange(start, end);
+      } else {
+        blockEl.focus();
+      }
+      blockEl.scrollIntoView({ block: "nearest" });
+      return true;
+    }
+
+    function movePadFocus(fromEl, direction, column) {
+      const neighbor = direction < 0 ? fromEl.previousElementSibling : fromEl.nextElementSibling;
+      if (!neighbor) return false;
+      const area = neighbor.querySelector?.("textarea");
+      if (area) {
+        focusPadTextarea(area, { edge: direction < 0 ? "end" : "start", column });
+        return true;
+      }
+      if (neighbor.classList.contains("pad-embed")) {
+        neighbor.focus();
+        return true;
+      }
+      return false;
+    }
+
+    function ensurePadPicker() {
+      let el = document.getElementById("pad-picker");
+      if (el) return el;
+      el = document.createElement("div");
+      el.id = "pad-picker";
+      el.className = "pad-picker hidden";
+      el.hidden = true;
+      el.setAttribute("role", "listbox");
+      el.setAttribute("aria-label", "Pull into the pad");
+      document.body.appendChild(el);
+      return el;
+    }
+
+    function closePadPicker() {
+      padPickerToken += 1;
+      padPicker = null;
+      const el = document.getElementById("pad-picker");
+      if (!el) return;
+      el.hidden = true;
+      el.classList.add("hidden");
+      el.replaceChildren();
+    }
+
+    function positionPadPicker(area) {
+      const el = document.getElementById("pad-picker");
+      if (!el || !area) return;
+      const rect = area.getBoundingClientRect();
+      const top = Math.min(rect.bottom + 4, window.innerHeight - 16);
+      el.style.left = `${Math.max(8, rect.left)}px`;
+      el.style.top = `${top}px`;
+    }
+
+    async function loadPadSearchNodes() {
+      if (padNodeCache) return padNodeCache;
+      const res = await fetch(`${API_BASE}/api/nodes`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(typeof body.detail === "string" ? body.detail : "Could not search nodes");
+      }
+      const nodes = await res.json();
+      padNodeCache = nodes.filter(
+        (node) =>
+          node.node_type !== "Communication" &&
+          node.node_type !== "WorkspaceSession" &&
+          node.node_type !== "Whiteboard"
+      );
+      return padNodeCache;
+    }
+
+    function filterPadNodes(nodes, query, excludeId) {
+      const q = query.trim().toLowerCase();
+      const ranked = [];
+      for (const node of nodes) {
+        if (excludeId && node.id === excludeId) continue;
+        const title = (node.title || "").toLowerCase();
+        const content = (node.content || "").toLowerCase();
+        if (q && !title.includes(q) && !content.includes(q)) continue;
+        const rank = !q ? 1 : title.startsWith(q) ? 0 : title.includes(q) ? 1 : 2;
+        ranked.push({ node, rank });
+      }
+      ranked.sort((a, b) => a.rank - b.rank || (a.node.title || "").localeCompare(b.node.title || ""));
+      return ranked.slice(0, 8).map((item) => item.node);
+    }
+
+    function renderPadPicker() {
+      const el = ensurePadPicker();
+      el.replaceChildren();
+      if (!padPicker.results.length) {
+        const empty = document.createElement("div");
+        empty.className = "pad-picker-empty";
+        empty.textContent = padPicker.query ? "No matches" : "No notes yet";
+        el.appendChild(empty);
+      }
+      padPicker.results.forEach((node, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `pad-picker-item${index === padPicker.index ? " is-active" : ""}`;
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", index === padPicker.index ? "true" : "false");
+
+        const kicker = document.createElement("div");
+        kicker.className = "pad-picker-kicker";
+        kicker.textContent = padKindLabel(node);
+
+        const title = document.createElement("div");
+        title.className = "pad-picker-title";
+        title.textContent = node.title || "Untitled";
+
+        button.appendChild(kicker);
+        button.appendChild(title);
+        const snippet = padSnippet(node.content);
+        if (snippet && snippet !== (node.title || "")) {
+          const body = document.createElement("div");
+          body.className = "pad-picker-snippet";
+          body.textContent = snippet;
+          button.appendChild(body);
+        }
+        button.addEventListener("mousedown", (mouseEvent) => {
+          mouseEvent.preventDefault();
+          choosePadPicker(index);
+        });
+        el.appendChild(button);
+      });
+      el.hidden = false;
+      el.classList.remove("hidden");
+      const active = el.querySelector(".is-active");
+      active?.scrollIntoView({ block: "nearest" });
+      positionPadPicker(padPicker.area);
+    }
+
+    async function refreshPadPicker(viewEl, area, mode, query) {
+      const token = ++padPickerToken;
+      let nodes;
+      try {
+        nodes = await loadPadSearchNodes();
+      } catch (err) {
+        if (token !== padPickerToken) return;
+        showStatus(err.message || "Could not search nodes", true);
+        return;
+      }
+      if (token !== padPickerToken) return;
+      padPicker = {
+        viewEl,
+        area,
+        mode,
+        query,
+        index: 0,
+        results: filterPadNodes(nodes, query, viewEl.dataset.padDocId || ""),
+      };
+      renderPadPicker();
+    }
+
+    function choosePadPicker(index) {
+      const state = padPicker;
+      if (!state) return;
+      const node = state.results[index];
+      if (!node) return;
+      const { viewEl, area, mode } = state;
+      if (mode === "wiki" && area) {
+        const before = area.value.slice(0, area.selectionStart);
+        const match = before.match(/\[\[([^\]\n]*)$/);
+        if (match) {
+          const cut = area.selectionStart - match[0].length;
+          area.value = area.value.slice(0, cut) + area.value.slice(area.selectionStart);
+          fitPadTextarea(area);
+        }
+      }
+      closePadPicker();
+      const anchor = area?.closest(".pad-paragraph") || area?.closest(".pad-embed");
+      const embed = createPadEmbed(node);
+      const doc = viewEl.querySelector(".pad-doc");
+      if (anchor?.nextSibling) doc.insertBefore(embed, anchor.nextSibling);
+      else doc.appendChild(embed);
+      let nextArea = embed.nextElementSibling?.querySelector?.("textarea");
+      if (!nextArea) nextArea = insertPadParagraph(viewEl, embed, "");
+      nextArea.focus();
+      schedulePadSave(viewEl);
+    }
+
+    function handlePadEmbedKeydown(viewEl, event) {
+      const embed = event.target.closest(".pad-embed");
+      if (!embed) return;
+      if (tryMovePadBlock(viewEl, event, embed)) return;
+      if ((event.key === "ArrowUp" || event.key === "ArrowDown") && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        const direction = event.key === "ArrowUp" ? -1 : 1;
+        movePadFocus(embed, direction, 0);
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        const next = insertPadParagraph(viewEl, embed, "");
+        next.focus();
+        next.setSelectionRange(0, 0);
+        schedulePadSave(viewEl);
+        return;
+      }
+      if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault();
+        const neighbor = embed.previousElementSibling || embed.nextElementSibling;
+        embed.remove();
+        if (neighbor?.querySelector) {
+          const area = neighbor.querySelector("textarea");
+          if (area) focusPadTextarea(area, { edge: "end", column: 0 });
+          else neighbor.focus();
+        }
+        schedulePadSave(viewEl);
+      }
     }
 
     function handlePadKeydown(viewEl, event) {
       const area = event.target;
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        refreshPadPicker(viewEl, area, "hotkey", "");
+        return;
+      }
+
+      const paragraph = area.closest(".pad-paragraph");
+      if (paragraph && tryMovePadBlock(viewEl, event, paragraph)) return;
+
+      if (padPicker && padPicker.area === area) {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          if (!padPicker.results.length) return;
+          const delta = event.key === "ArrowDown" ? 1 : -1;
+          padPicker.index = (padPicker.index + delta + padPicker.results.length) % padPicker.results.length;
+          renderPadPicker();
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          choosePadPicker(padPicker.index);
+          return;
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closePadPicker();
+          return;
+        }
+      }
+
+      if ((event.key === "ArrowUp" || event.key === "ArrowDown") && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        const edge = padCaretEdge(area);
+        const wrap = area.closest(".pad-paragraph");
+        const goingUp = event.key === "ArrowUp";
+        if (edge && wrap && (goingUp ? edge.atFirstLine : edge.atLastLine)) {
+          if (movePadFocus(wrap, goingUp ? -1 : 1, edge.column)) {
+            event.preventDefault();
+            closePadPicker();
+          }
+        }
+        return;
+      }
+
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         const before = area.value.slice(0, area.selectionStart);
@@ -17691,13 +18220,11 @@
         const doc = viewEl.querySelector(".pad-doc");
         if (doc.querySelectorAll(".pad-paragraph").length < 2) return;
         event.preventDefault();
-        const previous = wrap.previousElementSibling?.querySelector("textarea");
+        const previous = wrap.previousElementSibling;
         wrap.remove();
-        if (previous) {
-          previous.focus();
-          const end = previous.value.length;
-          previous.setSelectionRange(end, end);
-        }
+        refreshPadPlaceholders(viewEl);
+        if (previous?.classList.contains("pad-embed")) previous.focus();
+        else previous?.querySelector("textarea") && focusPadTextarea(previous.querySelector("textarea"), { edge: "end", column: 0 });
         schedulePadSave(viewEl);
       }
     }
@@ -17712,11 +18239,22 @@
       doc?.addEventListener("input", (event) => {
         if (!event.target.matches("textarea")) return;
         fitPadTextarea(event.target);
+        const query = padLinkQuery(event.target);
+        if (query !== null) {
+          refreshPadPicker(viewEl, event.target, "wiki", query);
+        } else if (padPicker?.mode === "wiki" && padPicker.area === event.target) {
+          closePadPicker();
+        }
         schedulePadSave(viewEl);
       });
       doc?.addEventListener("keydown", (event) => {
-        if (!event.target.matches("textarea")) return;
-        handlePadKeydown(viewEl, event);
+        if (event.target.matches?.("textarea")) {
+          handlePadKeydown(viewEl, event);
+          return;
+        }
+        if (event.target.classList?.contains("pad-embed")) {
+          handlePadEmbedKeydown(viewEl, event);
+        }
       });
     }
 
@@ -17746,7 +18284,11 @@
       const docId = viewEl.dataset.padDocId || "";
       if (!blocks.length && !docId) return Promise.resolve(false);
 
-      const content = blocks.map((block) => block.content).join("\n\n") || title;
+      const content =
+        blocks
+          .map((block) => (block.type === "reference" ? block.title || block.content || "" : block.content))
+          .filter(Boolean)
+          .join("\n\n") || title;
       const fields = { title, content, blocks };
       const url = docId
         ? `${API_BASE}/api/nodes/${encodeURIComponent(docId)}`
@@ -17838,6 +18380,8 @@
       lastActivePadId = padId;
       TabManager.render();
       applyWorkspacePreset("split-pad");
+      fitPadParagraphs(viewEl);
+      requestAnimationFrame(() => fitPadParagraphs(viewEl));
       viewEl.querySelector(".pad-paragraph textarea")?.focus();
       return padId;
     }

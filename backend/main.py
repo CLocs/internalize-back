@@ -97,6 +97,8 @@ class NodeResponse(BaseModel):
     node_type: str = "Concept"
     content: str | None = None
     created_at: str | None = None
+    start_offset: int | None = None
+    end_offset: int | None = None
 
 
 class SourceDocumentResponse(BaseModel):
@@ -674,7 +676,9 @@ def list_knowledge_nodes(
            coalesce(n.origin, 'human') AS origin,
            coalesce(n.node_type, 'Concept') AS node_type,
            coalesce(n.content, n.title, '') AS content,
-           n.created_at AS created_at
+           n.created_at AS created_at,
+           n.start_offset AS start_offset,
+           n.end_offset AS end_offset
     ORDER BY n.created_at DESC
     """
     driver = _require_neo4j()
@@ -697,6 +701,8 @@ def list_knowledge_nodes(
             node_type=r["node_type"],
             content=r["content"],
             created_at=_format_neo4j_datetime(r.get("created_at")),
+            start_offset=r.get("start_offset"),
+            end_offset=r.get("end_offset"),
         )
         for r in records
     ]

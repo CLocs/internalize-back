@@ -1,12 +1,17 @@
 # Internalize: Development Roadmap
 
 ## Next Up: Communication Pad
-*The goal is a Notion-like writing pad that pulls excerpts, summaries, and concepts from many sources while a document stays open for reading. A tree of the pad itself comes later. Open items in Phase 4a and 4b stay queued behind this.*
+*The goal is a Notion-like writing pad that pulls excerpts, summaries, and concepts from many sources while a document stays open for reading. Writing follows that block model: arrows cross into the next block at the edge of the current one, and `[[` pulls another note in. A tree of the pad itself comes later. Open items in Phase 4a and 4b stay queued behind this.*
 
-- [x] **Pad tab:** A workspace surface for prose paragraphs. It saves as its own document and can sit beside the source you are reading.
-- [ ] **Inline pull (`[[` and Ctrl+K):** Typing `[[` in the pad, or pressing Ctrl+K, opens a picker over titles and passage text. Choosing a result inserts a traceable embed (node id, plus offsets when the hit is a span).
+- [x] **Pad tab:** A workspace surface for prose paragraphs. It saves as its own document and can sit beside the source you are reading. The writing hint sits on the last empty line; blank lines kept for space stay quiet and are saved.
+- [x] **Block arrows (Notion / Obsidian):** Up on the first line and Down on the last line move into the neighboring block. Inside a multi-line paragraph the arrows still move line by line. Tab and Shift+Tab keep moving between boxes. Enter on a selected embed inserts an empty paragraph after it.
+- [x] **Inline pull (`[[` and Ctrl+K):** Typing `[[` in the pad, or pressing Ctrl+K, opens a picker over titles and passage text. Up/Down move the highlight and Enter inserts, the same way Obsidian's link suggester does. The embed stores the node id, plus offsets when the hit is a span.
+- [x] **Move a block (Alt+Shift+Up/Down):** The focused paragraph or embed moves up or down one place, the same gesture as Notion and Obsidian. The caret stays put. The hover drag handle stays deferred.
+- [ ] **Inspect an embed:** Double-click opens that passage in the Source Tree on the left and highlights it. Right-click offers Inspect as well. Navigate back returns focus to the embed and restores the source that was open before the jump.
+- [ ] **Rich text:** Bold, italic, and strike on a selection. A right-click menu and a bar at the top of the pad both apply them, so formatting does not depend on Ctrl+B, which toggles Cursor's sidebar. Paragraphs become editable text instead of plain boxes. A shortcut applies only when the page actually receives it.
+- [ ] **Block drag handle:** A hover handle to reorder paragraphs and embeds. Deferred until pull-in feels fast.
+- [ ] **Slash menu:** `/` for block actions. Deferred. `[[` stays the pull-in path.
 - [ ] **Deeper search window:** The picker expands into a window that filters by source, type, and density before inserting.
-- [ ] **Open the source at that position:** An embed opens the Source Tree scrolled to the passage and highlights it.
 - [ ] **Copy while reading, paste into the pad:** Copying a selection in the source, or an existing card, and pasting into the pad inserts the same kind of embed. A paste from outside the app stays ordinary text.
 - [ ] **Many sources in one pad:** Each embed keeps its own source. The pad is independent of whichever document is open in the reader.
 - [ ] **Tree of the pad:** Deferred. Render the pad's pulled-in material as a tree once the pull-in loop feels fast.
