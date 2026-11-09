@@ -276,6 +276,25 @@ Use these in `/viewer` to snap layouts without using the tab-bar layout toggle. 
 - Create tabs with **+** → New Board / New Synthesis before using Alt+2/3 split presets.
 - Saved workspace sessions store the active pin preset for reload.
 
+#### Synthesis authoring
+
+In a Synthesis tab (Edit mode):
+
+| Action | How |
+|--------|-----|
+| Section heading | **Heading** toolbar button or **Ctrl+Alt+H** |
+| Comparison table | **Table** toolbar button or **Ctrl+Alt+T** |
+| Insert between blocks | Click empty space in the dropzone (green marker), then Heading/Table/composer Enter |
+| Table cells | Click to type; **Tab** / **Shift+Tab** move between cells; **Enter** moves down |
+| Table size | Hover table → **+ Row** / **− Row** / **+ Col** / **− Col** |
+| Cell color | Right-click a cell, or focus a cell and click **Color** |
+
+**Copy text:** Right-click any node → **Copy text**, or focus/select a node and press **Ctrl+C** (when no text is selected in the document).
+
+**Process as table:** Right-click a density-2 excerpt → **Process as table**. Select phrases in the left pane, click cells on the right to assign (blue underline = traceable link). **Add to Synthesis** inserts the table; in Synthesis the original excerpt block is replaced by the table.
+
+Tables save with the document (`blocks` JSON), appear in Read mode, and export as Markdown pipe tables (clipboard export).
+
 ## Project layout
 
 ```
