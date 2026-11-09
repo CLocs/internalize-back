@@ -48,8 +48,16 @@
 - [x] **Heading blocks:** Section headings as first-class `heading` blocks in Synthesis (toolbar + Ctrl+Alt+H); distinct blue styling in Edit and Read modes.
 - [x] **Outline keyboard model:** Enter splits/creates sibling blocks; Tab/Shift+Tab indents; Backspace on empty block merges with previous.
 - [x] **Inline insert composer:** Click between items to set insert position (green marker); composer and Heading button respect insert point.
-- [ ] **Synthesis table blocks:** Inline comparison tables in Synthesis documents. *(Deferred — distinct from Phase 6 Matrix/Table View analytics tab.)*
-- [ ] **Read mode typography polish:** Nested list rendering and table placeholders in Read mode (tables still blocked until table blocks ship).
+- [x] **Synthesis table blocks:** Inline comparison tables in Synthesis (header row, add/remove rows & columns, per-cell colors). Plain text cells only; distinct from Phase 6 Matrix/Table View.
+- [ ] **Read mode typography polish:** Nested list rendering in Read mode. *(Tables render in Read mode via table blocks.)*
+
+## Phase 4b: Process as Table (Near-Term)
+*The goal is a split-pane structuring session: select sub-spans from a large excerpt and assign them into a traceable comparison table — a dense summary without the excerpt→summarize→elide→drag grind.*
+
+- [x] **Split-pane dialogue (MVP):** Right-click an excerpt → **Process as table** opens source excerpt (left) + editable grid (right). Select text, click a cell to assign; elide in-cell; **Add to Synthesis** inserts a table block with `cellRefs` traceability metadata.
+- [ ] **Drag-to-cell assignment:** Drag a source selection onto a table cell (in addition to click-to-assign).
+- [ ] **In-cell trace navigation:** Click a blue underlined cell to jump/highlight the linked sub-span in the source excerpt.
+- [ ] **Promote table to Source Tree:** Optional right-click to commit the dense table as a graph summary node (Synthesis-local by default, like local summaries).
 
 ## Phase 5: Continuous Core Tuning & Source Expansion (Track 1)
 *The goal of this phase is to eliminate UI/UX friction in the core extraction loop and expand ingestion beyond raw text pasting.*
