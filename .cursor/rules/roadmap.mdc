@@ -1,0 +1,19 @@
+---
+description: Always read the roadmap and integrate new ideas into it
+alwaysApply: true
+---
+
+# Roadmap
+
+`cursor_roadmap.md` is the source of truth for what we build and in what order. The section titled **Next Up** is the current build.
+
+Before proposing, planning, or implementing a feature:
+
+1. Read `cursor_roadmap.md`.
+2. If the idea is already listed, update that item (wording, order, or a new checkbox) in the same change.
+3. If the idea is new, add it in the existing phase voice. Place it under **Next Up** only when the user says it is the current build. Otherwise file it under the phase it belongs to, and say where it landed.
+4. Leave deferred work on the list. Do not drop an open item because a new idea arrived.
+
+A planned idea that exists only in chat is unfinished. The roadmap edit is part of the work, not a follow-up.
+
+Example: a request for a writing pad that pulls excerpts from many sources becomes the **Next Up: Communication Pad** checklist, with the tree rendering left as a deferred checkbox, instead of a design that never lands in `cursor_roadmap.md`.

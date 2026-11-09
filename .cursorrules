@@ -20,9 +20,10 @@ We use strictly typed, meaningful semantic edges and respect "Dimensions of Zoom
 * Note: `DEFINITION_OF` marks a short phrase/name that stands for a longer passage (not a rewrite — use `SUMMARIZES` for compression).
 
 ## Current Roadmap Phase
-**MVP 1: The Human Linker.** The current focus is building a local web interface where a human acts as the orchestrator. The user pastes an excerpt, writes a summary, selects a relationship type from a dropdown, and links it to an existing node in Neo4j.
+**Next Up: Communication Pad.** The ordered checklist lives in `cursor_roadmap.md`. Read that file before proposing or building. MVP 1 remains the product frame: a local interface where a person orchestrates the graph.
 
 ## Development Directives
+- **Roadmap:** Always read `cursor_roadmap.md` before planning or implementing. Integrate the idea into that file in the same change. **Next Up** is the current build. A new idea joins **Next Up** only when the user says so; otherwise file it in the phase it belongs to. Update an existing item instead of duplicating it. Leave deferred items on the list.
 - **Local-First:** Assume all databases and endpoints run on `localhost`. Do not implement cloud-auth or external SaaS dependencies unless explicitly asked.
 - **Python Style:** Use FastAPI best practices, strictly typed Pydantic models for request validation, and the official `neo4j` Python driver.
 - **Frontend Style:** Keep HTML/JS minimal and clean. No heavy JS frameworks (React/Vue) for MVP 1.

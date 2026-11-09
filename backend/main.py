@@ -65,6 +65,7 @@ NodeType = Literal[
     "Article",
     "Transcript",
     "Synthesis",
+    "Communication",
     "Whiteboard",
     "WorkspaceSession",
 ]

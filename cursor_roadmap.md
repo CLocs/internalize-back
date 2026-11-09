@@ -1,5 +1,16 @@
 # Internalize: Development Roadmap
 
+## Next Up: Communication Pad
+*The goal is a Notion-like writing pad that pulls excerpts, summaries, and concepts from many sources while a document stays open for reading. A tree of the pad itself comes later. Open items in Phase 4a and 4b stay queued behind this.*
+
+- [x] **Pad tab:** A workspace surface for prose paragraphs. It saves as its own document and can sit beside the source you are reading.
+- [ ] **Inline pull (`[[` and Ctrl+K):** Typing `[[` in the pad, or pressing Ctrl+K, opens a picker over titles and passage text. Choosing a result inserts a traceable embed (node id, plus offsets when the hit is a span).
+- [ ] **Deeper search window:** The picker expands into a window that filters by source, type, and density before inserting.
+- [ ] **Open the source at that position:** An embed opens the Source Tree scrolled to the passage and highlights it.
+- [ ] **Copy while reading, paste into the pad:** Copying a selection in the source, or an existing card, and pasting into the pad inserts the same kind of embed. A paste from outside the app stays ordinary text.
+- [ ] **Many sources in one pad:** Each embed keeps its own source. The pad is independent of whichever document is open in the reader.
+- [ ] **Tree of the pad:** Deferred. Render the pad's pulled-in material as a tree once the pull-in loop feels fast.
+
 ## Phase 1: Stabilization & Data Provenance (Immediate)
 *The goal of this phase is to ensure the database perfectly reflects the user's visual actions and that text anchoring is bulletproof.*
 

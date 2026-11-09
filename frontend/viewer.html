@@ -36,6 +36,12 @@
       display: none !important;
       visibility: hidden !important;
       pointer-events: none !important;
+    }
+
+    #board-context-menu[hidden],
+    #card-context-menu[hidden],
+    #custom-context-menu[hidden],
+    #new-tab-menu[hidden] {
       left: -9999px !important;
       top: -9999px !important;
     }
@@ -1647,6 +1653,61 @@
       outline: none;
       border-color: #475569;
       background: rgba(15, 23, 42, 0.6);
+    }
+
+    .pad-pane {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #0f172a;
+    }
+
+    .pad-toolbar {
+      flex-shrink: 0;
+      padding: 8px 14px;
+      border-bottom: 1px solid #1e293b;
+      color: #94a3b8;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .pad-doc {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 18px 22px 48px;
+    }
+
+    .pad-paragraph textarea {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      resize: none;
+      overflow: hidden;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: #e2e8f0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.05rem;
+      line-height: 1.65;
+      padding: 6px 4px;
+      margin: 0 0 0.35rem;
+    }
+
+    .pad-paragraph textarea:focus {
+      outline: none;
+      background: rgba(30, 41, 59, 0.55);
+    }
+
+    .pad-paragraph textarea::placeholder {
+      color: #64748b;
     }
 
     .synthesis-saved-badge {
@@ -3724,9 +3785,10 @@
   <div id="workspace-tab-bar" style="display: flex; align-items: center; background: #0f172a; border-bottom: 1px solid #334155; height: 36px; overflow-x: auto; flex-shrink: 0; user-select: none; width: 100%;">
     <button type="button" id="add-workspace-tab" title="Add workspace tab" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0 16px; font-size: 16px; flex-shrink: 0;">+</button>
     <div id="new-tab-menu" class="app-floating-popover hidden" hidden aria-hidden="true" style="position: fixed; z-index: 1000; background: #1e293b; border: 1px solid #334155; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 150px; font-size: 13px; color: #f8fafc;">
-      <div class="tab-menu-item" id="menu-new-source" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-book-open" style="color: #94a3b8;"></i> Focus Source Reader</div>
-      <div class="tab-menu-item" id="menu-new-board" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-shapes" style="color: #4ade80;"></i> New Board</div>
-      <div class="tab-menu-item" id="menu-new-synth" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-pen-nib" style="color: #22d3ee;"></i> New Synthesis</div>
+      <button type="button" class="tab-menu-item" id="menu-new-source" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; border: none; color: inherit; font: inherit; text-align: left;"><i class="fa-solid fa-book-open" style="color: #94a3b8;"></i> Focus Source Reader</button>
+      <button type="button" class="tab-menu-item" id="menu-new-board" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; border: none; color: inherit; font: inherit; text-align: left;"><i class="fa-solid fa-shapes" style="color: #4ade80;"></i> New Board</button>
+      <button type="button" class="tab-menu-item" id="menu-new-synth" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; border: none; color: inherit; font: inherit; text-align: left;"><i class="fa-solid fa-pen-nib" style="color: #22d3ee;"></i> New Synthesis</button>
+      <button type="button" class="tab-menu-item" id="menu-new-pad" style="padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; border: none; color: inherit; font: inherit; text-align: left;"><i class="fa-solid fa-feather" style="color: #f0abfc;"></i> New Pad</button>
     </div>
     <button type="button" id="sync-workspace-toggle" title="Unlink Pane Focus" style="margin-left: auto; background: transparent; border: none; color: #deff9a; cursor: pointer; font-size: 14px; padding: 0 8px;"><i class="fa-solid fa-link"></i></button>
     <button type="button" id="split-view-toggle" title="Cycle Layout Mode" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;"><i class="fa-solid fa-square"></i></button>
@@ -4035,6 +4097,23 @@
       </div>
     </div>
   </template>
+  <template id="pad-view-template">
+    <div class="workspace-view pad-view hidden" style="flex: 1; display: flex; flex-direction: column; background: #0f172a; overflow: hidden; position: relative;">
+      <div class="pad-pane">
+        <div class="synthesis-title-row">
+          <input
+            type="text"
+            class="synthesis-title-input pad-title-input"
+            placeholder="Untitled pad"
+            aria-label="Pad title"
+          />
+          <span class="synthesis-saved-badge pad-saved-badge" aria-live="polite">Saved</span>
+        </div>
+        <div class="pad-toolbar">Communication Pad</div>
+        <div class="pad-doc" aria-label="Pad paragraphs"></div>
+      </div>
+    </div>
+  </template>
   </div>
 
   <div id="document-library-modal" aria-hidden="true" role="dialog" aria-labelledby="document-library-title">
@@ -4148,6 +4227,7 @@
     const taxonomyFilterSelect = document.getElementById("taxonomy-filter");
     const ISOLATION_DEGREE_STORAGE_KEY = "internalize.isolationDegree";
     const TAXONOMY_FILTER_STORAGE_KEY = "internalize.taxonomyFilter";
+    const PAD_DOC_STORAGE_KEY = "internalize.communicationPadId";
     const PROSE_NODE_TYPES = new Set(["Chapter", "Part", "Section", "Sub-section"]);
     const documentCanvas = document.getElementById("document-canvas");
     const lineCanvas = document.getElementById("line-canvas");
@@ -4862,6 +4942,7 @@
     let activeWorkspacePresetId = null;
     let lastActiveBoardId = null;
     let lastActiveSynthesisId = null;
+    let lastActivePadId = null;
     let isWorkspaceSynced = true;
     let tabHoverSwitchTimer = null;
     let tabHoverSwitchTarget = null;
@@ -4993,6 +5074,12 @@
         if (index === -1 || !this.tabs[index].closable) return;
 
         const viewEl = document.getElementById(id);
+        if (this.tabs[index].type === "pad") {
+          const docId = viewEl?.dataset.padDocId || "";
+          if (docId && sessionStorage.getItem(PAD_DOC_STORAGE_KEY) === docId) {
+            sessionStorage.removeItem(PAD_DOC_STORAGE_KEY);
+          }
+        }
         if (viewEl) viewEl.remove();
         const sortable = synthesisSortables.get(id);
         if (sortable) {
@@ -5014,6 +5101,7 @@
         const tab = this.tabs.find((t) => t.id === id);
         if (tab?.type === "board") lastActiveBoardId = id;
         if (tab?.type === "synthesis") lastActiveSynthesisId = id;
+        if (tab?.type === "pad") lastActivePadId = id;
 
         this.activeId = id;
         this.render();
@@ -5076,7 +5164,9 @@
                 ? "fa-bullseye"
                 : tab.type === "synthesis"
                   ? "fa-pen-nib"
-                  : "fa-shapes";
+                  : tab.type === "pad"
+                    ? "fa-feather"
+                    : "fa-shapes";
           tabEl.innerHTML = `<i class="fa-solid ${icon}" style="color: #94a3b8; font-size: 12px; margin-right: 6px;"></i><span>${tab.title}</span>`;
 
           if (tab.closable) {
@@ -5127,6 +5217,7 @@
       sensemaking: "Source + Tree",
       "split-board": "Source + Tree + Board",
       "split-synth": "Source + Tree + Synthesis",
+      "split-pad": "Source + Tree + Pad",
       studio: "Source + Tree + Board + Synthesis",
     };
 
@@ -5148,6 +5239,16 @@
         return lastActiveBoardId;
       }
       return boards[0].id;
+    }
+
+    function resolvePadTabId() {
+      const pads = getOpenTabsByType("pad");
+      if (!pads.length) return null;
+      if (pads.some((tab) => tab.id === TabManager.activeId)) return TabManager.activeId;
+      if (lastActivePadId && pads.some((tab) => tab.id === lastActivePadId)) {
+        return lastActivePadId;
+      }
+      return pads[0].id;
     }
 
     function resolveSynthesisTabId() {
@@ -5269,6 +5370,13 @@
           studioBoardId = null;
           studioSynthId = synthId;
           TabManager.activateTab(synthId);
+        } else if (presetId === "split-pad") {
+          const padId = resolvePadTabId();
+          if (!padId) return false;
+          layoutMode = 1;
+          studioBoardId = null;
+          studioSynthId = null;
+          TabManager.activateTab(padId);
         } else if (presetId === "studio") {
           const boardId = resolveBoardTabId();
           const synthId = resolveSynthesisTabId();
@@ -5419,6 +5527,12 @@
       document.getElementById("menu-new-synth")?.addEventListener("click", (e) => {
         e.stopPropagation();
         openSynthesisTab();
+        hideNewTabMenu();
+      });
+
+      document.getElementById("menu-new-pad")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openCommunicationPad();
         hideNewTabMenu();
       });
 
@@ -17472,6 +17586,286 @@
       });
     }
 
+    const padSaveTimers = new Map();
+    const padDirtyViews = new Set();
+
+    function createPadParagraph(text = "") {
+      const wrap = document.createElement("div");
+      wrap.className = "pad-paragraph";
+      const area = document.createElement("textarea");
+      area.rows = 1;
+      area.placeholder = "Write…";
+      area.spellcheck = true;
+      area.setAttribute("aria-label", "Paragraph");
+      area.value = text;
+      wrap.appendChild(area);
+      return wrap;
+    }
+
+    function fitPadTextarea(area) {
+      area.style.height = "auto";
+      area.style.height = `${area.scrollHeight}px`;
+    }
+
+    function readPadBlocks(viewEl) {
+      const blocks = [];
+      for (const area of viewEl.querySelectorAll(".pad-paragraph textarea")) {
+        if (!area.value.trim()) continue;
+        blocks.push({ type: "paragraph", content: area.value });
+      }
+      return blocks;
+    }
+
+    function readPadTitle(viewEl) {
+      return viewEl.querySelector(".pad-title-input")?.value.trim() || "Untitled pad";
+    }
+
+    function updatePadTabTitle(viewEl) {
+      const tab = TabManager.tabs.find((item) => item.id === viewEl.id);
+      if (!tab) return;
+      const typed = viewEl.querySelector(".pad-title-input")?.value.trim();
+      const next = typed || "Pad";
+      if (tab.title === next) return;
+      tab.title = next;
+      TabManager.render();
+    }
+
+    function showPadSaved(viewEl) {
+      const badge = viewEl.querySelector(".pad-saved-badge");
+      if (!badge) return;
+      badge.classList.add("visible");
+      badge.style.opacity = "1";
+      window.setTimeout(() => {
+        badge.classList.remove("visible");
+        badge.style.opacity = "0";
+      }, 1600);
+    }
+
+    function fillPadParagraphs(viewEl, blocks) {
+      const doc = viewEl.querySelector(".pad-doc");
+      if (!doc) return;
+      doc.replaceChildren();
+      const paragraphs = (blocks || []).filter(
+        (block) => block?.type === "paragraph" && String(block.content || "").trim()
+      );
+      const source = paragraphs.length ? paragraphs : [{ content: "" }];
+      for (const block of source) {
+        const para = createPadParagraph(block.content || "");
+        doc.appendChild(para);
+        fitPadTextarea(para.querySelector("textarea"));
+      }
+    }
+
+    function insertPadParagraph(viewEl, afterWrap, text) {
+      const doc = viewEl.querySelector(".pad-doc");
+      const para = createPadParagraph(text);
+      if (afterWrap?.nextSibling) doc.insertBefore(para, afterWrap.nextSibling);
+      else doc.appendChild(para);
+      const area = para.querySelector("textarea");
+      fitPadTextarea(area);
+      return area;
+    }
+
+    function handlePadKeydown(viewEl, event) {
+      const area = event.target;
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        const before = area.value.slice(0, area.selectionStart);
+        const after = area.value.slice(area.selectionEnd);
+        area.value = before;
+        fitPadTextarea(area);
+        const next = insertPadParagraph(viewEl, area.closest(".pad-paragraph"), after);
+        next.focus();
+        next.setSelectionRange(0, 0);
+        schedulePadSave(viewEl);
+        return;
+      }
+
+      if (
+        event.key === "Backspace" &&
+        area.selectionStart === 0 &&
+        area.selectionEnd === 0 &&
+        area.value === ""
+      ) {
+        const wrap = area.closest(".pad-paragraph");
+        const doc = viewEl.querySelector(".pad-doc");
+        if (doc.querySelectorAll(".pad-paragraph").length < 2) return;
+        event.preventDefault();
+        const previous = wrap.previousElementSibling?.querySelector("textarea");
+        wrap.remove();
+        if (previous) {
+          previous.focus();
+          const end = previous.value.length;
+          previous.setSelectionRange(end, end);
+        }
+        schedulePadSave(viewEl);
+      }
+    }
+
+    function bindPadView(viewEl) {
+      const title = viewEl.querySelector(".pad-title-input");
+      const doc = viewEl.querySelector(".pad-doc");
+      title?.addEventListener("input", () => {
+        updatePadTabTitle(viewEl);
+        schedulePadSave(viewEl);
+      });
+      doc?.addEventListener("input", (event) => {
+        if (!event.target.matches("textarea")) return;
+        fitPadTextarea(event.target);
+        schedulePadSave(viewEl);
+      });
+      doc?.addEventListener("keydown", (event) => {
+        if (!event.target.matches("textarea")) return;
+        handlePadKeydown(viewEl, event);
+      });
+    }
+
+    function schedulePadSave(viewEl) {
+      padDirtyViews.add(viewEl);
+      const pending = padSaveTimers.get(viewEl);
+      if (pending) clearTimeout(pending);
+      padSaveTimers.set(
+        viewEl,
+        window.setTimeout(() => {
+          padSaveTimers.delete(viewEl);
+          savePad(viewEl);
+        }, 500)
+      );
+    }
+
+    function savePad(viewEl, { keepalive = false } = {}) {
+      padDirtyViews.delete(viewEl);
+      const pending = padSaveTimers.get(viewEl);
+      if (pending) {
+        clearTimeout(pending);
+        padSaveTimers.delete(viewEl);
+      }
+
+      const blocks = readPadBlocks(viewEl);
+      const title = readPadTitle(viewEl);
+      const docId = viewEl.dataset.padDocId || "";
+      if (!blocks.length && !docId) return Promise.resolve(false);
+
+      const content = blocks.map((block) => block.content).join("\n\n") || title;
+      const fields = { title, content, blocks };
+      const url = docId
+        ? `${API_BASE}/api/nodes/${encodeURIComponent(docId)}`
+        : `${API_BASE}/api/nodes`;
+      const body = docId
+        ? fields
+        : {
+            ...fields,
+            density_level: 1,
+            node_type: "Communication",
+            significance: 1.0,
+            origin: "human",
+          };
+
+      const request = fetch(url, {
+        method: docId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        keepalive,
+      });
+
+      if (keepalive) return request.catch(() => false);
+
+      return request
+        .then(async (res) => {
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            const detail = errBody.detail;
+            showStatus(
+              typeof detail === "string" ? detail : `Could not save pad (${res.status})`,
+              true
+            );
+            return false;
+          }
+          if (!docId) {
+            const result = await res.json();
+            viewEl.dataset.padDocId = result.node_id;
+          }
+          if (viewEl.dataset.padDocId) {
+            sessionStorage.setItem(PAD_DOC_STORAGE_KEY, viewEl.dataset.padDocId);
+          }
+          updatePadTabTitle(viewEl);
+          showPadSaved(viewEl);
+          return true;
+        })
+        .catch((err) => {
+          showStatus(err.message || "Could not save pad", true);
+          return false;
+        });
+    }
+
+    function openCommunicationPad({ doc = null } = {}) {
+      const existingId = doc?.id;
+      if (existingId) {
+        const open = document.querySelector(`.pad-view[data-pad-doc-id="${CSS.escape(existingId)}"]`);
+        if (open) {
+          lastActivePadId = open.id;
+          applyWorkspacePreset("split-pad");
+          open.querySelector(".pad-paragraph textarea")?.focus();
+          return open.id;
+        }
+      }
+
+      const template = document.getElementById("pad-view-template");
+      const container = document.getElementById("workspace-views-container");
+      if (!template?.content?.firstElementChild || !container) return null;
+
+      const padId = `pad-${existingId || Date.now()}`;
+      const viewEl = template.content.firstElementChild.cloneNode(true);
+      viewEl.id = padId;
+      container.appendChild(viewEl);
+      bindPadView(viewEl);
+
+      const titleInput = viewEl.querySelector(".pad-title-input");
+      if (doc?.id) viewEl.dataset.padDocId = doc.id;
+      if (doc?.title && titleInput && doc.title !== "Untitled pad") {
+        titleInput.value = doc.title;
+      }
+
+      const blocks = Array.isArray(doc?.blocks) ? doc.blocks : [];
+      fillPadParagraphs(viewEl, blocks);
+
+      TabManager.tabs.push({
+        id: padId,
+        type: "pad",
+        title: titleInput?.value.trim() || doc?.title || "Pad",
+        closable: true,
+      });
+      lastActivePadId = padId;
+      TabManager.render();
+      applyWorkspacePreset("split-pad");
+      viewEl.querySelector(".pad-paragraph textarea")?.focus();
+      return padId;
+    }
+
+    async function restoreCommunicationPad() {
+      const docId = sessionStorage.getItem(PAD_DOC_STORAGE_KEY);
+      if (!docId) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/nodes/${encodeURIComponent(docId)}`);
+        if (!res.ok) {
+          if (res.status === 404) sessionStorage.removeItem(PAD_DOC_STORAGE_KEY);
+          return;
+        }
+        const node = await res.json();
+        if (node.node_type !== "Communication") return;
+        openCommunicationPad({ doc: node });
+      } catch (err) {
+        showStatus(err.message || "Could not reopen the pad", true);
+      }
+    }
+
+    window.addEventListener("beforeunload", () => {
+      for (const viewEl of padDirtyViews) {
+        savePad(viewEl, { keepalive: true });
+      }
+    });
+
     async function init() {
       dismissAllOverlays();
       initWorkspaceCyInstance();
@@ -17516,6 +17910,7 @@
         await loadSourceLibrary();
         await initDocumentCanvas();
         clearStatus();
+        await restoreCommunicationPad();
       } catch (err) {
         showStatus(err.message, true);
         await loadSourceLibrary().catch(() => {});
