@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:5.26
+        env:
+          NEO4J_AUTH: neo4j/password
+          NEO4J_server_memory_heap_initial__size: 256m
+          NEO4J_server_memory_heap_max__size: 512m
+          NEO4J_server_memory_pagecache_size: 256m
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p password 'RETURN 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 40s
+    env:
+      NEO4J_URI: bolt://127.0.0.1:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - run: uv sync --frozen --group dev
+
+      - name: Confirm Neo4j accepts Bolt
+        run: uv run python -c "from neo4j import GraphDatabase; d = GraphDatabase.driver('bolt://127.0.0.1:7687', auth=('neo4j', 'password')); d.verify_connectivity(); d.close()"
+
+      - run: uv run pytest tests/api -v --tb=short
